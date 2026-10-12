@@ -1,0 +1,41 @@
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+/artifacts/
+[Pp]ublish/
+
+# Visual Studio and Rider local settings
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/shelf/
+
+# Test results, coverage, and benchmarks
+[Tt]est[Rr]esults*/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage*.xml
+coverage*.json
+BenchmarkDotNet.Artifacts/
+
+# NuGet packages (keep NuGet.Config and dependency lock files)
+/packages/
+*.nupkg
+*.snupkg
+
+# Temporary and operating-system files
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Synced ChatGPT reference material
+/sources/
