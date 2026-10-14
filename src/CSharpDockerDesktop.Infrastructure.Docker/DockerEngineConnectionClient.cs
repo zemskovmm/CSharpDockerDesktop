@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, INetworkReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, INetworkCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, INetworkReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, INetworkCommands, IContainerLogSource, IContainerStatsSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -220,6 +220,7 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
     private DockerEventSubscription? eventSubscription;
     private Task? disposal;
     private readonly HashSet<DockerLogSubscription> logSubscriptions = [];
+    private readonly HashSet<DockerStatsSubscription> statsSubscriptions = [];
     internal HttpClient Http => http;
     internal ITransportContinuity? Continuity => continuity;
     // A subscription closes its dedicated pool before consumers finish draining. Local disposal
@@ -287,6 +288,48 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
                 "The selected connection ended while opening logs."));
         cancellationToken.ThrowIfCancellationRequested();
         return result;
+    }
+    public async Task<ContainerStatsSubscriptionAttempt> SubscribeStatsAsync(string containerId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(containerId) || containerId.Length > 4096 || containerId is "." or ".."
+            || containerId.Any(char.IsControl) || !ValidStatsIdentity(containerId)
+            || containerId.Any(char.IsWhiteSpace))
+            return ContainerStatsSubscriptionAttempt.Failed(new(ContainerStatsFailureKind.InvalidRequest,
+                "Stats requires a non-empty bounded exact container identity without whitespace or controls."));
+        DockerStatsSubscription subscription;
+        lock (eventGate)
+        {
+            ObjectDisposedException.ThrowIf(disposed != 0, this);
+            if (!HasContinuity)
+                return ContainerStatsSubscriptionAttempt.Failed(new(ContainerStatsFailureKind.TransportLoss,
+                    "The selected connection changed; negotiate a new connection before opening Stats."));
+            if (statsSubscriptions.Count >= options.MaximumConcurrentStatsSubscriptions)
+                return ContainerStatsSubscriptionAttempt.Failed(new(ContainerStatsFailureKind.SubscriptionLimit,
+                    "Dispose an existing Stats subscription before opening another."));
+            subscription = new(this, client, options, containerId, lifetime.Token, cancellationToken,
+                ended => { lock (eventGate) statsSubscriptions.Remove(ended); });
+            statsSubscriptions.Add(subscription);
+            subscription.Start();
+        }
+        var result = await subscription.Opened.ConfigureAwait(false);
+        if (!result.IsSubscribed || cancellationToken.IsCancellationRequested || !HasContinuity)
+            await subscription.DisposeAsync().ConfigureAwait(false);
+        if (result.IsSubscribed && !HasContinuity)
+            result = ContainerStatsSubscriptionAttempt.Failed(new(ContainerStatsFailureKind.TransportLoss,
+                "The selected connection ended while opening Stats."));
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+    private static bool ValidStatsIdentity(string value)
+    {
+        for (int i = 0; i < value.Length; i++)
+        {
+            if (char.IsLowSurrogate(value[i])) return false;
+            if (char.IsHighSurrogate(value[i]) && (++i >= value.Length || !char.IsLowSurrogate(value[i]))) return false;
+        }
+        return true;
     }
     public Task<ContainerCommandResult> StartContainerAsync(string identity, CancellationToken cancellationToken = default)
         => CommandAsync(ContainerCommand.Start, identity, null, false, cancellationToken);
@@ -393,6 +436,7 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
             lifetime.Cancel();
             http.Dispose();
             var pending = logSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()).ToList();
+            pending.AddRange(statsSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()));
             if (eventSubscription is { } subscription) pending.Add(subscription.DisposeAsync().AsTask());
             disposal = Task.WhenAll(pending);
             // Keep lifetime source usable by racing borrowed calls; it owns no wait handle.

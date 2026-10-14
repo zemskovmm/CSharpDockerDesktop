@@ -1,0 +1,90 @@
+{
+  "read": "2015-01-08T22:57:31.547920715Z",
+  "pids_stats": {
+    "current": 3
+  },
+  "networks": {
+    "eth0": {
+      "rx_bytes": 18446744073709551615,
+      "rx_dropped": 0,
+      "rx_errors": 0,
+      "rx_packets": 36,
+      "tx_bytes": 648,
+      "tx_dropped": 0,
+      "tx_errors": 0,
+      "tx_packets": 8
+    },
+    "eth5": {
+      "rx_bytes": 4641,
+      "rx_dropped": 0,
+      "rx_errors": 0,
+      "rx_packets": 26,
+      "tx_bytes": 690,
+      "tx_dropped": 0,
+      "tx_errors": 0,
+      "tx_packets": 9
+    }
+  },
+  "memory_stats": {
+    "stats": {
+      "inactive_file": 2510848,
+      "file": 7626752,
+      "anon": 1572864
+    },
+    "usage": 6537216,
+    "limit": 67108864
+  },
+  "blkio_stats": {
+    "io_service_bytes_recursive": [
+      {
+        "major": 254,
+        "minor": 0,
+        "op": "Read",
+        "value": 7593984
+      },
+      {
+        "major": 254,
+        "minor": 0,
+        "op": "Write",
+        "value": 100
+      }
+    ]
+  },
+  "cpu_stats": {
+    "cpu_usage": {
+      "usage_in_usermode": 50000000,
+      "total_usage": 100215355,
+      "usage_in_kernelmode": 30000000
+    },
+    "system_cpu_usage": 739306590000000,
+    "online_cpus": 4,
+    "throttling_data": {
+      "periods": 0,
+      "throttled_periods": 0,
+      "throttled_time": 0
+    }
+  },
+  "precpu_stats": {
+    "cpu_usage": {
+      "usage_in_usermode": 50000000,
+      "total_usage": 100093996,
+      "usage_in_kernelmode": 30000000
+    },
+    "system_cpu_usage": 9492140000000,
+    "online_cpus": 4,
+    "throttling_data": {
+      "periods": 0,
+      "throttled_periods": 0,
+      "throttled_time": 0
+    }
+  },
+  "id": "canonical",
+  "preread": "2015-01-08T22:57:30.123456789Z",
+  "os_type": "linux",
+  "future": {
+    "nested": [
+      1,
+      "braces } { and escaped \" UTF-8 α🙂"
+    ]
+  }
+}

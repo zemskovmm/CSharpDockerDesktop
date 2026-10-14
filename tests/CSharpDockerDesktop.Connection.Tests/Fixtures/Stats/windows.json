@@ -1,0 +1,37 @@
+{
+  "id": "canonical",
+  "os_type": "windows",
+  "read": "2025-01-16T13:55:22.165243637Z",
+  "preread": "2025-01-16T13:55:21.160452595Z",
+  "num_procs": 16,
+  "cpu_stats": {
+    "cpu_usage": {
+      "total_usage": 29912000,
+      "usage_in_kernelmode": 0,
+      "usage_in_usermode": 7918000
+    }
+  },
+  "precpu_stats": {
+    "cpu_usage": {
+      "total_usage": 21994000
+    }
+  },
+  "memory_stats": {
+    "privateworkingset": 0,
+    "commitbytes": 18446744073709551615,
+    "commitpeakbytes": 0
+  },
+  "storage_stats": {
+    "read_size_bytes": 7593984,
+    "write_size_bytes": 0,
+    "read_count_normalized": 12
+  },
+  "networks": {
+    "endpoint": {
+      "rx_bytes": 0,
+      "tx_bytes": 1200,
+      "endpoint_id": "endpoint",
+      "instance_id": "instance"
+    }
+  }
+}

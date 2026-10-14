@@ -29,8 +29,27 @@ public sealed record DockerConnectionOptions
     public int MaximumLogFragmentCharacters { get; init; } = 4096;
     public int MaximumLogErrorBytes { get; init; } = 64 * 1024;
 
+    public TimeSpan StatsOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
+    public int MaximumConcurrentStatsSubscriptions { get; init; } = 2;
+    public int StatsBufferCapacity { get; init; } = 8;
+    public int MaximumStatsSampleBytes { get; init; } = 256 * 1024;
+    public int MaximumStatsCollectionEntries { get; init; } = 1024;
+    public int MaximumStatsErrorBytes { get; init; } = 16 * 1024;
+
     internal void Validate()
     {
+        if (StatsOpeningTimeout <= TimeSpan.Zero || StatsOpeningTimeout.TotalMilliseconds > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(StatsOpeningTimeout));
+        if (MaximumConcurrentStatsSubscriptions is < 1 or > 64)
+            throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentStatsSubscriptions));
+        if (StatsBufferCapacity is < 1 or > 4096)
+            throw new ArgumentOutOfRangeException(nameof(StatsBufferCapacity));
+        if (MaximumStatsSampleBytes is < 64 or > 4 * 1024 * 1024)
+            throw new ArgumentOutOfRangeException(nameof(MaximumStatsSampleBytes));
+        if (MaximumStatsCollectionEntries is < 1 or > 65536)
+            throw new ArgumentOutOfRangeException(nameof(MaximumStatsCollectionEntries));
+        if (MaximumStatsErrorBytes is < 64 or > 1024 * 1024)
+            throw new ArgumentOutOfRangeException(nameof(MaximumStatsErrorBytes));
         if (MaximumConcurrentVolumeDependencyQueries is < 1 or > 64)
             throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentVolumeDependencyQueries));
         if (MaximumVolumeDependencyContainers is < 1 or > 65536)

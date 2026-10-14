@@ -11,13 +11,13 @@ internal static class StreamTerminationChecks
     private static void Check(bool condition, string message)
     { if (!condition) throw new InvalidOperationException(message); }
 
-    internal static async Task ReaderCrossesCleanup(bool logs)
+    internal static async Task ReaderCrossesCleanup(bool logs, bool stats = false)
     {
         foreach (bool wait in new[] { false, true })
         {
-            using var fixture = new TerminalTransport(logs);
+            using var fixture = new TerminalTransport(logs, stats);
             await using var owner = await Connect(fixture);
-            var subscription = await Open(owner, logs);
+            var subscription = await Open(owner, logs, stats: stats);
             await using (subscription)
             {
                 await fixture.Stream.EndReached.Task.WaitAsync(Deadline); // All records/fragments queued before EOF.
@@ -42,16 +42,16 @@ internal static class StreamTerminationChecks
         }
     }
 
-    internal static async Task CancellationAndReplacement(bool logs)
+    internal static async Task CancellationAndReplacement(bool logs, bool stats = false)
     {
         foreach (bool completed in new[] { false, true })
         foreach (bool wait in new[] { false, true })
         foreach (var ending in new[] { "cancel", "subscription", "owner", "owner-generation", "stream-generation" })
         {
-            using var fixture = new TerminalTransport(logs);
+            using var fixture = new TerminalTransport(logs, stats);
             using var cancel = new CancellationTokenSource();
             await using var owner = await Connect(fixture);
-            await using var subscription = await Open(owner, logs, cancel.Token);
+            await using var subscription = await Open(owner, logs, cancel.Token, stats);
             await fixture.Stream.EndReached.Task.WaitAsync(Deadline);
             Task<bool>? reading = null;
             Task? disposal = null;
@@ -105,9 +105,9 @@ internal static class StreamTerminationChecks
         // occurring after callback detachment and classify it before completing the producer.
         foreach (int pool in new[] { 0, 1 })
         {
-            using var fixture = new TerminalTransport(logs);
+            using var fixture = new TerminalTransport(logs, stats);
             await using var owner = await Connect(fixture);
-            await using var subscription = await Open(owner, logs);
+            await using var subscription = await Open(owner, logs, stats: stats);
             await fixture.Stream.EndReached.Task.WaitAsync(Deadline);
             fixture.Stream.AllowCleanup.Reset();
             try
@@ -129,8 +129,13 @@ internal static class StreamTerminationChecks
         var result = await new DockerEngineConnectionClient(fixture, new() { EventBufferCapacity = 4, LogBufferCapacity = 8 }).ConnectAsync();
         Check(result.IsConnected, "Synthetic connection must negotiate"); return result.Connection!;
     }
-    private static async Task<ObservedSubscription> Open(IEngineConnection owner, bool logs, CancellationToken token = default)
+    private static async Task<ObservedSubscription> Open(IEngineConnection owner, bool logs, CancellationToken token = default, bool stats = false)
     {
+        if (stats)
+        {
+            var result = await ((IContainerStatsSource)owner).SubscribeStatsAsync("fixture", token);
+            Check(result.IsSubscribed, "Synthetic Stats must open"); return new(result.Subscription!);
+        }
         if (logs)
         {
             var result = await ((IContainerLogSource)owner).OpenLogsAsync(new("fixture", 3), token);
@@ -142,16 +147,24 @@ internal static class StreamTerminationChecks
 
     private sealed class ObservedSubscription : IAsyncDisposable
     {
+        private readonly IContainerStatsSubscription? stats;
+        private readonly List<ContainerStatsSample> samples = [];
         private readonly IContainerLogSubscription? logs;
         private readonly IEngineEventSubscription? events;
         private readonly List<ContainerLogOutput> output = [];
         private readonly List<EngineEvent> observations = [];
+        public ObservedSubscription(IContainerStatsSubscription value) => stats = value;
         public ObservedSubscription(IContainerLogSubscription value) => logs = value;
         public ObservedSubscription(IEngineEventSubscription value) => events = value;
-        public Task Finished => logs?.Completion ?? (Task)events!.Completion;
-        public ValueTask<bool> Wait() => logs is not null ? logs.Output.WaitToReadAsync() : events!.Events.WaitToReadAsync();
+        public Task Finished => (Task?)stats?.Completion ?? logs?.Completion ?? (Task)events!.Completion;
+        public ValueTask<bool> Wait() => stats is not null ? stats.Samples.WaitToReadAsync() : logs is not null ? logs.Output.WaitToReadAsync() : events!.Events.WaitToReadAsync();
         public bool Read()
         {
+            if (stats is not null)
+            {
+                if (!stats.Samples.TryRead(out var sample)) return false;
+                samples.Add(sample); return true;
+            }
             if (logs is not null)
             {
                 if (!logs.Output.TryRead(out var item)) return false;
@@ -166,7 +179,9 @@ internal static class StreamTerminationChecks
         }
         public void AssertOutput()
         {
-            if (logs is not null)
+            if (stats is not null)
+                Check(samples.Select(s => s.Memory!.Usage).SequenceEqual(new ulong?[] { 1, 2, 3 }), "Stats must drain exactly once in order");
+            else if (logs is not null)
             {
                 Check(output.Count == 6 && string.Concat(output.Select(item => item.Text)) == "first\nsecond\nthird\n"
                     && output.Select(item => item.Sequence).SequenceEqual(Enumerable.Range(1, 6).Select(value => (long)value)),
@@ -177,7 +192,13 @@ internal static class StreamTerminationChecks
         }
         public void AssertCompletion(bool canceled, bool replaced)
         {
-            if (logs is not null)
+            if (stats is not null)
+            {
+                var completion = stats.Completion.GetAwaiter().GetResult();
+                Check(completion.Termination == (replaced ? ContainerStatsTermination.Failed : canceled ? ContainerStatsTermination.Canceled : ContainerStatsTermination.CleanEnd)
+                    && (!replaced || completion.Failure?.Kind == ContainerStatsFailureKind.TransportLoss), "Stats classification must survive cleanup");
+            }
+            else if (logs is not null)
             {
                 var completion = logs.Completion.GetAwaiter().GetResult();
                 Check(completion.Termination == (replaced ? ContainerLogTermination.Failed : canceled ? ContainerLogTermination.Canceled : ContainerLogTermination.CleanEnd)
@@ -191,12 +212,14 @@ internal static class StreamTerminationChecks
                     $"Events terminal classification must survive cleanup (failure={failure?.Kind})");
             }
         }
-        public ValueTask DisposeAsync() => logs is not null ? logs.DisposeAsync() : events!.DisposeAsync();
+        public ValueTask DisposeAsync() => stats is not null ? stats.DisposeAsync() : logs is not null ? logs.DisposeAsync() : events!.DisposeAsync();
     }
 
-    private sealed class TerminalTransport(bool logs) : IDockerTransportFactory, IDisposable
+    private sealed class TerminalTransport(bool logs, bool stats) : IDockerTransportFactory, IDisposable
     {
-        public TerminalStream Stream { get; } = new(logs
+        public TerminalStream Stream { get; } = new(stats
+            ? Encoding.UTF8.GetBytes("{\"memory_stats\":{\"usage\":1}}{\"memory_stats\":{\"usage\":2}}{\"memory_stats\":{\"usage\":3}}")
+            : logs
             ? [.. LogChecks.Frame(1, "first\n"), .. LogChecks.Frame(2, "second\n"), .. LogChecks.Frame(1, "third\n")]
             : Encoding.UTF8.GetBytes(string.Concat(new[] { "first", "second", "third" }
                 .Select(action => $$"""{"Type":"container","Action":"{{action}}"}""" + "\n"))));
@@ -210,7 +233,7 @@ internal static class StreamTerminationChecks
             var handler = new TrackingHandler((request, _, _) =>
             {
                 var path = request.RequestUri!.AbsolutePath;
-                if (path.EndsWith("/logs") || path.EndsWith("/events"))
+                if (path.EndsWith("/logs") || path.EndsWith("/events") || path.EndsWith("/stats"))
                     return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(Stream) });
                 string body = path switch
                 {

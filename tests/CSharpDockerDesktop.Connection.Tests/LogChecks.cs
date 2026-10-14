@@ -323,10 +323,10 @@ internal static class LogChecks
 
     internal static async Task SimultaneousNamedPipe()
     {
-        // Actual SocketsHttpHandler over three controlled pipe connections, not a real Docker daemon.
+        // Actual SocketsHttpHandler over four controlled pipe connections, not a real Docker daemon.
         var name = "cdd-logs-" + Guid.NewGuid().ToString("N")[..8];
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var pipes = Enumerable.Range(0, 3).Select(_ => new NamedPipeServerStream(name, PipeDirection.InOut, 3, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)).ToArray();
+        var pipes = Enumerable.Range(0, 4).Select(_ => new NamedPipeServerStream(name, PipeDirection.InOut, 4, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)).ToArray();
         var paths = new ConcurrentQueue<string>();
         async Task Serve(NamedPipeServerStream pipe)
         {
@@ -341,11 +341,11 @@ internal static class LogChecks
                     Check(header.Length < 8192); header.Append((char)one[0]);
                 }
                 var path = header.ToString().Split(' ')[1]; paths.Enqueue(path);
-                if (path.Contains("/logs?") || path.Contains("/events?"))
+                if (path.Contains("/logs?") || path.Contains("/events?") || path.Contains("/stats?"))
                 {
                     var media = path.Contains("/logs?") ? "application/vnd.docker.multiplexed-stream" : "application/json";
                     await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: {media}\r\n\r\n"), deadline.Token);
-                    var bytes = path.Contains("/logs?") ? Frame(1, Stamp + "pipe🙂\r\n") : Encoding.UTF8.GetBytes(EventChecks.Event + "\n");
+                    var bytes = path.Contains("/logs?") ? Frame(1, Stamp + "pipe🙂\r\n") : Encoding.UTF8.GetBytes(path.Contains("/stats?") ? "{\"id\":\"canonical\",\"memory_stats\":{\"usage\":123}}" : EventChecks.Event + "\n");
                     foreach (var chunk in bytes.Chunk(3))
                     {
                         await pipe.WriteAsync(Encoding.ASCII.GetBytes($"{chunk.Length:X}\r\n"), deadline.Token);
@@ -385,6 +385,9 @@ internal static class LogChecks
             await using var logs = await Open(owner, new("canonical", 10, true));
             var eventsAttempt = await ((IEngineEventSource)owner).SubscribeEventsAsync(cancellationToken: deadline.Token);
             Check(eventsAttempt.IsSubscribed); await using var events = eventsAttempt.Subscription!;
+            var statsAttempt = await ((IContainerStatsSource)owner).SubscribeStatsAsync("canonical", deadline.Token);
+            Check(statsAttempt.IsSubscribed); await using var stats = statsAttempt.Subscription!;
+            Check((await stats.Samples.ReadAsync(deadline.Token)).Memory!.Usage == 123);
             string text = "";
             while (true)
             {
@@ -394,12 +397,12 @@ internal static class LogChecks
             Check(text == Stamp + "pipe🙂\r\n");
             Check((await events.Events.ReadAsync(deadline.Token)).Type == "container");
             await Task.Delay(600, deadline.Token);
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted);
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted);
             Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerReader)owner).InspectContainerAsync("canonical", deadline.Token)).IsSuccess);
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).Value![0].Id == "sha256:authoritative-image");
             Check((await ((IImageReader)owner).InspectImageAsync("repo/name:tag", deadline.Token)).Value!.Configuration!.Environment!.Single() == "SYNTHETIC_SECRET=preserve");
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed image reads must leave live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Borrowed image reads must leave live streams running");
             var networkList = ((INetworkReader)owner).ListNetworksAsync(deadline.Token);
             var networkDetail = ((INetworkReader)owner).InspectNetworkAsync("complete-network-id", deadline.Token);
             await Task.WhenAll(networkList, networkDetail, ((IContainerReader)owner).ListContainersAsync(deadline.Token),
@@ -407,31 +410,31 @@ internal static class LogChecks
                 owner.CheckLivenessAsync(deadline.Token));
             Check(networkList.Result.Value!.Single().Id == "complete-network-id"
                 && networkDetail.Result.Value!.Containers!["canonical"].EndpointId == "complete-endpoint-id");
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed network reads leave live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Borrowed network reads leave live streams running");
             var volumes = (await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).Value!;
             Check(volumes.Volumes![0].Name == "plugin/full?name" && volumes.HasWarnings);
             Check((await ((IVolumeReader)owner).InspectVolumeAsync(volumes.Volumes[0].Name, deadline.Token)).Value!.RawJson.Contains("private synthetic secret"));
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed volume reads must leave live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Borrowed volume reads must leave live streams running");
             var dependencies = (await ((IVolumeDependencyReader)owner).QueryVolumeDependenciesAsync("plugin/full?name", deadline.Token)).Value!;
             Check(dependencies.Completeness == VolumeDependencyCompleteness.Complete && dependencies.Containers!.Single().Id == "canonical"
                 && dependencies.Containers![0].State == "exited" && dependencies.Containers![0].Names!.Single() == "/private-original-name");
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed dependency reads leave live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Borrowed dependency reads leave live streams running");
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             var removal = await ((IImageCommands)owner).DeleteImageAsync("repo/name:tag", deadline.Token);
             Check(removal.Disposition == ImageCommandDisposition.Acknowledged && removal.RemovalRecords!.Single().Untagged == "repo/name:tag" && removal.RequiresReconciliation);
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Image mutation leaves retained live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Image mutation leaves retained live streams running");
             var volumeRemoval = await ((IVolumeCommands)owner).DeleteVolumeAsync("plugin/full?name", deadline.Token);
             Check(volumeRemoval.Disposition == VolumeCommandDisposition.Acknowledged && volumeRemoval.RequiresReconciliation);
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Volume deletion leaves unrelated live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Volume deletion leaves unrelated live streams running");
             var networkRemoval = await ((INetworkCommands)owner).DeleteNetworkAsync("complete-network-id", deadline.Token);
             Check(networkRemoval.Disposition == NetworkCommandDisposition.Acknowledged && networkRemoval.RequiresReconciliation);
-            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Network deletion leaves unrelated live streams running");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Network deletion leaves unrelated live streams running");
             Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
             Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).IsSuccess);
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
-            await logs.DisposeAsync(); await events.DisposeAsync();
+            await logs.DisposeAsync(); await events.DisposeAsync(); await stats.DisposeAsync();
             Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
             Check((await ((INetworkReader)owner).InspectNetworkAsync("complete-network-id", deadline.Token)).IsSuccess);
             Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).Value!.HasWarnings);
@@ -439,7 +442,7 @@ internal static class LogChecks
             Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await owner.DisposeAsync(); await serving;
-            Check(paths.Count(p => p == "/version") == 3 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1);
+            Check(paths.Count(p => p == "/version") == 4 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1 && paths.Count(p => p.Contains("/stats?")) == 1);
         }
         finally { foreach (var pipe in pipes) pipe.Dispose(); }
     }

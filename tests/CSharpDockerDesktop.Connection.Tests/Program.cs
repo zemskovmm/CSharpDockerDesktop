@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Stats official negotiated contracts and platform evidence", StatsChecks.OfficialContracts),
+    ("Stats decoder fragmentation types and bounds", StatsChecks.DecoderBoundsAndMalformed),
+    ("Stats opening failures and deadlines", StatsChecks.OpeningFailures),
+    ("Stats admission and blocked delivery", StatsChecks.AdmissionAndBlockedDelivery),
+    ("Stats cancellation and joined ownership", StatsChecks.CancellationAndJoinedOwnership),
+    ("Stats established stream and failure completion", StatsChecks.EstablishedStreamsAndFailures),
+    ("Stats cleanup reader race", () => StreamTerminationChecks.ReaderCrossesCleanup(false, true)),
+    ("Stats cleanup cancellation and replacement race", () => StreamTerminationChecks.CancellationAndReplacement(false, true)),
     ("Network operations NetworkDeletionAtomicAdmissionAndReplay", NetworkBrowsingChecks.NetworkDeletionAtomicAdmissionAndReplay),
     ("Network operations NetworkDeletionEligibilityAndStaleness", NetworkBrowsingChecks.NetworkDeletionEligibilityAndStaleness),
     ("Network operations NetworkDeletionExactIdentityAndSelection", NetworkBrowsingChecks.NetworkDeletionExactIdentityAndSelection),
@@ -375,6 +383,8 @@ var tests = new (string, Func<Task>)[]
     ("Named-pipe failed and canceled attempt disposal", FailedAndCanceledPipe),
     ("Named-pipe missing endpoint and canceled connect", MissingAndCanceledPipe)
 };
+if (args.FirstOrDefault() == "--stats")
+    tests = tests.Where(test => test.Item1.StartsWith("Stats ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--stream-termination")
     tests = tests.Where(test => test.Item1.StartsWith("Stream termination ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--network-deletion-presentation")
