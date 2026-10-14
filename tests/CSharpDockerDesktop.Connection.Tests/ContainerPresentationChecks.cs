@@ -1,0 +1,158 @@
+using System.Collections.Concurrent;
+using CSharpDockerDesktop.Application;
+using CSharpDockerDesktop.Domain;
+using CSharpDockerDesktop.Presentation;
+
+internal static class ContainerPresentationChecks
+{
+    private static readonly string A = new('a', 64), B = new('b', 64);
+    private static ContainerSummary Row(string id, string? name = null, string? image = null, string? state = null,
+        string? status = null) => new(id, name is null ? null : [name], image, null, state, status, null, null, null, null, null);
+    private static ContainerBrowsingSnapshot Ready(params ContainerSummary[] rows) => new(1, ResourceReadState.Ready, rows);
+    private static void Check(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
+    public static async Task SearchAndUnknownMetadata()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser { ContainerSnapshot = Ready(Row(A, "/NameAlpha", "Repo:Tag", "restarting", "Restarting (2)"), Row(B)) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view);
+        foreach (string query in new[] { "NAMEALPHA", A[..12], A, A[12..], "repo:tag", "RESTARTING", "(2)" })
+        {
+            view.Search(query); await clock.Settle(view);
+            Check(view.Rows.Count == 1 && view.Rows[0].Id == A, $"Search field missed {query}");
+        }
+        view.Search(" "); await clock.Settle(view);
+        var unknown = view.Rows.Single(row => row.Id == B);
+        Check(unknown.Name == "unknown" && unknown.Image == "unknown" && unknown.State == "unknown"
+            && unknown.Status == "unknown" && unknown.Health == "unknown" && unknown.Ports == "unknown"
+            && unknown.Created == "unknown", "Omitted metadata must be unknown");
+        Check(ContainerDisplay.Ports([]) == "none", "An empty collection differs from omitted information");
+        Check(ContainerDisplay.Flag(false) == "no" && ContainerDisplay.Flag(null) == "unknown", "Unknown flags must not become false");
+        Check(browser.SelectCalls == 0 && browser.RefreshCalls == 0, "Rendering and search may not read the Engine");
+    }
+    public static async Task DistinctStatesAndLatestNotifications()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser();
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view);
+        Check(view.ListMessage.Contains("unavailable") && !view.CanRefresh, "Disconnected state");
+        browser.Publish(new(1, ResourceReadState.Loading, [])); clock.Pump();
+        Check(view.ListMessage == "Loading containers…", "Initial loading");
+        browser.Publish(Ready()); await clock.Settle(view);
+        Check(view.ListMessage == "No containers on this Engine.", "Successful empty state");
+        browser.Publish(Ready(Row(A))); await clock.Settle(view);
+        view.Search("missing"); await clock.Settle(view);
+        Check(view.ListMessage == "No containers match your search.", "No-match state");
+        view.Search(""); await clock.Settle(view);
+        browser.Publish(browser.ContainerSnapshot with { State = ResourceReadState.Loading }); clock.Pump();
+        Check(view.ListMessage.StartsWith("Refreshing") && view.Rows.Count == 1, "Pending refresh retains old rows");
+        var failure = new EngineResourceFailure(EngineResourceFailureKind.AccessDenied, "Permission denied", 403, "PRIVATE daemon body");
+        browser.Publish(browser.ContainerSnapshot with { State = ResourceReadState.Failed, Failure = failure }); clock.Pump();
+        Check(view.ListMessage.Contains("AccessDenied (HTTP 403)") && view.Rows.Count == 1
+            && !view.ListMessage.Contains("PRIVATE"), "Classified resource error retains rows without automatic daemon-content display");
+        view.Refresh(); Check(browser.RefreshCalls == 1, "Explicit retry reaches the Application contract");
+        // Many off-thread notifications coalesce into one dispatcher callback, reading the newest snapshot.
+        await Task.Run(() => { for (int i = 0; i < 200; ++i) browser.Publish(Ready(Row(i == 199 ? B : A))); });
+        Check(clock.Count == 1, "Off-thread updates should be coalesced");
+        await clock.Settle(view);
+        Check(view.Rows.Single().Id == B, "Dispatcher must obtain the latest snapshot");
+        browser.Publish(new(1, ResourceReadState.Failed, [], Failure: failure)); await clock.Settle(view);
+        Check(view.ListMessage.StartsWith("Container refresh failed"), "Failed initial read is never successful emptiness");
+    }
+    public static async Task SelectionDetailsAndCancellation()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser { ContainerSnapshot = Ready(Row(A, "alpha"), Row(B, "beta")) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view);
+        view.Select(A); view.OpenSelected(); view.OpenSelected(); clock.Pump();
+        Check(browser.SelectCalls == 1 && view.DetailOpen && view.DetailMessage == "Loading Overview…", "Only deliberate open starts inspection");
+        view.Search("beta"); await clock.Settle(view);
+        Check(view.SelectedId == A && view.DetailOpen && view.Rows.Single().Id == B, "Filtering preserves full identity and details");
+        browser.Publish(browser.ContainerSnapshot with { State = ResourceReadState.Loading }); clock.Pump();
+        browser.Publish(browser.ContainerSnapshot with { State = ResourceReadState.Ready, Containers = [Row(B), Row(A)] }); await clock.Settle(view);
+        Check(view.SelectedId == A && browser.SelectCalls == 1, "Refresh and reordering must not duplicate inspection");
+        var detail = new ContainerInspection(A, "/alpha", "repo:tag", "image-id", DateTimeOffset.UnixEpoch,
+            new("paused", true, true, false, false, 0, null, DateTimeOffset.UnixEpoch, null, new("healthy", 0)),
+            [new(80, "tcp", "127.0.0.1", 8080)], [new("bind", null, "/private/source", "/app", null, "rw", true, null)],
+            [new("bridge", "network-id", "endpoint-id", "172.17.0.2", 16, "172.17.0.1", null, null, null, null, ["alpha"])],
+            "{\"Env\":[\"SECRET=hidden\"]}");
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = detail }); clock.Pump();
+        Check(view.Overview.Contains(A) && view.Overview.Contains("Started:") && view.Overview.Contains("Finished: unknown")
+            && view.Overview.Contains("paused: yes") && view.Overview.Contains("healthy") && view.Overview.Contains("8080")
+            && view.Overview.Contains("/private/source") && view.Overview.Contains("network-id") && !view.Overview.Contains("SECRET"), "Actual Overview projection");
+        view.RefreshDetail(); Check(browser.InspectionRefreshCalls == 1, "Explicit detail refresh");
+        var failure = new EngineResourceFailure(EngineResourceFailureKind.Conflict, "State conflict", 409);
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Failed, Inspection = null, InspectionFailure = failure }); clock.Pump();
+        Check(view.Overview == "" && view.DetailMessage.Contains("Conflict (HTTP 409)"), "Failed inspection clears obsolete detail");
+        view.CloseDetail(); clock.Pump();
+        Check(!view.DetailOpen && browser.ClearCalls == 1 && view.SelectedId == A, "Closing details cancels inspection and retains row identity");
+        view.OpenSelected(); browser.Publish(browser.ContainerSnapshot with { Containers = [Row(B)], SelectedContainerId = null, Inspection = null }); await clock.Settle(view);
+        Check(view.SelectedId is null && !view.DetailOpen && view.Overview == "" && browser.ClearCalls == 2, "Disappearance closes and cancels details");
+    }
+    public static async Task InvalidationAndNavigation()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser { ContainerSnapshot = Ready(Row(A)) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view); view.Select(A); view.OpenSelected(); clock.Pump();
+        browser.Publish(new(1, ResourceReadState.Unavailable, [])); await clock.Settle(view);
+        Check(view.Rows.Count == 0 && view.SelectedId is null && !view.DetailOpen && view.Overview == "", "Disconnect immediately invalidates identity and details");
+        browser.Publish(Ready(Row(A))); await clock.Settle(view); view.Select(A); view.OpenSelected(); clock.Pump();
+        browser.Publish(new(2, ResourceReadState.Loading, [])); await clock.Settle(view);
+        Check(view.SelectedId is null && !view.DetailOpen, "Replacement generation invalidates the old selection");
+        browser.Publish(new(2, ResourceReadState.Ready, [Row(B)])); await clock.Settle(view);
+        view.Select(B); view.OpenSelected(); clock.Pump();
+        int changed = 0; view.Changed += (_, _) => ++changed;
+        browser.Publish(new(3, ResourceReadState.Ready, [Row(A)])); // queued, not yet dispatched
+        view.Dispose(); int before = changed; clock.Pump();
+        view.Search("inactive");
+        Check(changed == before && browser.Subscribers == 0 && browser.ClearCalls == 1, "Navigation detaches and cancels; queued work cannot render");
+        browser.Publish(Ready()); clock.Pump();
+        Check(changed == before, "Notifications after exit do nothing");
+        // Reattach before an old callback drains; it must not suppress the new lifetime's notification.
+        view.Attach();
+        browser.Publish(Ready(Row(A))); view.Dispose(); view.Attach(); browser.Publish(Ready(Row(B)));
+        await clock.Settle(view);
+        Check(view.Rows.Single().Id == B && !view.Filtering, "Reattachment rejects canceled work without losing current notifications");
+    }
+    public static async Task LargeCollectionAndRapidSearch()
+    {
+        var clock = new Dispatcher();
+        var rows = Enumerable.Range(0, 20000).Select(i => Row(i.ToString("x64"), $"container-{i}", "image", i % 2 == 0 ? "running" : "exited")).ToArray();
+        var browser = new Browser { ContainerSnapshot = Ready(rows) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view);
+        Check(view.Rows.Count == 20000, "Every loaded state is browsable");
+        for (int i = 0; i < 100; ++i) view.Search($"container-{i}");
+        view.Search("container-19999"); await clock.Settle(view);
+        Check(view.Rows.Single().Id == rows[^1].Id && browser.SelectCalls == 0, "Rapid search must publish only the latest result, without reads");
+    }
+    private sealed class Dispatcher
+    {
+        private readonly ConcurrentQueue<Action> queue = new();
+        public int Count => queue.Count;
+        public bool Post(Action action) { queue.Enqueue(action); return true; }
+        public void Pump() { while (queue.TryDequeue(out var action)) action(); }
+        public async Task Settle(ContainerBrowserView view)
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            do { Pump(); if (!view.Filtering && queue.IsEmpty) return; await Task.Delay(1, timeout.Token); } while (true);
+        }
+    }
+    private sealed class Browser : IContainerBrowser
+    {
+        private EventHandler? changed;
+        public int Subscribers, SelectCalls, ClearCalls, RefreshCalls, InspectionRefreshCalls;
+        public ContainerBrowsingSnapshot ContainerSnapshot { get; set; } = new(0, ResourceReadState.Unavailable, []);
+        public event EventHandler? ContainersChanged { add { changed += value; ++Subscribers; } remove { changed -= value; --Subscribers; } }
+        public void Publish(ContainerBrowsingSnapshot snapshot) { ContainerSnapshot = snapshot; changed?.Invoke(this, EventArgs.Empty); }
+        public void RefreshContainers() => ++RefreshCalls;
+        public void SelectContainer(string? id)
+        { ++SelectCalls; Publish(ContainerSnapshot with { SelectedContainerId = id, InspectionState = ResourceReadState.Loading, Inspection = null, InspectionFailure = null }); }
+        public void RefreshContainerInspection() => ++InspectionRefreshCalls;
+        public void ClearContainerInspection()
+        { ++ClearCalls; Publish(ContainerSnapshot with { InspectionState = ResourceReadState.NotRequested, Inspection = null, InspectionFailure = null }); }
+    }
+}

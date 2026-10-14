@@ -21,7 +21,12 @@ public sealed partial class MainPage : Page
         ResourceNavigation.SelectedItem = ContainersItem;
     }
 
-    public void Detach() { session.Changed -= OnSessionChanged; attached = false; }
+    public void Detach()
+    {
+        session.Changed -= OnSessionChanged;
+        attached = false;
+        if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
+    }
     private void OnSessionChanged(object? sender, EventArgs args)
         => DispatcherQueue.TryEnqueue(() => { if (attached) UpdateConnection(); });
     private void OnRetry(object sender, RoutedEventArgs args) => session.Retry();
@@ -48,7 +53,7 @@ public sealed partial class MainPage : Page
         ConnectionDiagnostic.Text = s.Failure is { } failure
             ? $"{FailureLabel(failure.Kind)}: {failure.Description}{recovery}"
             : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
-            : s.State == EngineConnectionState.Connected ? "Engine readiness and metadata loaded. Resource loading is pending implementation." : "";
+            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers supports read-only browsing and Overview; Images, Volumes and Networks are pending." : "";
         if (!Equals(displayedFailure, s.Failure))
         {
             DaemonMessage.Visibility = Visibility.Collapsed;
@@ -86,7 +91,9 @@ public sealed partial class MainPage : Page
         if (args.SelectedItem is NavigationViewItem { Tag: string sectionName }
             && Enum.TryParse<ResourceSection>(sectionName, out var section))
         {
-            ResourceFrame.Navigate(typeof(ResourcePage), section);
+            if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
+            ResourceFrame.Navigate(section == ResourceSection.Containers ? typeof(ContainersPage) : typeof(ResourcePage),
+                section == ResourceSection.Containers ? (object)session : section);
             if (ResourceFrame.Content is ResourcePage page) page.UpdateConnection(session.Snapshot);
         }
     }

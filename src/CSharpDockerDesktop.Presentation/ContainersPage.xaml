@@ -1,0 +1,71 @@
+<Page x:Class="CSharpDockerDesktop.Presentation.ContainersPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:CSharpDockerDesktop.Presentation">
+  <Grid Padding="24" RowSpacing="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TextBlock Text="Containers" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.AutomationId="ResourcePageTitle" />
+    <Grid Grid.Row="1" ColumnSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <TextBox x:Name="SearchBox" PlaceholderText="Search name, ID, image or status" TextChanged="OnSearch"
+               AutomationProperties.Name="Search loaded containers" AutomationProperties.AutomationId="ContainerSearch" />
+      <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh containers" Click="OnRefresh" />
+      <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" Click="OnOpen" />
+      <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full ID" Click="OnCopy" />
+    </Grid>
+    <TextBlock x:Name="ListStatus" Grid.Row="2" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="ContainerListStatus" />
+    <!-- The bounded ListView owns its scrolling; ItemsStackPanel recycles rows. Never wrap it in a ScrollViewer. -->
+    <ListView x:Name="ContainerList" Grid.Row="3" SelectionMode="Single" SelectionChanged="OnSelectionChanged"
+              IsItemClickEnabled="False" DoubleTapped="OnListDoubleTapped"
+              AutomationProperties.Name="Containers" AutomationProperties.AutomationId="ContainerList"
+              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+      <ListView.ItemTemplate>
+        <DataTemplate x:DataType="local:ContainerRow">
+          <Grid Padding="8" RowSpacing="4" AutomationProperties.Name="{x:Bind AccessibleSummary}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="2*" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="1" Text="{x:Bind Image}" TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8"><TextBlock Text="State:" /><TextBlock Text="{x:Bind State}" /><TextBlock Text="{x:Bind Status}" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8"><TextBlock Text="ID:" /><TextBlock Text="{x:Bind ShortId}" /></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8"><TextBlock Text="Health:" /><TextBlock Text="{x:Bind Health}" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8"><TextBlock Text="Created:" /><TextBlock Text="{x:Bind Created}" /></StackPanel>
+            <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8"><TextBlock Text="Ports:" /><TextBlock Text="{x:Bind Ports}" TextTrimming="CharacterEllipsis" /></StackPanel>
+          </Grid>
+        </DataTemplate>
+      </ListView.ItemTemplate>
+      <ListView.ItemContainerStyle>
+        <Style TargetType="ListViewItem">
+          <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+          <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleSummary}" />
+        </Style>
+      </ListView.ItemContainerStyle>
+    </ListView>
+    <TextBlock Grid.Row="4" Text="Read-only browser. Raw Inspect, lifecycle actions, events, Logs, Terminal and Stats are pending."
+               TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
+    <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16"
+            Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+      <Grid RowSpacing="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Button x:Name="CloseDetailButton" Content="Back to containers" Click="OnCloseDetail" />
+          <TextBlock Text="Overview" Style="{ThemeResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+          <Button x:Name="RefreshDetailButton" Content="Refresh Overview" Click="OnRefreshDetail" />
+          <Button Content="Copy full ID" Click="OnCopy" />
+        </StackPanel>
+        <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+          <TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Container Overview" />
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</Page>

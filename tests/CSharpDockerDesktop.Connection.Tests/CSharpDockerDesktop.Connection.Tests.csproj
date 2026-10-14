@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Exercise the actual Presentation state without loading a graphical Uno host. -->
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerBrowserView.cs" Link="Presentation/ContainerBrowserView.cs" />
     <None Update="Fixtures/Containers/**" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
   </ItemGroup>

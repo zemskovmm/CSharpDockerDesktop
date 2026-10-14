@@ -30,6 +30,11 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Presentation search fields and unknown metadata", ContainerPresentationChecks.SearchAndUnknownMetadata),
+    ("Presentation distinct states and latest notifications", ContainerPresentationChecks.DistinctStatesAndLatestNotifications),
+    ("Presentation identity selection, Overview and cancellation", ContainerPresentationChecks.SelectionDetailsAndCancellation),
+    ("Presentation disconnect, generation and navigation invalidation", ContainerPresentationChecks.InvalidationAndNavigation),
+    ("Presentation large collection and rapid search", ContainerPresentationChecks.LargeCollectionAndRapidSearch),
     ("Browsing initial load, empty list, refresh replacement and raw inspect", ContainerBrowsingChecks.InitialEmptyAndReplacement),
     ("Browsing classified failures and external disappearance", ContainerBrowsingChecks.PreservedFailuresAndDisappearance),
     ("Browsing superseded selections and inspection clearing", ContainerBrowsingChecks.SelectionRacesAndClearing),
