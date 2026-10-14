@@ -12,11 +12,44 @@ internal interface ITransportContinuity
 {
     long ConnectionGeneration { get; }
     event Action? Reopened;
+    // Production transport refuses replacement sockets once the metadata has been negotiated.
+    // Default supports controlled protocol-only fixtures that do not create physical sockets.
+    bool Seal(long generation) => ConnectionGeneration == generation;
 }
 
 internal sealed class PipeConnectionCounter
 {
     private long generation;
+    private bool sealedConnection;
+    private readonly object gate = new();
+    public bool Seal(long expected)
+    {
+        lock (gate)
+        {
+            if (generation != expected) return false;
+            sealedConnection = true;
+            return true;
+        }
+    }
+    public void EnsureCanOpen()
+    {
+        lock (gate)
+            if (sealedConnection)
+            {
+                // Invalidate observers even though the replacement is refused before it can carry requests.
+                Opened();
+                throw new ConnectionProtocolException(new(EngineConnectionFailureKind.TransientTransportFailure,
+                    "The negotiated transport cannot reopen. Establish a new negotiated connection."));
+            }
+    }
+    public void OpenTransport()
+    {
+        lock (gate)
+        {
+            EnsureCanOpen();
+            Opened();
+        }
+    }
     public long Generation => Interlocked.Read(ref generation);
     public event Action? Reopened;
     public void Opened()
@@ -29,6 +62,7 @@ internal sealed class ContinuityHandler(HttpMessageHandler inner, PipeConnection
     : DelegatingHandler(inner), ITransportContinuity
 {
     public long ConnectionGeneration => counter.Generation;
+    public bool Seal(long generation) => counter.Seal(generation);
     public event Action? Reopened
     {
         add => counter.Reopened += value;
@@ -54,11 +88,12 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
             MaxConnectionsPerServer = 1,
             ConnectCallback = async (_, cancellationToken) =>
             {
+                counter.EnsureCanOpen();
                 var pipe = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous);
                 try
                 {
                     await pipe.ConnectAsync((int)Math.Ceiling(options.PipeConnectTimeout.TotalMilliseconds), cancellationToken).ConfigureAwait(false);
-                    counter.Opened();
+                    counter.OpenTransport();
                     return pipe; // SocketsHttpHandler now owns the stream.
                 }
                 catch (TimeoutException)

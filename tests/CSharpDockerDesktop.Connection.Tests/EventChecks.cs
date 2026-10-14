@@ -307,7 +307,9 @@ internal static class EventChecks
                     "/v1.56/containers/ordinary/json" => "{\"Id\":\"ordinary\"}", _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
-                await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
+                var status = path.EndsWith("/start") ? "204 No Content" : "200 OK";
+                if (path.EndsWith("/start")) payload = [];
+                await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {status}\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
                 await pipe.WriteAsync(payload, deadline.Token); await pipe.FlushAsync(deadline.Token);
             }
         }
@@ -324,6 +326,8 @@ internal static class EventChecks
         var reader = (IContainerReader)connection;
         Check((await reader.ListContainersAsync(deadline.Token)).Value![0].Id == "ordinary");
         Check((await reader.InspectContainerAsync("ordinary", deadline.Token)).IsSuccess);
+        Check((await ((IContainerCommands)connection).StartContainerAsync("ordinary", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
+        Check(!subscription.Completion.IsCompleted && (await reader.ListContainersAsync(deadline.Token)).IsSuccess);
         await subscription.DisposeAsync(); await eventClosed.Task.WaitAsync(deadline.Token);
         Check(await connection.CheckLivenessAsync(deadline.Token) is null);
         await connection.DisposeAsync(); await serving;

@@ -11,8 +11,22 @@ public sealed record DockerConnectionOptions
     public int MaximumEventBytes { get; init; } = 64 * 1024;
     public int EventBufferCapacity { get; init; } = 128;
 
+    // Implementation tuning; independent of the five-second resource-read deadline.
+    public TimeSpan CommandTimeout { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan GracefulCommandTimeout { get; init; } = TimeSpan.FromMinutes(2);
+    public int MaximumCommandErrorBytes { get; init; } = 64 * 1024;
+    public int MaximumConcurrentCommands { get; init; } = 4;
+
     internal void Validate()
     {
+        if (CommandTimeout <= TimeSpan.Zero || CommandTimeout.TotalMilliseconds > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(CommandTimeout));
+        if (GracefulCommandTimeout <= TimeSpan.Zero || GracefulCommandTimeout.TotalMilliseconds > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(GracefulCommandTimeout));
+        if (MaximumCommandErrorBytes < 64 || MaximumCommandErrorBytes > 1024 * 1024)
+            throw new ArgumentOutOfRangeException(nameof(MaximumCommandErrorBytes));
+        if (MaximumConcurrentCommands < 1 || MaximumConcurrentCommands > 64)
+            throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentCommands));
         if (RequestTimeout <= TimeSpan.Zero || RequestTimeout.TotalMilliseconds > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(RequestTimeout));
         if (PipeConnectTimeout <= TimeSpan.Zero || PipeConnectTimeout.TotalMilliseconds > int.MaxValue)

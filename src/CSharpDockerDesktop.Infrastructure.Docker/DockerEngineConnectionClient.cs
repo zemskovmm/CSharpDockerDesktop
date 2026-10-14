@@ -5,7 +5,7 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Infrastructure.Docker;
 
-/// <summary>Thin, read-only Engine handshake. A successful session owns its HTTP transport and container reader.</summary>
+/// <summary>Thin Engine handshake. A successful session owns its transport and borrowed resource capabilities.</summary>
 public sealed class DockerEngineConnectionClient : IEngineConnectionClient
 {
     // Increase only with schema compatibility evidence, not from the daemon's advertised maximum.
@@ -72,7 +72,8 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
                 OptionalString(i, "OperatingSystem"), OptionalString(i, "OSType"), OptionalString(i, "Architecture"),
                 OptionalString(i, "ServerVersion"), capabilities);
             cancellationToken.ThrowIfCancellationRequested();
-            if (continuity?.ConnectionGeneration != pipeGeneration)
+            if (continuity?.ConnectionGeneration != pipeGeneration
+                || continuity is not null && !continuity.Seal(pipeGeneration!.Value))
                 throw TransportReopened();
             var connection = new DockerEngineConnection(http, metadata, this, continuity, pipeGeneration, options);
             http = null; // Transfer sole ownership to the successful session.
@@ -209,9 +210,10 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource, IContainerCommands
 {
     private int disposed;
+    private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
     private readonly CancellationTokenSource lifetime = new();
     private readonly object eventGate = new();
     private DockerEventSubscription? eventSubscription;
@@ -248,6 +250,17 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }
+    public Task<ContainerCommandResult> StartContainerAsync(string identity, CancellationToken cancellationToken = default)
+        => CommandAsync(ContainerCommand.Start, identity, null, false, cancellationToken);
+    public Task<ContainerCommandResult> StopContainerAsync(string identity, int? gracePeriodSeconds = null, CancellationToken cancellationToken = default)
+        => CommandAsync(ContainerCommand.Stop, identity, gracePeriodSeconds, false, cancellationToken);
+    public Task<ContainerCommandResult> RestartContainerAsync(string identity, int? gracePeriodSeconds = null, CancellationToken cancellationToken = default)
+        => CommandAsync(ContainerCommand.Restart, identity, gracePeriodSeconds, false, cancellationToken);
+    public Task<ContainerCommandResult> DeleteContainerAsync(string identity, bool force = false, CancellationToken cancellationToken = default)
+        => CommandAsync(ContainerCommand.Delete, identity, null, force, cancellationToken);
+    private Task<ContainerCommandResult> CommandAsync(ContainerCommand command, string identity, int? grace, bool force, CancellationToken token)
+        => DockerContainerCommands.ExecuteAsync(http, Metadata.Api.Negotiated, command, identity, grace, force,
+            options, continuity, generation, commandSlots, lifetime.Token, token);
     public EngineMetadata Metadata { get; } = metadata;
     public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default)
     {
