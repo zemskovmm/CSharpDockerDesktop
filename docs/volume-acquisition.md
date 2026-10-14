@@ -1,6 +1,6 @@
 # Read-only volume acquisition
 
-The retained negotiated `DockerEngineConnection` supplies Application-owned `IVolumeReader` alongside container/image reads, commands, events, Logs and liveness. This capability is borrowed: obtaining it transfers no transport or disposal ownership. Domain projections have no Uno or protocol dependencies. This delivery stops at acquisition; volume session coordination, event reconciliation, presentation and deletion remain pending.
+The retained negotiated `DockerEngineConnection` supplies Application-owned `IVolumeReader` alongside container/image reads, commands, events, Logs and liveness. This capability is borrowed: obtaining it transfers no transport or disposal ownership. Domain projections have no Uno or protocol dependencies. Application-owned [volume browsing](volume-browsing.md) and [shared event reconciliation](volume-reconciliation.md) use this capability. Presentation, dependency acquisition and deletion remain pending.
 
 ## Requests and identities
 

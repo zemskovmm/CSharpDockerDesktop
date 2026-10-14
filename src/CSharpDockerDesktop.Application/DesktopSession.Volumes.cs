@@ -82,7 +82,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
         lock (gate)
         {
             if (!CurrentEventsLocked(containers)) return null;
-            reads = new(containers);
+            reads = new(containers) { EventRefresh = containers.VolumeRefreshPending };
             volumeReads = reads;
             volumeSnapshot = new(containerSnapshot.ConnectionGeneration,
                 reads.Reader is null ? ResourceReadState.Unavailable : ResourceReadState.Loading,
@@ -96,6 +96,53 @@ public sealed partial class DesktopSession : IVolumeBrowser
         }
         NotifyVolumesChanged();
         return reads;
+    }
+
+    private void RequestVolumeEventSnapshotLocked(ContainerReads containers, bool initial)
+    {
+        if (!initial) containers.VolumeRefreshPending = true;
+        if (volumeReads is not { Reader: not null } reads || reads.Containers != containers) return;
+        if (!initial) reads.EventRefresh = true;
+        InvalidateVolumeEventDetailLocked(reads, null);
+        reads.Signal.Writer.TryWrite(0);
+    }
+
+    private bool ObserveVolumeEventLocked(ContainerReads containers, string? identity)
+    {
+        // Only bounded invalidation state survives the startup race; never retain event attributes.
+        containers.VolumeRefreshPending = true;
+        if (volumeReads is not { Reader: not null } reads || reads.Containers != containers) return false;
+        reads.EventRefresh = true;
+        bool changed = InvalidateVolumeEventDetailLocked(reads, UsableVolumeEventIdentity(identity));
+        reads.Signal.Writer.TryWrite(0);
+        return changed;
+    }
+
+    private bool InvalidateVolumeEventDetailLocked(VolumeReads reads, string? identity)
+    {
+        if (volumeSnapshot.SelectedVolumeName is not { } selected
+            || volumeSnapshot.InspectionState == ResourceReadState.NotRequested
+            || (identity is not null && !StringComparer.Ordinal.Equals(identity, selected))) return false;
+        // Finish owned I/O with its original deadline, but fence every obsolete result.
+        ++reads.DetailRevision;
+        reads.Inspect = true;
+        bool changed = volumeSnapshot.Inspection is not null || volumeSnapshot.InspectionState != ResourceReadState.Loading;
+        if (changed) volumeSnapshot = volumeSnapshot with { Inspection = null,
+            InspectionState = ResourceReadState.Loading, InspectionFailure = null };
+        return changed;
+    }
+
+    private static string? UsableVolumeEventIdentity(string? identity)
+    {
+        // Docker volume Actor.ID is the full volume name, not Attributes["name"].
+        // Match the borrowed read capability's usability bounds without changing accepted names.
+        if (string.IsNullOrWhiteSpace(identity) || identity.Length > 4096 || identity is "." or "..") return null;
+        for (int index = 0; index < identity.Length; index++)
+        {
+            if (char.IsControl(identity[index]) || char.IsLowSurrogate(identity[index])) return null;
+            if (char.IsHighSurrogate(identity[index]) && (++index >= identity.Length || !char.IsLowSurrogate(identity[index]))) return null;
+        }
+        return identity;
     }
 
     private bool CurrentVolumesLocked(VolumeReads reads)
@@ -138,12 +185,27 @@ public sealed partial class DesktopSession : IVolumeBrowser
                     CancellationTokenSource request;
                     // A separate clock still expires when user cancellation is ignored by the reader.
                     using var deadline = new CancellationTokenSource();
+                    bool batch;
                     lock (gate)
                     {
                         if (!CurrentVolumesLocked(reads)) return;
-                        if (!reads.Refresh && !reads.Inspect) break;
-                        list = reads.Refresh && !(reads.Inspect && reads.LastReadWasList);
-                        if (list) reads.Refresh = false;
+                        batch = !reads.Refresh && reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList);
+                    }
+                    if (batch) await delay.DelayAsync(reconciliation.BatchInterval, reads.Lifetime.Token).ConfigureAwait(false);
+                    lock (gate)
+                    {
+                        if (!CurrentVolumesLocked(reads)) return;
+                        if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
+                        list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
+                        if (list)
+                        {
+                            reads.Refresh = false;
+                            // Initial/pre-snapshot observations still require a subsequent reread.
+                            // Later reads consume only observations already pending at their start.
+                            if (!reads.InitialSnapshotPending) reads.EventRefresh = false;
+                            reads.InitialSnapshotPending = false;
+                        }
                         else reads.Inspect = false;
                         reads.LastReadWasList = list;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
@@ -233,10 +295,14 @@ public sealed partial class DesktopSession : IVolumeBrowser
         bool lost = false;
         lock (gate)
         {
-            if (!CurrentVolumeRequestLocked(reads, request, revision, false)
-                || !StringComparer.Ordinal.Equals(volumeSnapshot.SelectedVolumeName, name)) return;
+            if (!CurrentVolumesLocked(reads) || request.IsCancellationRequested
+                || reads.ActiveDeadline?.IsCancellationRequested != false) return;
+            // Obsolete content remains fenced, but a current transport-loss result still proves
+            // that the shared connection cannot be used safely.
             if (result.Failure?.Kind == EngineResourceFailureKind.TransportLoss)
             { VolumeTransportLostLocked(reads, result.Failure, true); lost = true; }
+            else if (!CurrentVolumeRequestLocked(reads, request, revision, false)
+                || !StringComparer.Ordinal.Equals(volumeSnapshot.SelectedVolumeName, name)) return;
             else
             {
                 var failure = result.Failure;
@@ -298,7 +364,8 @@ public sealed partial class DesktopSession : IVolumeBrowser
         public Task Workflow = Task.CompletedTask;
         public CancellationTokenSource? Active;
         public CancellationTokenSource? ActiveDeadline;
-        public bool Refresh = true, Inspect, InspectActive, LastReadWasList;
+        public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;
+        public bool InitialSnapshotPending = true;
         public long ListRevision, DetailRevision;
     }
 }

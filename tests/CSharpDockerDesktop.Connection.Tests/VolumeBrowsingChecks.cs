@@ -3,14 +3,14 @@ using System.Threading.Channels;
 using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 
-internal static class VolumeBrowsingChecks
+internal static partial class VolumeBrowsingChecks
 {
     private static readonly TimeSpan Limit = TimeSpan.FromSeconds(4);
     private static readonly string A = "private-volume-" + new string('a', 128), B = "Private-volume-B", C = "private-volume-c";
     private const string Raw = "{\n  \"Name\": \"private\", \"Unknown\": 1.0000, \"Labels\": {\"SECRET\":\"private\"}\n}";
     private static VolumeSummary Row(string name) => new(name, "local", "local", "/private/mount",
         new Dictionary<string, string> { ["Secret"] = "private", ["secret"] = "different" });
-    private static VolumeInspection Detail(string name) => new(name, "driver", null, "", Row(name).Labels, Raw);
+    private static VolumeInspection Detail(string name, string raw = Raw) => new(name, "driver", null, "", Row(name).Labels, raw);
     private static EngineResourceFailure Failure(EngineResourceFailureKind kind) => new(kind,
         "safe classified description", 503, "private original daemon message\nunchanged");
     private static void Check(bool condition, string message = "Volume browsing assertion failed")
@@ -430,6 +430,7 @@ internal static class VolumeBrowsingChecks
         public readonly TaskCompletionSource<ContainerCommandResult> CommandCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public readonly TaskCompletionSource<ImageCommandResult> ImageCommandCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken EventToken, LogToken, CommandToken, ImageCommandToken;
+        public int EventCalls, ContainerListCalls, ImageListCalls;
         public EngineResourceFailure? ContainerFailure, ImageFailure;
         private int activeCommands;
         public override ValueTask DisposeAsync()
@@ -438,19 +439,19 @@ internal static class VolumeBrowsingChecks
             return base.DisposeAsync();
         }
         public Task<EngineResourceResult<IReadOnlyList<ContainerSummary>>> ListContainersAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(ContainerFailure is { } failure ? EngineResourceResult<IReadOnlyList<ContainerSummary>>.Failed(failure)
+        { Interlocked.Increment(ref ContainerListCalls); return Task.FromResult(ContainerFailure is { } failure ? EngineResourceResult<IReadOnlyList<ContainerSummary>>.Failed(failure)
                 : EngineResourceResult<IReadOnlyList<ContainerSummary>>.Success(new[] { new ContainerSummary(ContainerId,
-                    null, null, ImageId, "exited", null, null, null, null, null, null) }));
+                    null, null, ImageId, "exited", null, null, null, null, null, null) })); }
         public Task<EngineResourceResult<ContainerInspection>> InspectContainerAsync(string identity, CancellationToken cancellationToken = default)
             => Task.FromResult(EngineResourceResult<ContainerInspection>.Success(new(identity, null, null, ImageId, null,
                 new("exited", false, false, false, false, 0, null, null, null, null), null, null, null, "{}")));
         public Task<EngineResourceResult<IReadOnlyList<ImageSummary>>> ListImagesAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(ImageFailure is { } failure ? EngineResourceResult<IReadOnlyList<ImageSummary>>.Failed(failure)
-                : EngineResourceResult<IReadOnlyList<ImageSummary>>.Success(new[] { new ImageSummary(ImageId, null, null, null, null) }));
+        { Interlocked.Increment(ref ImageListCalls); return Task.FromResult(ImageFailure is { } failure ? EngineResourceResult<IReadOnlyList<ImageSummary>>.Failed(failure)
+                : EngineResourceResult<IReadOnlyList<ImageSummary>>.Success(new[] { new ImageSummary(ImageId, null, null, null, null) })); }
         public Task<EngineResourceResult<ImageInspection>> InspectImageAsync(string identity, CancellationToken cancellationToken = default)
             => Task.FromResult(EngineResourceResult<ImageInspection>.Success(new(identity, null, null, null, null, null, null, null, null, null, null, "{}")));
         public Task<EngineEventSubscriptionAttempt> SubscribeEventsAsync(EngineEventCursor? since = null, CancellationToken cancellationToken = default)
-        { EventToken = cancellationToken; return Task.FromResult(EngineEventSubscriptionAttempt.Subscribed(Events)); }
+        { Interlocked.Increment(ref EventCalls); EventToken = cancellationToken; return Task.FromResult(EngineEventSubscriptionAttempt.Subscribed(Events)); }
         public Task<ContainerLogSubscriptionAttempt> OpenLogsAsync(ContainerLogRequest request, CancellationToken cancellationToken = default)
         { LogToken = cancellationToken; Logs.Opened = true; return Task.FromResult(ContainerLogSubscriptionAttempt.Subscribed(Logs)); }
         public async Task<ContainerCommandResult> StartContainerAsync(string identity, CancellationToken cancellationToken = default)
@@ -470,15 +471,11 @@ internal static class VolumeBrowsingChecks
         public Task<ContainerCommandResult> DeleteContainerAsync(string identity, bool force = false, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
     }
 
-    private sealed class EventSubscription : IEngineEventSubscription
+    private sealed class EventSubscription : VolumeObservation
     {
-        private readonly Channel<EngineEvent> channel = Channel.CreateBounded<EngineEvent>(1);
-        private readonly TaskCompletionSource<EngineEventFailure?> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool Disposed;
-        public ChannelReader<EngineEvent> Events => channel.Reader;
-        public Task<EngineEventFailure?> Completion => completion.Task;
-        public void Fail() { completion.TrySetResult(new(EngineEventFailureKind.TransportLoss, "events lost")); channel.Writer.TryComplete(); }
-        public ValueTask DisposeAsync() { Disposed = true; completion.TrySetResult(null); channel.Writer.TryComplete(); return ValueTask.CompletedTask; }
+        public void Fail() => End(new(EngineEventFailureKind.TransportLoss, "events lost"));
+        public override ValueTask DisposeAsync() { Disposed = true; return base.DisposeAsync(); }
     }
 
     private sealed class LogSubscription : IContainerLogSubscription
@@ -516,7 +513,7 @@ internal static class VolumeBrowsingChecks
         public int MaximumConcurrent, DisposeCount, ListCalls, InspectionCalls;
         public bool DisposedWithActiveRead;
         public EngineConnectionFailure? PingFailure;
-        public EngineMetadata Metadata => new MissingConnection().Metadata with { EngineVersion = version };
+        public virtual EngineMetadata Metadata => new MissingConnection().Metadata with { EngineVersion = version };
         public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default) => Task.FromResult(PingFailure);
         public virtual ValueTask DisposeAsync()
         { DisposedWithActiveRead |= Volatile.Read(ref active) != 0; Interlocked.Increment(ref DisposeCount); return ValueTask.CompletedTask; }
@@ -548,6 +545,7 @@ internal static class VolumeBrowsingChecks
     {
         public CancellationToken Token { get; } = token;
         public TaskCompletionSource<EngineResourceResult<VolumeListing>> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void SucceedNames(params string[] names) => Succeed(new VolumeListing(names.Select(Row).ToArray(), null));
         public void Succeed(VolumeListing value) => Completion.SetResult(EngineResourceResult<VolumeListing>.Success(value));
         public void Fail(EngineResourceFailure value) => Completion.SetResult(EngineResourceResult<VolumeListing>.Failed(value));
     }

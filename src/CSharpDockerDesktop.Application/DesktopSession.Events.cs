@@ -45,6 +45,7 @@ public sealed partial class DesktopSession
             InvalidateEventDetailLocked(reads, null);
             reads.Signal.Writer.TryWrite(0);
             RequestImageEventSnapshotLocked(reads, initial);
+            RequestVolumeEventSnapshotLocked(reads, initial);
         }
         NotifyContainerBrowsers();
     }
@@ -158,6 +159,8 @@ public sealed partial class DesktopSession
             RememberCursorLocked(reads.Connection.Metadata, observation.Timestamp);
             if (string.Equals(observation.Type, "image", StringComparison.Ordinal))
                 notify = ObserveImageEventLocked(reads, observation.ResourceId);
+            else if (string.Equals(observation.Type, "volume", StringComparison.Ordinal))
+                notify = ObserveVolumeEventLocked(reads, observation.ResourceId);
             else if (string.Equals(observation.Type, "container", StringComparison.Ordinal))
             {
                 ++reads.ObservationRevision;

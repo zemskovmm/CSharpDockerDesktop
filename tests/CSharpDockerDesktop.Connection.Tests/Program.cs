@@ -30,6 +30,18 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Volumes startup bridge without a concurrent observation", VolumeBrowsingChecks.VolumeStartupBridgeWithoutConcurrentObservation),
+    ("Application Volumes exact actor identity and conservative requested detail", VolumeBrowsingChecks.VolumeActorIdentityAndConservativeDetail),
+    ("Application Volumes event/list evidence and obsolete failure fences", VolumeBrowsingChecks.VolumeEventListingEvidenceAndObsoleteFailures),
+    ("Application Volumes shared observation startup and snapshot boundaries", VolumeBrowsingChecks.VolumeSnapshotObservationBoundaries),
+    ("Application Volumes selected observations fence obsolete Inspect and disappearance", VolumeBrowsingChecks.VolumeSelectedObservationFences),
+    ("Application Volumes bounded duplicate bursts and list/detail fairness", VolumeBrowsingChecks.VolumeBurstCoalescingAndFairness),
+    ("Application Volumes observation failure, manual browsing and reopening", VolumeBrowsingChecks.VolumeObservationFailureAndReopening),
+    ("Application Volumes non-cooperative observation opening fallback and join", VolumeBrowsingChecks.VolumeObservationOpeningFallbackAndJoin),
+    ("Application Volumes precise reconnect overlap and generation replacement", VolumeBrowsingChecks.VolumeReconnectOverlapAndJoinedReplacement),
+    ("Application Volumes observation coexistence with resources, commands and Logs", VolumeBrowsingChecks.VolumeObservationsCoexistWithCommandsAndLogs),
+    ("Application Volumes event-invalidated deadlines and joined cleanup", VolumeBrowsingChecks.VolumeInvalidatedDeadlineAndReplacementCleanup),
+
     ("Application Volumes immutable metadata and exact inspection", VolumeBrowsingChecks.InitialMetadataAndImmutableState),
     ("Application Volumes partial/unavailable listing and warnings", VolumeBrowsingChecks.PartialUnavailableWarningsAndDisappearance),
     ("Application Volumes null/empty and missing capability", VolumeBrowsingChecks.InitialNullEmptyAndMissingCapability),
