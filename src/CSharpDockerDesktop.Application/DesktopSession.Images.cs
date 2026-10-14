@@ -344,6 +344,7 @@ public sealed partial class DesktopSession : IImageBrowser
 
     private void NotifyContainerBrowsers()
     {
+        NotifyPreparationChanged();
         ContainersChanged?.Invoke(this, EventArgs.Empty);
         NotifyImagesChanged();
         NotifyVolumesChanged();

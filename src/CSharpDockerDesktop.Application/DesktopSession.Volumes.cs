@@ -281,6 +281,9 @@ public sealed partial class DesktopSession : IVolumeBrowser
                     Volumes = rows, LatestListing = listing, Failure = null, HasRetainedRows = retained.Length > 0,
                     Completeness = listing.Volumes is null ? VolumeListCompleteness.Unavailable
                         : complete ? VolumeListCompleteness.Complete : VolumeListCompleteness.Incomplete };
+                if (complete && preparation is { } captured
+                    && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, captured.Snapshot.Target.Name)))
+                    InvalidatePreparationLocked(VolumePreparationFailureKind.TargetAbsent);
                 if (complete && volumeSnapshot.SelectedVolumeName is { } selected
                     && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, selected)))
                     RequestVolumeInspectionLocked(reads, null, false);
@@ -312,6 +315,8 @@ public sealed partial class DesktopSession : IVolumeBrowser
                 {
                     volumeSnapshot = volumeSnapshot with { InspectionState = ResourceReadState.Failed,
                         Inspection = null, InspectionFailure = failure };
+                    if (failure.Kind == EngineResourceFailureKind.NotFound)
+                        InvalidatePreparationLocked(VolumePreparationFailureKind.TargetAbsent, name: name);
                     if (failure.Kind == EngineResourceFailureKind.NotFound)
                         volumeSnapshot = volumeSnapshot with { SelectedVolumeName = null,
                             Volumes = Array.AsReadOnly(volumeSnapshot.Volumes.Where(row => !StringComparer.Ordinal.Equals(row.Name, name)).ToArray()) };
@@ -346,6 +351,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
 
     private void NotifyVolumesChanged()
     {
+        NotifyPreparationChanged();
         lock (gate)
         {
             if (ReferenceEquals(notifiedVolumeSnapshot, volumeSnapshot)) return;

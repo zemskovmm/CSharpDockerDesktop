@@ -417,7 +417,7 @@ internal static partial class VolumeBrowsingChecks
             && session.VolumeSnapshot.Inspection is null && session.VolumeSnapshot.SelectedVolumeName is null);
     }
 
-    private sealed class AllCapabilitiesConnection(string version, bool honorCancellation = true)
+    private class AllCapabilitiesConnection(string version, bool honorCancellation = true)
         : ControlledConnection(version, honorCancellation), IContainerReader, IImageReader, IEngineEventSource,
             IContainerLogSource, IContainerCommands, IImageCommands
     {

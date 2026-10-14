@@ -1,6 +1,6 @@
 # Read-only volume dependency acquisition
 
-The retained negotiated Engine connection now exposes Application-owned `IVolumeDependencyReader`. `QueryVolumeDependenciesAsync` borrows the existing HTTP transport and cancellation lifetime. It takes one **complete original volume name**, preserving case, Unicode, punctuation and whitespace exactly through the existing volume-name validation. It does not resolve aliases, trim, normalize or interpret an image reference. There is no dependency database, browser-snapshot inference, mutation, automatic logging or transmission of container/volume metadata or daemon content. Session coordination and deletion UI remain pending.
+The retained negotiated Engine connection now exposes Application-owned `IVolumeDependencyReader`. `QueryVolumeDependenciesAsync` borrows the existing HTTP transport and cancellation lifetime. It takes one **complete original volume name**, preserving case, Unicode, punctuation and whitespace exactly through the existing volume-name validation. It does not resolve aliases, trim, normalize or interpret an image reference. There is no dependency database, browser-snapshot inference, mutation, automatic logging or transmission of container/volume metadata or daemon content. The [session-owned preparation contract](volume-deletion-preparation.md) coordinates explicit confirmation evidence; deletion coordination and UI remain pending.
 
 ## Authoritative requests and exact identity
 

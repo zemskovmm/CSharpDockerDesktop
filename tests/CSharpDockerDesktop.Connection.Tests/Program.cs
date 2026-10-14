@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Volume preparation immutable exact running/stopped and missing evidence", VolumeBrowsingChecks.PreparationEvidence),
+    ("Volume preparation bounded replacement, cancellation and non-cooperative joins", VolumeBrowsingChecks.PreparationReplacement),
+    ("Volume preparation event fences before/during/after acquisition", VolumeBrowsingChecks.PreparationEvents),
+    ("Volume preparation authoritative disappearance and selection independence", VolumeBrowsingChecks.PreparationDisappearance),
+    ("Volume preparation classified failures and shared transport recovery", VolumeBrowsingChecks.PreparationFailuresAndRecovery),
+    ("Volume preparation whole deadline, generation and joined teardown", VolumeBrowsingChecks.PreparationDeadlineAndTeardown),
+    ("Volume preparation missing capabilities and retained stream coexistence", VolumeBrowsingChecks.PreparationCoexistence),
     ("Volume dependencies API 1.40–1.56 contracts and exact running/stopped mounts", VolumeDependencyChecks.ContractsAndExactMatching),
     ("Volume dependencies original names, encoding and evidence completeness", VolumeDependencyChecks.NamesAndEvidenceStates),
     ("Volume dependencies classified failures, malformed evidence and bounds", VolumeDependencyChecks.FailuresAndBounds),

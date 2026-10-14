@@ -38,6 +38,7 @@ public sealed partial class DesktopSession
         lock (gate)
         {
             if (!CurrentEventsLocked(reads)) return;
+            InvalidatePreparationLocked(VolumePreparationFailureKind.ObservedChange);
             if (initial) reads.InitialObservationPending = false;
             if (initial) reads.Refresh = true;
             else reads.EventRefresh = true;
@@ -157,6 +158,11 @@ public sealed partial class DesktopSession
         {
             if (!CurrentEventsLocked(reads)) return;
             RememberCursorLocked(reads.Connection.Metadata, observation.Timestamp);
+            if (string.Equals(observation.Type, "container", StringComparison.Ordinal))
+                InvalidatePreparationLocked(VolumePreparationFailureKind.ObservedChange);
+            else if (string.Equals(observation.Type, "volume", StringComparison.Ordinal))
+                InvalidatePreparationLocked(VolumePreparationFailureKind.ObservedChange,
+                    name: UsableVolumeEventIdentity(observation.ResourceId));
             if (string.Equals(observation.Type, "image", StringComparison.Ordinal))
                 notify = ObserveImageEventLocked(reads, observation.ResourceId);
             else if (string.Equals(observation.Type, "volume", StringComparison.Ordinal))
@@ -171,6 +177,7 @@ public sealed partial class DesktopSession
             else return;
         }
         // List publication is batched; only the first invalidation clears exposed detail content.
+        NotifyPreparationChanged();
         if (notify) NotifyContainerBrowsers();
     }
 

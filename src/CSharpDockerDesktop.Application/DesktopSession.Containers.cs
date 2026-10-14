@@ -109,6 +109,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         // Every borrowed family checks this shared identity. Fence all of them before
         // any cancellation callback can reenter while subordinate state is cleared.
         containerReads = null;
+        InvalidatePreparationLocked(VolumePreparationFailureKind.ConnectionChanged, cancel: true);
         InvalidateImagesLocked();
         InvalidateVolumesLocked();
         SuspendLogsLocked();
@@ -134,7 +135,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow, reads.PreparationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -315,6 +316,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         public Task EventsWorkflow = Task.CompletedTask;
         public Task OperationWorkflow = Task.CompletedTask;
         public Task LogsWorkflow = Task.CompletedTask;
+        public Task PreparationWorkflow = Task.CompletedTask;
         public OperationObservationRequest? OperationObservation;
         public bool OperationReadActive;
         public long ObservationRevision;
