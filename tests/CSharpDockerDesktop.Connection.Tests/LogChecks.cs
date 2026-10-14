@@ -59,8 +59,10 @@ internal static class LogChecks
             await using var owner = await Connect(transport);
             await using var subscription = await Open(owner, new("name with /?α", 23, true, new(1629574695, 515050031)));
             var outputs = await Drain(subscription);
-            Check(string.Concat(outputs.Where(o => o.Stream == ContainerLogStream.Stdout).Select(o => o.Text)) == text + text);
-            Check(string.Concat(outputs.Where(o => o.Stream == ContainerLogStream.Stderr).Select(o => o.Text)) == Stamp + "stderr\n");
+            string stdout = string.Concat(outputs.Where(o => o.Stream == ContainerLogStream.Stdout).Select(o => o.Text));
+            string stderr = string.Concat(outputs.Where(o => o.Stream == ContainerLogStream.Stderr).Select(o => o.Text));
+            Check(stdout == text + text, $"API 1.{minor} stdout differs (expectedCharacters={text.Length * 2}, actualCharacters={stdout.Length}, fragments={outputs.Count})");
+            Check(stderr == Stamp + "stderr\n", $"API 1.{minor} stderr differs (expectedCharacters={Stamp.Length + 7}, actualCharacters={stderr.Length}, fragments={outputs.Count})");
             Check(outputs.Count(o => o.StartsBoundary) == 3 && outputs.Count(o => o.EndsBoundary) == 3);
             Check(outputs.Select(o => o.Sequence).SequenceEqual(Enumerable.Range(1, outputs.Count).Select(i => (long)i)));
             Check(outputs.All(o => o.Timestamp?.Nanoseconds == 515050031 && o.Timestamp.UnixSeconds == 1629574695));

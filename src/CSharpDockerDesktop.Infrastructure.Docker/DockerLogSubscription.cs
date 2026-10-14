@@ -22,7 +22,7 @@ internal sealed class DockerLogSubscription : IContainerLogSubscription
     private Task<ContainerLogCompletion> producer = null!;
     private Task? disposal;
     private DockerEngineConnection? streamConnection;
-    private int disposed, invalidated, streamEnded;
+    private int disposed, invalidated;
 
     internal DockerLogSubscription(DockerEngineConnection owner, DockerEngineConnectionClient client,
         DockerConnectionOptions options, ContainerLogRequest request, CancellationToken lifetime, CancellationToken caller,
@@ -46,8 +46,9 @@ internal sealed class DockerLogSubscription : IContainerLogSubscription
     private bool Current()
     {
         if (Volatile.Read(ref disposed) != 0 || stop.IsCancellationRequested) return false;
-        if (owner.HasContinuity && (Volatile.Read(ref streamEnded) != 0 || streamConnection is null || streamConnection.HasContinuity)) return true;
-        Invalidate(); return false;
+        if (streamConnection is { HasTransportContinuity: false } || !owner.HasContinuity)
+        { Invalidate(); return false; }
+        return Volatile.Read(ref disposed) == 0 && !stop.IsCancellationRequested;
     }
     private void Invalidate()
     {
@@ -137,10 +138,13 @@ internal sealed class DockerLogSubscription : IContainerLogSubscription
         {
             if (owner.Continuity is { } ownerContinuity) ownerContinuity.Reopened -= Invalidate;
             if (streamConnection?.Continuity is { } streamContinuity) streamContinuity.Reopened -= Invalidate;
-            Volatile.Write(ref streamEnded, 1);
             response?.Dispose();
             if (streamConnection is { } connection) await connection.DisposeAsync().ConfigureAwait(false);
             if (failure?.Kind == ContainerLogFailureKind.TransportLoss) Invalidate();
+            // Replacement can race cleanup after event handlers have been detached.
+            _ = Current();
+            if (Volatile.Read(ref invalidated) != 0)
+                failure = new(ContainerLogFailureKind.TransportLoss, "The Engine transport changed; a fresh negotiation is required.");
             if (stop.IsCancellationRequested) while (channel.Reader.TryRead(out _)) { }
             if (stop.IsCancellationRequested && Volatile.Read(ref invalidated) == 0) failure = null;
             channel.Writer.TryComplete();

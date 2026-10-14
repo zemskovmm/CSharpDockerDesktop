@@ -42,7 +42,8 @@ internal static class EventChecks
             await using var connection = await Connect(transport);
             await using var subscription = await Open(connection);
             var observations = await Drain(subscription);
-            Check(observations.Select(e => e.Type).SequenceEqual(new[] { "container", "image", "volume", "network" }));
+            Check(observations.Select(e => e.Type).SequenceEqual(new[] { "container", "image", "volume", "network" }),
+                $"API 1.{minor} observation order/count differs (expected=4, actual={observations.Count})");
             Check(observations.All(e => e.Timestamp.UnixNanoseconds == 1629574695515050031
                 && e.Timestamp.UnixSeconds == 1629574695 && e.ActorAttributes!["future-key"] == "private-example"));
             Check(observations[1].Action == "future-action" && observations[3].ResourceId == "fixture-network");

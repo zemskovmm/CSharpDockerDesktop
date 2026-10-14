@@ -23,7 +23,6 @@ internal sealed class DockerEventSubscription : IEngineEventSubscription
     private Task? disposal;
     private DockerEngineConnection? streamConnection;
     private int invalidated;
-    private int streamEnded;
     private int disposed;
 
     internal DockerEventSubscription(DockerEngineConnection owner, DockerEngineConnectionClient client,
@@ -46,9 +45,9 @@ internal sealed class DockerEventSubscription : IEngineEventSubscription
     private bool Current()
     {
         if (Volatile.Read(ref disposed) != 0 || stop.IsCancellationRequested) return false;
-        if (owner.HasContinuity && (Volatile.Read(ref streamEnded) != 0 || streamConnection is null || streamConnection.HasContinuity)) return true;
-        Invalidate();
-        return false;
+        if (streamConnection is { HasTransportContinuity: false } || !owner.HasContinuity)
+        { Invalidate(); return false; }
+        return Volatile.Read(ref disposed) == 0 && !stop.IsCancellationRequested;
     }
     private void Invalidate()
     {
@@ -138,9 +137,13 @@ internal sealed class DockerEventSubscription : IEngineEventSubscription
         {
             if (owner.Continuity is { } ownerContinuity) ownerContinuity.Reopened -= Invalidate;
             if (streamConnection?.Continuity is { } streamContinuity) streamContinuity.Reopened -= Invalidate;
-            Volatile.Write(ref streamEnded, 1);
             response?.Dispose();
             if (streamConnection is { } connection) await connection.DisposeAsync().ConfigureAwait(false);
+            if (failure?.Kind == EngineEventFailureKind.TransportLoss) Invalidate();
+            // Replacement can race cleanup after event handlers have been detached.
+            _ = Current();
+            if (Volatile.Read(ref invalidated) != 0)
+                failure = new(EngineEventFailureKind.TransportLoss, "The Engine transport changed; a fresh negotiation is required.");
             // Canceled/replaced observations must not survive their selected connection lifetime.
             if (stop.IsCancellationRequested || failure?.Kind == EngineEventFailureKind.TransportLoss)
                 while (channel.Reader.TryRead(out _)) { }
@@ -229,15 +232,15 @@ internal sealed class DockerEventSubscription : IEngineEventSubscription
 
     public ValueTask DisposeAsync()
     {
-        lock (gate) return new(disposal ??= Task.Run(DisposeCoreAsync));
+        lock (gate)
+        {
+            if (disposal is not null) return new(disposal);
+            Volatile.Write(ref disposed, 1); stop.Cancel();
+            return new(disposal = Task.Run(DisposeCoreAsync));
+        }
     }
     private async Task DisposeCoreAsync()
     {
-        lock (gate)
-        {
-            Volatile.Write(ref disposed, 1);
-            stop.Cancel();
-        }
         await producer.ConfigureAwait(false);
         while (channel.Reader.TryRead(out _)) { }
         released(this);
@@ -249,7 +252,7 @@ internal sealed class DockerEventSubscription : IEngineEventSubscription
         public override Task Completion => inner.Completion;
         public override bool TryRead(out EngineEvent item)
         {
-            if (subscription.Current() && inner.TryRead(out item!)) return true;
+            if (subscription.Current() && inner.TryRead(out item!) && subscription.Current()) return true;
             item = null!; return false;
         }
         public override async ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken = default)

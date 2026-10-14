@@ -222,7 +222,10 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
     private readonly HashSet<DockerLogSubscription> logSubscriptions = [];
     internal HttpClient Http => http;
     internal ITransportContinuity? Continuity => continuity;
-    internal bool HasContinuity => Volatile.Read(ref disposed) == 0 && continuity?.ConnectionGeneration == generation;
+    // A subscription closes its dedicated pool before consumers finish draining. Local disposal
+    // ends requests, but does not invalidate observations from this negotiated generation.
+    internal bool HasTransportContinuity => continuity?.ConnectionGeneration == generation;
+    internal bool HasContinuity => HasTransportContinuity && Volatile.Read(ref disposed) == 0;
 
     public async Task<EngineEventSubscriptionAttempt> SubscribeEventsAsync(EngineEventCursor? since = null,
         CancellationToken cancellationToken = default)

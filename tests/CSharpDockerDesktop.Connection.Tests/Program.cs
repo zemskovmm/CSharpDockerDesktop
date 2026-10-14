@@ -185,6 +185,10 @@ var tests = new (string, Func<Task>)[]
     ("Reconciliation late opening/read completion and joined shutdown", ReconciliationChecks.LateOpeningReadsAndShutdown),
     ("Reconciliation event transport loss joins outstanding reads", ReconciliationChecks.EventLossJoinsOutstandingReads),
     ("Presentation automatic state updates and stale Inspect invalidation", ReconciliationChecks.PresentationAutomaticInvalidation),
+    ("Stream termination logs coordinated reader and cleanup", () => StreamTerminationChecks.ReaderCrossesCleanup(logs: true)),
+    ("Stream termination events coordinated reader and cleanup", () => StreamTerminationChecks.ReaderCrossesCleanup(logs: false)),
+    ("Stream termination logs cancellation and replacement fences", () => StreamTerminationChecks.CancellationAndReplacement(logs: true)),
+    ("Stream termination events cancellation and replacement fences", () => StreamTerminationChecks.CancellationAndReplacement(logs: false)),
     ("Event API 1.40–1.56 schemas, fragmented/coalesced reads", EventChecks.SchemasAndFragmentation),
     ("Event precision, duplicates, optional fields and replay cursor", EventChecks.TimestampsDuplicatesAndCursor),
     ("Event bounded slow-consumer backpressure and subscription limit", EventChecks.BoundedSlowConsumer),
@@ -289,6 +293,8 @@ var tests = new (string, Func<Task>)[]
     ("Named-pipe failed and canceled attempt disposal", FailedAndCanceledPipe),
     ("Named-pipe missing endpoint and canceled connect", MissingAndCanceledPipe)
 };
+if (args.FirstOrDefault() == "--stream-termination")
+    tests = tests.Where(test => test.Item1.StartsWith("Stream termination ", StringComparison.Ordinal)).ToArray();
 int failed = 0;
 foreach (var (name, test) in tests)
 {
