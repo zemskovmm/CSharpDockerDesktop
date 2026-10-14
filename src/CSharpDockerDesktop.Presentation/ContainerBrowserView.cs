@@ -13,6 +13,9 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
     private CancellationTokenSource? filtering;
     private IReadOnlyList<ContainerSummary>? filteredSource;
     private string filteredQuery = "";
+    public JsonInspectView Inspect { get; } = new(dispatch);
+    public bool ShowingInspect { get; private set; }
+    private void OnInspectChanged(object? sender, EventArgs args) => Changed?.Invoke(this, EventArgs.Empty);
     public event EventHandler? Changed;
     public ContainerBrowsingSnapshot Snapshot { get; private set; } = new(0, ResourceReadState.Unavailable, []);
     public IReadOnlyList<ContainerRow> Rows { get; private set; } = Array.Empty<ContainerRow>();
@@ -36,11 +39,11 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
     };
     public string DetailMessage => Snapshot.InspectionState switch
     {
-        ResourceReadState.Loading => "Loading Overview…",
-        ResourceReadState.Failed => "Overview failed. Choose Refresh Overview to retry." + FailureSuffix(Snapshot.InspectionFailure),
-        ResourceReadState.Ready => "Read-only Overview",
-        ResourceReadState.Unavailable => "Overview unavailable. Check connection status above.",
-        _ => "Choose Refresh Overview to load details."
+        ResourceReadState.Loading => $"Loading {(ShowingInspect ? "Inspect" : "Overview")}…",
+        ResourceReadState.Failed => $"{(ShowingInspect ? "Inspect" : "Overview")} failed. Choose Refresh details to retry." + FailureSuffix(Snapshot.InspectionFailure),
+        ResourceReadState.Ready => ShowingInspect ? "Read-only Inspect" : "Read-only Overview",
+        ResourceReadState.Unavailable => $"{(ShowingInspect ? "Inspect" : "Overview")} unavailable. Check connection status above.",
+        _ => "Choose Refresh details to load details."
     };
     public string Overview => DetailOpen && Snapshot.InspectionState == ResourceReadState.Ready
         && Snapshot.Inspection is { } inspection && inspection.Id == SelectedId
@@ -52,6 +55,16 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         active = true;
         Interlocked.Increment(ref epoch);
         browser.ContainersChanged += OnChanged;
+        Inspect.Changed += OnInspectChanged;
+        Inspect.IsCurrentContent = raw =>
+        {
+            var latest = browser.ContainerSnapshot;
+            return active && DetailOpen && latest.State != ResourceReadState.Unavailable
+                && latest.ConnectionGeneration == Snapshot.ConnectionGeneration
+                && latest.SelectedContainerId == SelectedId && latest.InspectionState == ResourceReadState.Ready
+                && ReferenceEquals(latest.Inspection?.RawJson, raw)
+                && latest.Containers.Any(row => row.Id == SelectedId);
+        };
         ApplyLatest();
     }
     public void Dispose()
@@ -61,6 +74,11 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         Interlocked.Increment(ref epoch);
         Interlocked.Exchange(ref notificationQueued, 0);
         browser.ContainersChanged -= OnChanged;
+        Inspect.Changed -= OnInspectChanged;
+        Inspect.Dispose();
+        Snapshot = new(0, ResourceReadState.Unavailable, []);
+        Rows = Array.Empty<ContainerRow>();
+        ShowingInspect = false;
         filtering?.Cancel();
         filtering?.Dispose();
         filtering = null;
@@ -98,7 +116,18 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         }
         // A detail belongs to exactly one session selection. Never display another identity's result.
         if (DetailOpen && latest.SelectedContainerId != SelectedId) DetailOpen = false;
+        SyncInspect();
         Filter();
+    }
+    private void SyncInspect()
+    {
+        if (!DetailOpen || Snapshot.InspectionState != ResourceReadState.Ready || Snapshot.Inspection?.Id != SelectedId) Inspect.Load(null);
+        else if (ShowingInspect && Snapshot.Inspection is { } inspection) Inspect.Load(inspection.RawJson);
+    }
+    public void ShowInspect(bool show)
+    {
+        if (!active || !DetailOpen) return;
+        ShowingInspect = show; SyncInspect(); Changed?.Invoke(this, EventArgs.Empty);
     }
     public void Search(string query)
     {
@@ -112,6 +141,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         if (SelectedId == id) return;
         if (DetailOpen) browser.ClearContainerInspection();
         DetailOpen = false;
+        ShowingInspect = false; Inspect.Load(null);
         SelectedId = id;
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -119,6 +149,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
     {
         if (!active || !CanOpen || DetailOpen) return;
         DetailOpen = true;
+        ShowingInspect = false;
         browser.SelectContainer(SelectedId);
         ApplyLatest();
     }
@@ -130,7 +161,10 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         ApplyLatest();
     }
     public void Refresh() { if (active && CanRefresh) browser.RefreshContainers(); }
-    public void RefreshDetail() { if (active && DetailOpen && CanOpen) browser.RefreshContainerInspection(); }
+    public void RefreshDetail()
+    {
+        if (active && DetailOpen && CanOpen) { Inspect.Load(null); browser.RefreshContainerInspection(); }
+    }
     private void Filter()
     {
         if (ReferenceEquals(filteredSource, Snapshot.Containers) && filteredQuery == Query)

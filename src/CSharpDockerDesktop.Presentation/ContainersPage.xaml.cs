@@ -13,11 +13,13 @@ public sealed partial class ContainersPage : Page
     private ContainerBrowserView? view;
     private IReadOnlyList<ContainerRow>? displayedRows;
     private bool rendering;
+    private IReadOnlyList<JsonInspectRow>? displayedInspect;
     public ContainersPage()
     {
         InitializeComponent();
         // ListViewItem handles Enter for selection; also observe it to open the selected resource.
         ContainerList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnListKeyDown), true);
+        InspectList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnInspectKeyDown), true);
         Loaded += (_, _) => view?.Attach();
         Unloaded += (_, _) => Detach();
     }
@@ -33,7 +35,12 @@ public sealed partial class ContainersPage : Page
         Detach();
         base.OnNavigatedFrom(args);
     }
-    public void Detach() => view?.Dispose();
+    public void Detach()
+    {
+        view?.Dispose();
+        InspectList.ItemsSource = null; displayedInspect = null; OverviewText.Text = "";
+        ContainerList.ItemsSource = null; displayedRows = null;
+    }
     private void OnViewChanged(object? sender, EventArgs args) => Render();
     private void Render()
     {
@@ -61,7 +68,22 @@ public sealed partial class ContainersPage : Page
             SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility
                 = ContainerList.Visibility = ListStatus.Visibility = view.DetailOpen ? Visibility.Collapsed : Visibility.Visible;
             DetailStatus.Text = view.DetailMessage;
-            OverviewText.Text = view.Overview;
+            OverviewText.Text = view.ShowingInspect ? "" : view.Overview;
+            OverviewPanel.Visibility = view.ShowingInspect ? Visibility.Collapsed : Visibility.Visible;
+            InspectPanel.Visibility = view.ShowingInspect ? Visibility.Visible : Visibility.Collapsed;
+            OverviewTab.IsEnabled = view.ShowingInspect;
+            InspectTab.IsEnabled = !view.ShowingInspect;
+            if (InspectSearch.Text != view.Inspect.Query) InspectSearch.Text = view.Inspect.Query;
+            InspectStatus.Text = view.Inspect.Message;
+            if (!ReferenceEquals(displayedInspect, view.Inspect.Rows))
+            {
+                InspectList.ItemsSource = null;
+                InspectList.ItemsSource = view.Inspect.Rows; displayedInspect = view.Inspect.Rows;
+            }
+            InspectList.SelectedItem = view.Inspect.Selected;
+            CopyPathButton.IsEnabled = CopyValueButton.IsEnabled = view.Inspect.CanCopy;
+            ExpandNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: false };
+            CollapseNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: true };
             RefreshDetailButton.IsEnabled = view.CanOpen;
             if (!wasOpen && view.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
             else if (wasOpen && !view.DetailOpen) ContainerList.Focus(FocusState.Programmatic);
@@ -71,6 +93,23 @@ public sealed partial class ContainersPage : Page
                 ContainerList.ScrollIntoView(anchor, ScrollIntoViewAlignment.Leading);
         }
         finally { rendering = false; }
+    }
+    private void OnOverviewTab(object sender, RoutedEventArgs args) { view?.ShowInspect(false); RefreshDetailButton.Focus(FocusState.Programmatic); }
+    private void OnInspectTab(object sender, RoutedEventArgs args) { view?.ShowInspect(true); InspectSearch.Focus(FocusState.Programmatic); }
+    private void OnInspectSearch(object sender, TextChangedEventArgs args) { if (!rendering) view?.Inspect.Search(InspectSearch.Text); }
+    private void OnInspectSelection(object sender, SelectionChangedEventArgs args)
+    { if (!rendering) view?.Inspect.Select((InspectList.SelectedItem as JsonInspectRow)?.NodeId); }
+    private void OnExpandNode(object sender, RoutedEventArgs args) => view?.Inspect.SetExpanded(true);
+    private void OnCollapseNode(object sender, RoutedEventArgs args) => view?.Inspect.SetExpanded(false);
+    private void OnCopyPath(object sender, RoutedEventArgs args) => view?.Inspect.Copy(true, CopyText);
+    private void OnCopyValue(object sender, RoutedEventArgs args) => view?.Inspect.Copy(false, CopyText);
+    private static void CopyText(string text) { var data = new DataPackage(); data.SetText(text); Clipboard.SetContent(data); }
+    private void OnInspectKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (view?.Inspect.Selected is not { IsContainer: true } || view.Inspect.Busy) return;
+        if (args.Key == VirtualKey.Right) { view.Inspect.SetExpanded(true); args.Handled = true; }
+        else if (args.Key == VirtualKey.Left) { view.Inspect.SetExpanded(false); args.Handled = true; }
+        else if (args.Key == VirtualKey.Enter) { view.Inspect.Toggle(); args.Handled = true; }
     }
     private void OnSearch(object sender, TextChangedEventArgs args) => view?.Search(SearchBox.Text);
     private void OnRefresh(object sender, RoutedEventArgs args) => view?.Refresh();

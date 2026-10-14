@@ -48,7 +48,7 @@
         </Style>
       </ListView.ItemContainerStyle>
     </ListView>
-    <TextBlock Grid.Row="4" Text="Read-only browser. Raw Inspect, lifecycle actions, events, Logs, Terminal and Stats are pending."
+    <TextBlock Grid.Row="4" Text="Read-only browser. Lifecycle actions, events, Logs, Terminal and Stats are pending."
                TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16"
             Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1"
@@ -57,14 +57,35 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Spacing="12">
           <Button x:Name="CloseDetailButton" Content="Back to containers" Click="OnCloseDetail" />
-          <TextBlock Text="Overview" Style="{ThemeResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
-          <Button x:Name="RefreshDetailButton" Content="Refresh Overview" Click="OnRefreshDetail" />
+          <Button x:Name="OverviewTab" Content="Overview" Click="OnOverviewTab" />
+          <Button x:Name="InspectTab" Content="Inspect" Click="OnInspectTab" AutomationProperties.Name="Show raw JSON Inspect" />
+          <Button x:Name="RefreshDetailButton" Content="Refresh details" Click="OnRefreshDetail" />
           <Button Content="Copy full ID" Click="OnCopy" />
         </StackPanel>
         <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Container Overview" />
         </ScrollViewer>
+        <Grid x:Name="InspectPanel" Grid.Row="2" RowSpacing="8" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <TextBox x:Name="InspectSearch" PlaceholderText="Search all JSON names and values" TextChanged="OnInspectSearch" AutomationProperties.Name="Search Inspect including collapsed content" />
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ExpandNodeButton" Content="Expand selected" Click="OnExpandNode" />
+            <Button x:Name="CollapseNodeButton" Content="Collapse selected" Click="OnCollapseNode" />
+            <Button x:Name="CopyPathButton" Content="Copy selected path" Click="OnCopyPath" />
+            <Button x:Name="CopyValueButton" Content="Copy selected JSON value" Click="OnCopyValue" />
+          </StackPanel>
+          <StackPanel Grid.Row="2" Spacing="4">
+            <TextBlock Text='Path: $ is root; ["name",0] is an object property with zero-based duplicate occurrence; [0] is an array index. Names use JSON escaping. Copy value preserves exact JSON, including sensitive fields.' TextWrapping="Wrap" />
+            <TextBlock x:Name="InspectStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
+          <!-- Finite viewport with recycling, never recursive visual children or an outer ScrollViewer. -->
+          <ListView x:Name="InspectList" Grid.Row="3" SelectionMode="Single" SelectionChanged="OnInspectSelection" AutomationProperties.Name="Inspect JSON nodes" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+            <ListView.ItemTemplate><DataTemplate x:DataType="local:JsonInspectRow"><TextBlock Text="{x:Bind Text}" FontFamily="Consolas" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{x:Bind AccessibleSummary}" /></DataTemplate></ListView.ItemTemplate>
+            <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="AutomationProperties.Name" Value="{Binding AccessibleSummary}" /></Style></ListView.ItemContainerStyle>
+          </ListView>
+        </Grid>
       </Grid>
     </Border>
   </Grid>

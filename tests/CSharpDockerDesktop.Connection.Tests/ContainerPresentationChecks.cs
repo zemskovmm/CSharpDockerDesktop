@@ -129,6 +129,39 @@ internal static class ContainerPresentationChecks
         view.Search("container-19999"); await clock.Settle(view);
         Check(view.Rows.Single().Id == rows[^1].Id && browser.SelectCalls == 0, "Rapid search must publish only the latest result, without reads");
     }
+    public static async Task InspectLifetime()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser { ContainerSnapshot = Ready(Row(A), Row(B)) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view); view.Select(A); view.OpenSelected(); clock.Pump();
+        ContainerInspection Detail(string id, string raw) => new(id, null, null, null, null, null, null, null, null, raw);
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = Detail(A, "{\"Env\":[\"SECRET=visible\"],\"nested\":{\"flag\":true}}") });
+        clock.Pump(); view.ShowInspect(true); await clock.Settle(view);
+        Check(view.Inspect.Rows.Count == 3 && browser.SelectCalls == 1, "Inspect reuses selected response");
+        view.Inspect.Search("SECRET"); await clock.Settle(view);
+        Check(view.Inspect.Rows.Count == 3, "Search includes collapsed array data");
+        string? copied = null; view.Inspect.Select(view.Inspect.Rows[^1].NodeId); view.Inspect.Copy(false, text => copied = text);
+        await clock.Settle(view); Check(copied == "\"SECRET=visible\"", "Sensitive copy requires explicit action and preserves JSON");
+        view.ShowInspect(false); view.ShowInspect(true); await clock.Settle(view);
+        Check(browser.SelectCalls == 1 && view.Inspect.Query == "SECRET", "Tabs reuse current inspection and viewer");
+        view.RefreshDetail(); Check(view.Inspect.Rows.Count == 0 && browser.InspectionRefreshCalls == 1, "Refresh clears retained viewer immediately");
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = Detail(A, "{\"fresh\":null}") });
+        await clock.Settle(view); Check(view.Inspect.Rows.Any(row => row.Text.Contains("fresh")), "Refresh replaces old Inspect");
+        // Complete processing before notification invalidation drains: even then current session guards reject publication.
+        view.Inspect.Search("fresh");
+        browser.Publish(browser.ContainerSnapshot with { Containers = [Row(B)], SelectedContainerId = null, Inspection = null });
+        await clock.Settle(view); Check(!view.DetailOpen && view.Inspect.Rows.Count == 0 && !view.Inspect.CanCopy, "Removal cancels parsing/search/copy");
+        view.Select(B); view.OpenSelected(); clock.Pump(); view.ShowInspect(true);
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = Detail(B, "{\"large\":[" + string.Join(",", Enumerable.Range(0, 50000)) + "]}") });
+        clock.Pump(); browser.Publish(new(2, ResourceReadState.Unavailable, []));
+        await clock.Settle(view); Check(view.Inspect.Rows.Count == 0 && view.SelectedId is null, "Disconnect rejects pending large parse");
+        browser.Publish(Ready(Row(A))); await clock.Settle(view); view.Select(A); view.OpenSelected(); clock.Pump(); view.ShowInspect(true);
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = Detail(A, "{\"old\":true}") });
+        clock.Pump(); view.Inspect.Search("old"); int changes = 0; view.Changed += (_, _) => ++changes;
+        view.Dispose(); int prior = changes; await Task.Delay(30); clock.Pump();
+        Check(changes == prior && view.Inspect.Rows.Count == 0 && view.Snapshot.Inspection is null && browser.Subscribers == 0, "Departure clears raw content and rejects queued work");
+    }
     private sealed class Dispatcher
     {
         private readonly ConcurrentQueue<Action> queue = new();
@@ -138,7 +171,7 @@ internal static class ContainerPresentationChecks
         public async Task Settle(ContainerBrowserView view)
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            do { Pump(); if (!view.Filtering && queue.IsEmpty) return; await Task.Delay(1, timeout.Token); } while (true);
+            do { Pump(); if (!view.Filtering && !view.Inspect.Busy && queue.IsEmpty) return; await Task.Delay(1, timeout.Token); } while (true);
         }
     }
     private sealed class Browser : IContainerBrowser

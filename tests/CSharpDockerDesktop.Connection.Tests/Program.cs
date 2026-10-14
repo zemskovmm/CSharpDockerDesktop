@@ -30,6 +30,8 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Inspect structure, exact copying, search and replacement", InspectChecks.StructureAndSearch),
+    ("Inspect selected session refresh and lifetime", ContainerPresentationChecks.InspectLifetime),
     ("Presentation search fields and unknown metadata", ContainerPresentationChecks.SearchAndUnknownMetadata),
     ("Presentation distinct states and latest notifications", ContainerPresentationChecks.DistinctStatesAndLatestNotifications),
     ("Presentation identity selection, Overview and cancellation", ContainerPresentationChecks.SelectionDetailsAndCancellation),
