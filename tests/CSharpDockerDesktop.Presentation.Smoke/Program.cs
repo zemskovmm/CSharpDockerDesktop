@@ -38,10 +38,10 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         {
             var list = Lists(frame).FirstOrDefault(list => list.Name == "LogsList" && list.Visibility == Visibility.Visible && list.Items.Count > 0)
                 ?? Lists(frame).FirstOrDefault(list => list.Name == "InspectList" && list.Visibility == Visibility.Visible && list.Items.Count > 0)
-                ?? Lists(frame).FirstOrDefault(list => list.Name is "ContainerList" or "ImageList" or "VolumeList");
+                ?? Lists(frame).FirstOrDefault(list => list.Name is "ContainerList" or "ImageList" or "VolumeList" or "NetworkList");
             int loaded = list?.Items.Count ?? 0;
             int realized = list is null ? 0 : Count<ListViewItem>(list);
-            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}, volumes {browser.VolumeCancellations}; commands: containers {browser.Commands}, images {browser.ImageCommands}, volumes {browser.VolumeCommands}; volume prepares/closes: {browser.VolumePrepares}/{browser.VolumePreparationCloses}; volume target: {browser.LastVolumeRequest?.Target.Name}; volume phase: {browser.VolumeOperation?.Phase}/{browser.VolumeOperation?.Resolution}; image target: {browser.LastImageRequest?.Target.Id}; image phase: {browser.ImageOperation?.Phase}/{browser.ImageOperation?.Resolution}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last container: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
+            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}, volumes {browser.VolumeCancellations}, networks {browser.NetworkCancellations}; commands: containers {browser.Commands}, images {browser.ImageCommands}, volumes {browser.VolumeCommands}; volume prepares/closes: {browser.VolumePrepares}/{browser.VolumePreparationCloses}; volume target: {browser.LastVolumeRequest?.Target.Name}; volume phase: {browser.VolumeOperation?.Phase}/{browser.VolumeOperation?.Resolution}; image target: {browser.LastImageRequest?.Target.Id}; image phase: {browser.ImageOperation?.Phase}/{browser.ImageOperation?.Resolution}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last container: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
             if (loaded >= 128 && (realized <= 0 || realized >= loaded)) throw new InvalidOperationException("Expected bounded virtualized row realization.");
         };
         controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(scenario);
@@ -75,10 +75,21 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         var volumeActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         volumeActions.Children.Add(volumeDeletion); volumeActions.Children.Add(volumeChecks); tools.Children.Add(volumeActions);
         tools.Children.Add(volumeTools);
-        tools.Children.Add(logScenarios); tools.Children.Add(evidence);
+        var networkTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var networks = new Button { Content = "Networks fixture" };
+        networks.Click += (_, _) => frame.Navigate(typeof(NetworksPage), browser);
+        var networkEvent = new Button { Content = "Invalidate selected network" };
+        networkEvent.Click += (_, _) => browser.InvalidateSelectedNetwork();
+        var networkScenario = new ComboBox { ItemsSource = new[] { "Networks: complete", "Networks: empty", "Networks: failed retained", "Networks: unavailable", "Networks: Inspect denied" }, SelectedIndex = 0 };
+        networkScenario.SelectionChanged += (_, _) => { browser.NetworkScenario = networkScenario.SelectedIndex; browser.RefreshNetworks(); };
+        var networkChecks = new Button { Content = "Run network UI checks" };
+        networkChecks.Click += async (_, _) => { networkChecks.IsEnabled = false; await NetworkUiSmokeChecks.Run(frame, browser, evidence); networkChecks.IsEnabled = true; };
+        networkTools.Children.Add(networks); networkTools.Children.Add(networkEvent); networkTools.Children.Add(networkScenario); networkTools.Children.Add(networkChecks);
+        tools.Children.Add(networkTools);
+        tools.Children.Add(logScenarios); tools.Children.Add(new ScrollViewer { MaxHeight = 160, Content = evidence });
         grid.Children.Add(tools); grid.Children.Add(frame); Grid.SetRow(frame, 1);
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
-        frame.Navigate(typeof(ContainersPage), browser);
+        frame.Navigate(typeof(NetworksPage), browser);
         window.Activate();
     }
     private static IEnumerable<ListView> Lists(DependencyObject root)
@@ -185,7 +196,7 @@ internal sealed partial class FixtureBrowser : IContainerBrowser, IContainerOper
     public void ClearContainerInspection()
     { Cancel(); ContainerSnapshot = ContainerSnapshot with { Inspection = null, InspectionState = ResourceReadState.NotRequested }; Notify(); }
     public void Disconnect()
-    { Cancel(); DisconnectImages(); DisconnectVolumes(); _ = CloseContainerLogsAsync(); ContainerSnapshot = new(2, ResourceReadState.Unavailable, []); Notify(); }
+    { Cancel(); DisconnectImages(); DisconnectVolumes(); DisconnectNetworks(); _ = CloseContainerLogsAsync(); ContainerSnapshot = new(2, ResourceReadState.Unavailable, []); Notify(); }
     private void Cancel()
     {
         if (inspection is { } pending)

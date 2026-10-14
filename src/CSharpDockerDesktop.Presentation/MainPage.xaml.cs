@@ -28,6 +28,7 @@ public sealed partial class MainPage : Page
         if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
         if (ResourceFrame.Content is ImagesPage images) images.Detach();
         if (ResourceFrame.Content is VolumesPage volumes) volumes.Detach();
+        if (ResourceFrame.Content is NetworksPage networks) networks.Detach();
     }
     private void OnSessionChanged(object? sender, EventArgs args)
         => DispatcherQueue.TryEnqueue(() => { if (attached) UpdateConnection(); });
@@ -55,11 +56,11 @@ public sealed partial class MainPage : Page
         ConnectionDiagnostic.Text = s.Failure is { } failure
             ? $"{FailureLabel(failure.Kind)}: {failure.Description}{recovery}"
             : s.EventFailure is { } eventFailure
-                ? $"Automatic updates for containers, images and volumes interrupted ({eventFailure.Kind}): {eventFailure.Description} "
+                ? $"Automatic updates for containers, images, volumes and networks interrupted ({eventFailure.Kind}): {eventFailure.Description} "
                     + (s.EventRecoveryPending ? "Observation recovery is scheduled. " : "Use Retry connection to restore observation. ")
-                    + "Manual refresh for containers, images and volumes remains available, and you can continue navigating."
+                    + "Manual refresh for containers, images, volumes and networks remains available, and you can continue navigating."
             : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
-            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers include Overview, Inspect, Logs and lifecycle actions. Images include Overview, Inspect and confirmed non-force Delete. Dependencies may prevent deletion. Volumes include read-only browsing, Overview and Inspect with automatic updates. Networks, volume dependencies and volume deletion are pending." : "";
+            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers include Overview, Inspect, Logs and lifecycle actions. Images include Overview, Inspect and confirmed non-force Delete. Dependencies may prevent deletion. Volumes include Overview, Inspect and confirmed deletion with dependency checks. Networks include read-only Overview and Inspect. All resource lists support automatic updates. Network deletion is pending." : "";
         var daemonMessage = s.Failure?.DaemonMessage ?? s.EventFailure?.DaemonMessage;
         if (!Equals(displayedDaemonMessage, daemonMessage))
         {
@@ -101,8 +102,9 @@ public sealed partial class MainPage : Page
             if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
             if (ResourceFrame.Content is ImagesPage images) images.Detach();
             if (ResourceFrame.Content is VolumesPage volumes) volumes.Detach();
-            var pageType = section switch { ResourceSection.Containers => typeof(ContainersPage), ResourceSection.Images => typeof(ImagesPage), ResourceSection.Volumes => typeof(VolumesPage), _ => typeof(ResourcePage) };
-            ResourceFrame.Navigate(pageType, section is ResourceSection.Containers or ResourceSection.Images or ResourceSection.Volumes ? (object)session : section);
+            if (ResourceFrame.Content is NetworksPage networks) networks.Detach();
+            var pageType = section switch { ResourceSection.Containers => typeof(ContainersPage), ResourceSection.Images => typeof(ImagesPage), ResourceSection.Volumes => typeof(VolumesPage), ResourceSection.Networks => typeof(NetworksPage), _ => typeof(ResourcePage) };
+            ResourceFrame.Navigate(pageType, section is ResourceSection.Containers or ResourceSection.Images or ResourceSection.Volumes or ResourceSection.Networks ? (object)session : section);
             if (ResourceFrame.Content is ResourcePage page) page.UpdateConnection(session.Snapshot);
         }
     }

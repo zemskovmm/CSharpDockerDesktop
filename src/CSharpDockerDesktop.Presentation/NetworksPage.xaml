@@ -1,0 +1,71 @@
+<Page x:Class="CSharpDockerDesktop.Presentation.NetworksPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:CSharpDockerDesktop.Presentation">
+  <Grid Padding="24" RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <TextBlock Text="Networks" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.AutomationId="ResourcePageTitle" />
+    <Grid Grid.Row="1" ColumnSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <TextBox IsSpellCheckEnabled="False" x:Name="SearchBox" PlaceholderText="Search name, full ID, driver, scope, internal or labels" TextChanged="OnSearch" AutomationProperties.Name="Search loaded networks" AutomationProperties.AutomationId="NetworkSearch" />
+      <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh networks" />
+      <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" />
+      <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full ID" />
+    </Grid>
+    <TextBlock x:Name="ListStatus" Grid.Row="2" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="NetworkListStatus" />
+    <!-- A finite viewport with recycling; never wrap the resource list in another ScrollViewer. -->
+    <ListView x:Name="NetworkList" Grid.Row="3" SelectionMode="Single" SelectionChanged="OnSelectionChanged" DoubleTapped="OnListDoubleTapped" AutomationProperties.Name="Networks" AutomationProperties.AutomationId="NetworkList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+      <ListView.ItemTemplate><DataTemplate x:DataType="local:NetworkRow">
+        <Grid Padding="8" RowSpacing="4" ColumnSpacing="16" AutomationProperties.Name="{x:Bind AccessibleSummary}">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <TextBlock Grid.ColumnSpan="2" Text="{x:Bind Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          <Grid Grid.Row="1" ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="ID:" /><TextBlock Grid.Column="1" Text="{x:Bind ShortId}" TextTrimming="CharacterEllipsis" /></Grid>
+          <Grid Grid.Row="1" Grid.Column="1" ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Internal:" /><TextBlock Grid.Column="1" Text="{x:Bind Internal}" TextTrimming="CharacterEllipsis" /></Grid>
+          <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Driver / scope:" /><TextBlock Grid.Column="1" Text="{x:Bind DriverScope}" TextTrimming="CharacterEllipsis" /></Grid>
+        </Grid>
+      </DataTemplate></ListView.ItemTemplate>
+      <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="AutomationProperties.Name" Value="{Binding AccessibleSummary}" /></Style></ListView.ItemContainerStyle>
+    </ListView>
+    <StackPanel Grid.Row="4" Spacing="6" MaxHeight="180">
+      <Button x:Name="EvidenceButton" Content="Show original daemon messages (may be sensitive)" />
+      <ScrollViewer x:Name="EvidencePanel" MaxHeight="120" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="EvidenceText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Original network daemon messages" /></ScrollViewer>
+    </StackPanel>
+    <TextBlock Grid.Row="5" Text="Networks · Read-only Overview and Inspect. Attachments describe the returned observation; they do not establish cluster-wide completeness or deletion eligibility. F3 searches, F5 refreshes, Enter opens and Escape closes. Copy and original message reveal are deliberate." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
+    <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+      <Grid RowSpacing="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Button x:Name="CloseDetailButton" Content="Back to networks" />
+          <Button x:Name="OverviewTab" Content="Overview" />
+          <Button x:Name="InspectTab" Content="Inspect" AutomationProperties.Name="Show raw network JSON Inspect" />
+          <Button x:Name="RefreshDetailButton" Content="Refresh details" />
+          <Button x:Name="DetailCopyButton" Content="Copy full ID" />
+        </StackPanel>
+        <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+        <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Network Overview" /></ScrollViewer>
+        <Grid x:Name="InspectPanel" Grid.Row="2" RowSpacing="8" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <TextBox IsSpellCheckEnabled="False" x:Name="InspectSearch" PlaceholderText="Search all JSON names and values" TextChanged="OnInspectSearch" AutomationProperties.Name="Search Inspect including collapsed content" />
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ExpandNodeButton" Content="Expand selected" />
+            <Button x:Name="CollapseNodeButton" Content="Collapse selected" />
+            <Button x:Name="CopyPathButton" Content="Copy selected path" />
+            <Button x:Name="CopyValueButton" Content="Copy selected JSON value" />
+          </StackPanel>
+          <StackPanel Grid.Row="2" Spacing="4">
+            <TextBlock Text='Path: $ is root; ["name",0] is an object property with zero-based duplicate occurrence; [0] is an array index. Names use JSON escaping. Copy value preserves exact JSON, including sensitive fields.' TextWrapping="Wrap" />
+            <TextBlock x:Name="InspectStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
+          <!-- Finite viewport with recycling, never recursive visual children or an outer ScrollViewer. -->
+          <ListView x:Name="InspectList" Grid.Row="3" SelectionMode="Single" SelectionChanged="OnInspectSelection" AutomationProperties.Name="Inspect JSON nodes" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+            <ListView.ItemTemplate><DataTemplate x:DataType="local:JsonInspectRow"><TextBlock Text="{x:Bind Text}" FontFamily="Consolas" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{x:Bind AccessibleSummary}" /></DataTemplate></ListView.ItemTemplate>
+            <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="AutomationProperties.Name" Value="{Binding AccessibleSummary}" /></Style></ListView.ItemContainerStyle>
+          </ListView>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</Page>
