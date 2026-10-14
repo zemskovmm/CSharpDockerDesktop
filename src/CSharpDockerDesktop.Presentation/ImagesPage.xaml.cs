@@ -15,6 +15,9 @@ public sealed partial class ImagesPage : Page
     private IReadOnlyList<ImageRow>? displayedRows;
     private IReadOnlyList<JsonInspectRow>? displayedInspect;
     private bool rendering, restoreInspectFocus;
+    private ContentDialog? deletionDialog;
+    private ImageDeleteConfirmation? dialogConfirmation;
+    private int pageEpoch;
     public ImagesPage()
     {
         InitializeComponent();
@@ -33,12 +36,16 @@ public sealed partial class ImagesPage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs args) { Detach(); base.OnNavigatedFrom(args); }
     public void Detach()
     {
+        ++pageEpoch;
+        deletionDialog?.Hide(); deletionDialog = null; dialogConfirmation = null;
         if (view is not null) view.Changed -= OnViewChanged;
         view?.Dispose(); restoreInspectFocus = false;
         InspectList.ItemsSource = null; displayedInspect = null; OverviewText.Text = "";
         ImageList.ItemsSource = null; displayedRows = null;
         InspectSearch.Text = InspectStatus.Text = DetailStatus.Text = "";
         DetailPanel.Visibility = Visibility.Collapsed;
+        OperationStatus.Text = AdmissionStatus.Text = OperationDetailsText.Text = "";
+        OperationDetailsPanel.Visibility = Visibility.Collapsed;
     }
     private void OnViewChanged(object? sender, EventArgs args) => Render();
     private void Render()
@@ -47,6 +54,13 @@ public sealed partial class ImagesPage : Page
         rendering = true;
         try
         {
+            if (deletionDialog is not null && !ReferenceEquals(dialogConfirmation, view.DeleteConfirmation)) deletionDialog.Hide();
+            DeleteButton.IsEnabled = DetailDeleteButton.IsEnabled = view.CanDelete;
+            OperationStatus.Text = view.OperationMessage; AdmissionStatus.Text = view.AdmissionMessage;
+            OperationDetailsButton.Visibility = view.HasOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsButton.Content = view.ShowingOperationDetails ? "Hide original daemon messages and removal evidence" : "Show original daemon messages and removal evidence (may be sensitive)";
+            OperationDetailsPanel.Visibility = view.ShowingOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsText.Text = view.OperationDetails;
             bool rowsChanged = !ReferenceEquals(displayedRows, view.Rows);
             if (rowsChanged)
             {
@@ -58,7 +72,7 @@ public sealed partial class ImagesPage : Page
             OpenButton.IsEnabled = CopyButton.IsEnabled = view.CanOpen;
             bool wasOpen = DetailPanel.Visibility == Visibility.Visible;
             DetailPanel.Visibility = view.DetailOpen ? Visibility.Visible : Visibility.Collapsed;
-            SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility
+            SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility = DeleteButton.Visibility
                 = ImageList.Visibility = ListStatus.Visibility = view.DetailOpen ? Visibility.Collapsed : Visibility.Visible;
             DetailStatus.Text = view.DetailMessage; OverviewText.Text = view.ShowingInspect ? "" : view.Overview;
             OverviewPanel.Visibility = view.ShowingInspect ? Visibility.Collapsed : Visibility.Visible;
@@ -97,7 +111,46 @@ public sealed partial class ImagesPage : Page
     }
     private void OnPageKeyDown(object sender, KeyRoutedEventArgs args)
     {
+        if (deletionDialog is not null) return;
+        if (args.Key == VirtualKey.Delete && view?.CanDelete == true && XamlRoot is { } root
+            && FocusManager.GetFocusedElement(root) is not TextBox)
+        { ShowDelete(); args.Handled = true; return; }
         if (args.Key == VirtualKey.Escape && view?.DetailOpen == true) { view.CloseDetail(); args.Handled = true; }
+    }
+    private void OnDelete(object sender, RoutedEventArgs args) => ShowDelete();
+    private void OnOperationDetails(object sender, RoutedEventArgs args) => view?.ShowOperationDetails(!view.ShowingOperationDetails);
+    private async void ShowDelete()
+    {
+        var owner = view;
+        var focus = XamlRoot is { } root ? FocusManager.GetFocusedElement(root) as Control : null;
+        if (deletionDialog is not null || owner?.BeginDelete() is not { } confirmation) return;
+        int lifetime = pageEpoch;
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot, Title = "Confirm non-force image deletion",
+            Content = new ScrollViewer { MaxHeight = 360, Content = new TextBlock { Text = confirmation.Message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true } },
+            PrimaryButtonText = "Delete image", CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close
+        };
+        deletionDialog = dialog; dialogConfirmation = confirmation;
+        try
+        {
+            var result = await dialog.ShowAsync();
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner) && result == ContentDialogResult.Primary) owner.ConfirmDelete(confirmation);
+            else owner.CancelDelete(confirmation);
+        }
+        catch (Exception) { owner.CancelDelete(confirmation); }
+        finally
+        {
+            if (ReferenceEquals(deletionDialog, dialog)) { deletionDialog = null; dialogConfirmation = null; }
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner))
+            {
+                Render();
+                // Restore the invoking control after cancellation when it is still available.
+                if (focus is { IsEnabled: true, Visibility: Visibility.Visible } && IsWithin(focus, this) && focus.Focus(FocusState.Programmatic)) { }
+                else if (owner.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
+                else ImageList.Focus(FocusState.Programmatic);
+            }
+        }
     }
     private void OnOverviewTab(object sender, RoutedEventArgs args) { view?.ShowInspect(false); RefreshDetailButton.Focus(FocusState.Programmatic); }
     private void OnInspectTab(object sender, RoutedEventArgs args) { view?.ShowInspect(true); InspectSearch.Focus(FocusState.Programmatic); }

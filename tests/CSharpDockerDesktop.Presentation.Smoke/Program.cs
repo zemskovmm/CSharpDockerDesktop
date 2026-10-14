@@ -41,7 +41,7 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
                 ?? Lists(frame).FirstOrDefault(list => list.Name is "ContainerList" or "ImageList");
             int loaded = list?.Items.Count ?? 0;
             int realized = list is null ? 0 : Count<ListViewItem>(list);
-            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}; commands: {browser.Commands}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
+            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}; commands: containers {browser.Commands}, images {browser.ImageCommands}; image target: {browser.LastImageRequest?.Target.Id}; image phase: {browser.ImageOperation?.Phase}/{browser.ImageOperation?.Resolution}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last container: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
             if (loaded >= 128 && (realized <= 0 || realized >= loaded)) throw new InvalidOperationException("Expected bounded virtualized row realization.");
         };
         controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(scenario);
@@ -55,6 +55,9 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         images.Click += (_, _) => frame.Navigate(typeof(ImagesPage), browser);
         imageEvent.Click += (_, _) => browser.InvalidateSelectedImage();
         imageTools.Children.Add(images); imageTools.Children.Add(imageEvent);
+        var imageScenario = new ComboBox { ItemsSource = new[] { "Image: observed absent", "Image: dependency conflict", "Image: unresolved", "Image: acknowledged but present", "Image: not dispatched" }, SelectedIndex = 0 };
+        imageScenario.SelectionChanged += (_, _) => browser.ImageScenario = imageScenario.SelectedIndex;
+        imageTools.Children.Add(imageScenario);
         tools.Children.Add(imageTools);
         tools.Children.Add(logScenarios); tools.Children.Add(evidence);
         grid.Children.Add(tools); grid.Children.Add(frame); Grid.SetRow(frame, 1);

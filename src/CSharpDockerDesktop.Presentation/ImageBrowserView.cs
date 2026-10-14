@@ -3,8 +3,8 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Presentation;
 
-/// <summary>UI-dispatched image presentation; Engine work remains owned by IImageBrowser.</summary>
-public sealed class ImageBrowserView(IImageBrowser browser, Func<Action, bool> dispatch) : IDisposable
+/// <summary>UI-dispatched image presentation; Engine work remains owned by Application capabilities.</summary>
+public sealed partial class ImageBrowserView(IImageBrowser browser, Func<Action, bool> dispatch) : IDisposable
 {
     private bool active;
     private int epoch, notificationQueued;
@@ -59,6 +59,7 @@ public sealed class ImageBrowserView(IImageBrowser browser, Func<Action, bool> d
         if (active) return;
         active = true; Interlocked.Increment(ref epoch);
         browser.ImagesChanged += OnChanged; Inspect.Changed += OnInspectChanged;
+        if (operations is not null) operations.ImageOperationChanged += OnChanged;
         Inspect.IsCurrentContent = raw => CurrentInspection(browser.ImageSnapshot) && ReferenceEquals(Snapshot.Inspection?.RawJson, raw);
         ApplyLatest();
     }
@@ -67,6 +68,9 @@ public sealed class ImageBrowserView(IImageBrowser browser, Func<Action, bool> d
         if (!active) return;
         active = false; Interlocked.Increment(ref epoch); Interlocked.Exchange(ref notificationQueued, 0);
         browser.ImagesChanged -= OnChanged; Inspect.Changed -= OnInspectChanged; Inspect.Dispose();
+        if (operations is not null) operations.ImageOperationChanged -= OnChanged;
+        DeleteConfirmation = null; Operation = null; ShowingOperationDetails = submitting = false;
+        AdmissionMessage = "";
         CancelFilter(); ClearOverview(); filteredSource = null;
         bool clear = DetailOpen;
         DetailOpen = ShowingInspect = false; SelectedId = null; Rows = Array.Empty<ImageRow>();
@@ -94,6 +98,8 @@ public sealed class ImageBrowserView(IImageBrowser browser, Func<Action, bool> d
         if (replaced) { Rows = Array.Empty<ImageRow>(); filteredSource = null; CancelFilter(); }
         if (DetailOpen && latest.SelectedImageId != SelectedId) { DetailOpen = false; SelectedId = null; }
         Snapshot = latest;
+        SyncOperation();
+        if (DeleteConfirmation is { } confirmation && !ConfirmationCurrent(confirmation)) RejectConfirmation();
         if (!DetailOpen) ShowingInspect = false;
         SyncDetails(); Filter();
         if (clear) browser.ClearImageInspection();
@@ -138,6 +144,7 @@ public sealed class ImageBrowserView(IImageBrowser browser, Func<Action, bool> d
         var latest = browser.ImageSnapshot;
         if (!CurrentGeneration(latest) || id is null || !latest.Images.Any(row => row.Id == id) || SelectedId == id) return;
         bool clear = DetailOpen;
+        if (DeleteConfirmation is not null) RejectConfirmation();
         DetailOpen = ShowingInspect = false; Inspect.Load(null); ClearOverview(); SelectedId = id;
         if (clear) browser.ClearImageInspection();
         Changed?.Invoke(this, EventArgs.Empty);

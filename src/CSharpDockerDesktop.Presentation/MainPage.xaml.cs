@@ -58,7 +58,7 @@ public sealed partial class MainPage : Page
                     + (s.EventRecoveryPending ? "Observation recovery is scheduled. " : "Use Retry connection to restore observation. ")
                     + "Manual refresh for containers and images remains available, and you can continue navigating."
             : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
-            : s.State == EngineConnectionState.Connected ? "Engine connected. Container browsing includes Overview, Inspect, Logs and lifecycle actions. Image browsing includes Overview and Inspect. Volumes and Networks are pending." : "";
+            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers include Overview, Inspect, Logs and lifecycle actions. Images include Overview, Inspect and confirmed non-force Delete. Dependencies may prevent deletion. Volumes and Networks are pending." : "";
         var daemonMessage = s.Failure?.DaemonMessage ?? s.EventFailure?.DaemonMessage;
         if (!Equals(displayedDaemonMessage, daemonMessage))
         {

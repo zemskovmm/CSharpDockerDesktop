@@ -3,14 +3,15 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:CSharpDockerDesktop.Presentation">
   <Grid Padding="24" RowSpacing="12">
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <TextBlock Text="Images" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.AutomationId="ResourcePageTitle" />
     <Grid Grid.Row="1" ColumnSpacing="12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <TextBox x:Name="SearchBox" PlaceholderText="Search tags/names, full ID, digest, created or size" TextChanged="OnSearch" AutomationProperties.Name="Search loaded images" AutomationProperties.AutomationId="ImageSearch" />
       <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh images" Click="OnRefresh" />
       <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" Click="OnOpen" />
       <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full ID" Click="OnCopy" />
+      <Button x:Name="DeleteButton" Grid.Column="4" Content="Delete image" Click="OnDelete" AutomationProperties.AutomationId="ImageDelete" />
     </Grid>
     <TextBlock x:Name="ListStatus" Grid.Row="2" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="ImageListStatus" />
     <!-- A finite viewport with recycling; never wrap the resource list in another ScrollViewer. -->
@@ -28,7 +29,15 @@
       </DataTemplate></ListView.ItemTemplate>
       <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="AutomationProperties.Name" Value="{Binding AccessibleSummary}" /></Style></ListView.ItemContainerStyle>
     </ListView>
-    <TextBlock Grid.Row="4" Text="Read-only image browsing · Overview and raw Inspect. Copying is deliberate and may include sensitive content." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
+    <StackPanel Grid.Row="4" Spacing="6" MaxHeight="260">
+      <ScrollViewer MaxHeight="140" HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="4">
+        <TextBlock x:Name="OperationStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="ImageOperationStatus" />
+        <TextBlock x:Name="AdmissionStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      </StackPanel></ScrollViewer>
+      <Button x:Name="OperationDetailsButton" Click="OnOperationDetails" Visibility="Collapsed" />
+      <ScrollViewer x:Name="OperationDetailsPanel" MaxHeight="80" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OperationDetailsText" TextWrapping="Wrap" IsTextSelectionEnabled="True" /></ScrollViewer>
+    </StackPanel>
+    <TextBlock Grid.Row="5" Text="Images · Overview, raw Inspect and confirmed non-force Delete. Dependencies may prevent deletion. Copy and original daemon evidence reveal are deliberate and may include sensitive content." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
@@ -38,6 +47,7 @@
           <Button x:Name="InspectTab" Content="Inspect" Click="OnInspectTab" AutomationProperties.Name="Show raw image JSON Inspect" />
           <Button x:Name="RefreshDetailButton" Content="Refresh details" Click="OnRefreshDetail" />
           <Button Content="Copy full ID" Click="OnCopy" />
+          <Button x:Name="DetailDeleteButton" Content="Delete image" Click="OnDelete" AutomationProperties.AutomationId="ImageDetailDelete" />
         </StackPanel>
         <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
         <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Image Overview" /></ScrollViewer>
