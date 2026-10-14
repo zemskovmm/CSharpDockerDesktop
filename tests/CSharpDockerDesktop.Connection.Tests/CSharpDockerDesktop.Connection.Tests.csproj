@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <None Update="Fixtures/Containers/**" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
   </ItemGroup>
 </Project>

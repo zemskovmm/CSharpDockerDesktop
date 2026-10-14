@@ -5,7 +5,7 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Infrastructure.Docker;
 
-/// <summary>Thin, read-only Engine handshake. A successful session owns its HTTP transport.</summary>
+/// <summary>Thin, read-only Engine handshake. A successful session owns its HTTP transport and container reader.</summary>
 public sealed class DockerEngineConnectionClient : IEngineConnectionClient
 {
     // Increase only with schema compatibility evidence, not from the daemon's advertised maximum.
@@ -74,7 +74,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
             cancellationToken.ThrowIfCancellationRequested();
             if (continuity?.ConnectionGeneration != pipeGeneration)
                 throw TransportReopened();
-            var connection = new DockerEngineConnection(http, metadata, this, continuity, pipeGeneration);
+            var connection = new DockerEngineConnection(http, metadata, this, continuity, pipeGeneration, options);
             http = null; // Transfer sole ownership to the successful session.
             return EngineConnectionAttempt.Connected(connection);
         }
@@ -209,20 +209,40 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation) : IEngineConnection
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader
 {
     private int disposed;
+    private readonly CancellationTokenSource lifetime = new();
     public EngineMetadata Metadata { get; } = metadata;
-    // Reserved for protocol operations behind future application contracts; never exposed to Presentation.
-    internal HttpClient Http { get; } = http;
     public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
-        return client.CheckLivenessAsync(Http, continuity, generation, cancellationToken);
+        return client.CheckLivenessAsync(http, continuity, generation, cancellationToken);
+    }
+    public Task<EngineResourceResult<IReadOnlyList<ContainerSummary>>> ListContainersAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return DockerContainerReader.ReadAsync(http, Metadata.Api.Negotiated, "containers/json?all=true",
+            DockerContainerJson.List, options, continuity, generation, lifetime.Token, cancellationToken);
+    }
+    public Task<EngineResourceResult<ContainerInspection>> InspectContainerAsync(string identity, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(identity) || identity.Length > 4096 || identity is "." or "..")
+            return Task.FromResult(EngineResourceResult<ContainerInspection>.Failed(new(EngineResourceFailureKind.InvalidRequest,
+                "A non-empty container identity of at most 4096 characters is required.")));
+        return DockerContainerReader.ReadAsync(http, Metadata.Api.Negotiated, $"containers/{Uri.EscapeDataString(identity)}/json",
+            DockerContainerJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken);
     }
     public ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref disposed, 1) == 0) Http.Dispose();
+        if (Interlocked.Exchange(ref disposed, 1) == 0)
+        {
+            lifetime.Cancel();
+            http.Dispose();
+            // Keep the source usable by racing borrowed calls; it owns no wait handle.
+        }
         return ValueTask.CompletedTask;
     }
 }

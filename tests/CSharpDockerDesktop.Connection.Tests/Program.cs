@@ -30,6 +30,12 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Container contract fixtures across API 1.40–1.56", ContainerChecks.ContractFixtures),
+    ("Container states, optional/additive fields and inspect preservation", ContainerChecks.Projection),
+    ("Container encoded identities and classified daemon errors", ContainerChecks.ErrorsAndIdentity),
+    ("Container malformed and bounded responses", ContainerChecks.MalformedAndBounds),
+    ("Container cancellation, deadlines and disposal", ContainerChecks.CancellationAndDisposal),
+    ("Container retained transport continuity", ContainerChecks.Continuity),
     ("Coordinator initial failure and recovery", CoordinatorChecks.InitialRecovery),
     ("Coordinator healthy retention and fresh negotiation after loss", CoordinatorChecks.HealthyAndLost),
     ("Coordinator preserved failure distinctions and bounded attempts", CoordinatorChecks.FailuresAndBounds),
@@ -342,7 +348,7 @@ static async Task ControlledPipe()
     var serving = Task.Run(async () =>
     {
         await server.WaitForConnectionAsync(deadline.Token);
-        for (int stage = 0; stage < 4; stage++)
+        for (int stage = 0; stage < 6; stage++)
         {
             var headers = new StringBuilder();
             var one = new byte[1];
@@ -352,7 +358,8 @@ static async Task ControlledPipe()
                 headers.Append((char)one[0]);
             }
             paths.Add(headers.ToString().Split(' ')[1]);
-            var bytes = Encoding.UTF8.GetBytes(stage switch { 0 or 3 => "OK", 1 => Version("1.12", "1.80"), _ => Info });
+            var bytes = Encoding.UTF8.GetBytes(stage switch { 0 or 3 => "OK", 1 => Version("1.12", "1.80"),
+                4 => "[{\"Id\":\"retained\",\"State\":\"exited\"}]", 5 => "{\"Id\":\"retained\",\"Unknown\":\"kept\"}", _ => Info });
             var head = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Length: {bytes.Length}\r\nContent-Type: {(stage == 0 ? "text/plain" : "application/json")}\r\n\r\n");
             await server.WriteAsync(head, deadline.Token); await server.WriteAsync(bytes, deadline.Token); await server.FlushAsync(deadline.Token);
         }
@@ -364,9 +371,12 @@ static async Task ControlledPipe()
     Check(result.IsConnected, result.Failure?.Description ?? "Pipe connection failed");
     Check(result.Connection!.Metadata.Api.Negotiated == new EngineApiVersion(1, 56));
     Check(await result.Connection.CheckLivenessAsync(deadline.Token) is null);
+    var reader = (IContainerReader)result.Connection;
+    Check((await reader.ListContainersAsync(deadline.Token)).Value![0].State == "exited");
+    Check((await reader.InspectContainerAsync("retained", deadline.Token)).Value!.RawJson.Contains("kept"));
     await result.Connection.DisposeAsync();
     await serving;
-    Check(paths.SequenceEqual(new[] { "/_ping", "/version", "/v1.56/info", "/_ping" }));
+    Check(paths.SequenceEqual(new[] { "/_ping", "/version", "/v1.56/info", "/_ping", "/v1.56/containers/json?all=true", "/v1.56/containers/retained/json" }));
 }
 static async Task FailedAndCanceledPipe()
 {

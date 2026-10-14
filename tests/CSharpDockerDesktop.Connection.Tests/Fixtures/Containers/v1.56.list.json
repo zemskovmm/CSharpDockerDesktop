@@ -1,0 +1,55 @@
+[
+  {
+    "Id": "aa86eacfb3b3ed4cd362c1e88fc89a53908ad05fb3a4103bca3f9b28292d14bf",
+    "Names": [
+      "/funny_chatelet"
+    ],
+    "Image": "docker.io/library/ubuntu:latest",
+    "ImageID": "sha256:72297848456d5d37d1262630108ab308d3e9ec7ed1c3286a32fe09856619a782",
+    "Created": 1739811096,
+    "Ports": [
+      {
+        "PrivatePort": 8080,
+        "PublicPort": 80,
+        "Type": "tcp"
+      }
+    ],
+    "State": "running",
+    "Status": "Up 4 days",
+    "NetworkSettings": {
+      "Networks": {
+        "schema-network": {
+          "NetworkID": "08754567f1f40222263eab4102e1c733ae697e8e354aa9cd6e18d7402835292a",
+          "EndpointID": "b88f5b905aabf2893f3cbc4ee42d1ea7980bbc0a92e2c8922b1e1795298afb0b",
+          "IPAddress": "172.17.0.4",
+          "IPPrefixLen": 16,
+          "Gateway": "172.17.0.1",
+          "GlobalIPv6Address": "2001:db8::5689",
+          "GlobalIPv6PrefixLen": 64,
+          "IPv6Gateway": "2001:db8:2::100",
+          "MacAddress": "02:42:ac:11:00:04",
+          "Aliases": [
+            "server_x",
+            "server_y"
+          ]
+        }
+      }
+    },
+    "Mounts": [
+      {
+        "Type": "volume",
+        "Name": "myvolume",
+        "Source": "/var/lib/docker/volumes/myvolume/_data",
+        "Destination": "/usr/share/nginx/html/",
+        "Driver": "local",
+        "Mode": "z",
+        "RW": true,
+        "Propagation": ""
+      }
+    ],
+    "Health": {
+      "Status": "healthy",
+      "FailingStreak": 0
+    }
+  }
+]

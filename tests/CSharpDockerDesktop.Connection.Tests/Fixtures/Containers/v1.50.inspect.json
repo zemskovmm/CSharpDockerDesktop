@@ -1,0 +1,96 @@
+{
+  "Id": "aa86eacfb3b3ed4cd362c1e88fc89a53908ad05fb3a4103bca3f9b28292d14bf",
+  "Created": "2025-02-17T17:43:39.64001363Z",
+  "State": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "Dead": false,
+    "ExitCode": 0,
+    "Error": "fixture",
+    "StartedAt": "2020-01-06T09:06:59.461876391Z",
+    "FinishedAt": "2020-01-06T09:07:59.461876391Z",
+    "Health": {
+      "Status": "healthy",
+      "FailingStreak": 0
+    }
+  },
+  "Image": "sha256:72297848456d5d37d1262630108ab308d3e9ec7ed1c3286a32fe09856619a782",
+  "Name": "/funny_chatelet",
+  "Driver": "overlayfs",
+  "Mounts": [
+    {
+      "Type": "volume",
+      "Name": "myvolume",
+      "Source": "/var/lib/docker/volumes/myvolume/_data",
+      "Destination": "/usr/share/nginx/html/",
+      "Driver": "local",
+      "Mode": "z",
+      "RW": true,
+      "Propagation": ""
+    }
+  ],
+  "Config": {
+    "Image": "example-image:1.0",
+    "MacAddress": "fixture"
+  },
+  "NetworkSettings": {
+    "Ports": {
+      "443/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "4443"
+        }
+      ],
+      "80/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "80"
+        },
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "8080"
+        }
+      ],
+      "80/udp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "80"
+        }
+      ],
+      "53/udp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "53"
+        }
+      ],
+      "2377/tcp": null
+    },
+    "EndpointID": "b88f5b905aabf2893f3cbc4ee42d1ea7980bbc0a92e2c8922b1e1795298afb0b",
+    "Gateway": "172.17.0.1",
+    "GlobalIPv6Address": "2001:db8::5689",
+    "GlobalIPv6PrefixLen": 64,
+    "IPAddress": "172.17.0.4",
+    "IPPrefixLen": 16,
+    "IPv6Gateway": "2001:db8:2::100",
+    "MacAddress": "02:42:ac:11:00:04",
+    "Networks": {
+      "schema-network": {
+        "NetworkID": "08754567f1f40222263eab4102e1c733ae697e8e354aa9cd6e18d7402835292a",
+        "EndpointID": "b88f5b905aabf2893f3cbc4ee42d1ea7980bbc0a92e2c8922b1e1795298afb0b",
+        "IPAddress": "172.17.0.4",
+        "IPPrefixLen": 16,
+        "Gateway": "172.17.0.1",
+        "GlobalIPv6Address": "2001:db8::5689",
+        "GlobalIPv6PrefixLen": 64,
+        "IPv6Gateway": "2001:db8:2::100",
+        "MacAddress": "02:42:ac:11:00:04",
+        "Aliases": [
+          "server_x",
+          "server_y"
+        ]
+      }
+    }
+  }
+}

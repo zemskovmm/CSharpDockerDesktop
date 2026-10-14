@@ -1,6 +1,6 @@
 namespace CSharpDockerDesktop.Infrastructure.Docker;
 
-/// <summary>Short connection requests only. These are bounded defaults, not live-stream lifetimes.</summary>
+/// <summary>Short handshake, liveness and resource requests. These are bounded defaults, not live-stream lifetimes.</summary>
 public sealed record DockerConnectionOptions
 {
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(5);

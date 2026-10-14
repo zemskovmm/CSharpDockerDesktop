@@ -30,7 +30,7 @@ A null endpoint selects `EngineEndpoint.LocalWindows`, address `npipe://./pipe/d
 
 `SocketsHttpHandler.ConnectCallback` opens a local asynchronous `NamedPipeClientStream`; `http://docker/` is only the logical HTTP authority and cannot cause a network connection. Proxies and redirects are disabled. A successful connection retains its handler and pipe for later session reuse. `DisposeAsync` closes it idempotently. Failed/canceled attempts dispose their `HttpClient` and handler; failed/canceled pipe connects dispose the attempted stream. Every request and response body is disposed. A client instance holds no active connections of its own, so the caller owns every returned successful session independently.
 
-Each short request has a configurable five-second deadline, each pipe connect a two-second availability deadline, and every response a one-MiB byte limit. These are bounded initial implementation defaults, not performance promises or future streaming lifetimes. Cancellation covers send, connect and response reading. The Application coordinator supplies recovery and lifetime management described below. There are no event streams or resource operations.
+Each short request has a configurable five-second deadline, each pipe connect a two-second availability deadline, and every response a one-MiB byte limit. These are bounded initial implementation defaults, not performance promises or future streaming lifetimes. Cancellation covers send, connect and response reading. The Application coordinator supplies recovery and lifetime management described below. Read-only container acquisition is available through the [borrowed Application reader](container-acquisition.md); event streams and desktop resource coordination remain pending.
 
 ## Desktop connection workflow
 
@@ -42,7 +42,7 @@ Missing endpoints, transient transport failures and daemon HTTP errors recover a
 
 **Retry connection** is a normal keyboard-accessible button. It cancels the current attempt, health check or recovery wait, then starts one new serialized workflow. Rapid retries supersede queued work; they never overlap active attempts or health checks. Every returned successful connection is owned even when cancellation arrives just before success. Superseded or expired results are disposed and never published. Closing the window cancels pending I/O and waits, detaches UI notifications and disposes the retained connection. Shutdown and disposal are idempotent. Cooperative cancellation is required by the client contract; a client that ignores cancellation is awaited for safe disposal rather than overlapped with another handshake.
 
-Recovery publishes newly negotiated metadata. Resource snapshots, event reconciliation and resource operations remain pending; Connected indicates readiness/metadata only. Resource pages explicitly say loading is pending and update their empty-state explanation with live connectivity. This workflow does not establish IDD-0006 resource reconciliation or complete Engine compatibility.
+Recovery publishes newly negotiated metadata. Desktop resource snapshots, event reconciliation and mutations remain pending; Connected indicates readiness/metadata only. Resource pages explicitly say loading is pending and update their empty-state explanation with live connectivity. The separately verified container acquisition boundary does not establish IDD-0006 resource reconciliation or complete Engine compatibility.
 
 ## Desktop runtime evidence
 
