@@ -10,6 +10,7 @@
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerLogsView.cs" Link="Presentation/ContainerLogsView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ImageBrowserView.cs" Link="Presentation/ImageBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ImageBrowserView.Operations.cs" Link="Presentation/ImageBrowserView.Operations.cs" />
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/VolumeBrowserView.cs" Link="Presentation/VolumeBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/JsonInspectView.cs" Link="Presentation/JsonInspectView.cs" />
     <None Update="Fixtures/Logs/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Events/**" CopyToOutputDirectory="PreserveNewest" />

@@ -18,7 +18,12 @@ public sealed class JsonInspectView(Func<Action, bool> dispatch) : IDisposable
     private int? selected;
     public Func<string, bool>? IsCurrentContent { get; set; }
     public event EventHandler? Changed;
-    public IReadOnlyList<JsonInspectRow> Rows { get; private set; } = Array.Empty<JsonInspectRow>();
+    private IReadOnlyList<JsonInspectRow> rows = Array.Empty<JsonInspectRow>();
+    public IReadOnlyList<JsonInspectRow> Rows
+    {
+        get => source is { } raw && IsCurrentContent?.Invoke(raw) == false ? Array.Empty<JsonInspectRow>() : rows;
+        private set => rows = value;
+    }
     public string Query { get; private set; } = "";
     public bool Busy { get; private set; }
     public string Message { get; private set; } = "Inspect unavailable.";
