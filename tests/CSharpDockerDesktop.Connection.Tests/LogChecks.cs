@@ -357,7 +357,10 @@ internal static class LogChecks
                 {
                     "/_ping" => "OK", "/version" => "{\"Version\":\"fixture\",\"ApiVersion\":\"1.56\",\"MinAPIVersion\":\"1.40\"}",
                     "/v1.56/containers/json?all=true" => "[{\"Id\":\"canonical\"}]",
-                    "/v1.56/containers/canonical/json" => "{\"Id\":\"canonical\",\"Config\":{\"Tty\":false}}", _ => "{\"ID\":\"same-engine\"}"
+                    "/v1.56/containers/canonical/json" => "{\"Id\":\"canonical\",\"Config\":{\"Tty\":false}}",
+                    "/v1.56/images/json?all=true&digests=true" => "[{\"Id\":\"sha256:authoritative-image\",\"RepoTags\":[\"repo/name:tag\"],\"Size\":0}]",
+                    "/v1.56/images/repo%2Fname%3Atag/json" => "{\"Id\":\"sha256:authoritative-image\",\"Config\":{\"Env\":[\"SYNTHETIC_SECRET=preserve\"]}}",
+                    _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
                 bool command = path.EndsWith("/start"); if (command) payload = [];
@@ -386,7 +389,14 @@ internal static class LogChecks
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted);
             Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerReader)owner).InspectContainerAsync("canonical", deadline.Token)).IsSuccess);
+            Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).Value![0].Id == "sha256:authoritative-image");
+            Check((await ((IImageReader)owner).InspectImageAsync("repo/name:tag", deadline.Token)).Value!.Configuration!.Environment!.Single() == "SYNTHETIC_SECRET=preserve");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed image reads must leave live streams running");
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
+            Check(await owner.CheckLivenessAsync(deadline.Token) is null);
+            await logs.DisposeAsync(); await events.DisposeAsync();
+            Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
+            Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await owner.DisposeAsync(); await serving;
             Check(paths.Count(p => p == "/version") == 3 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1);

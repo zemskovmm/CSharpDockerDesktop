@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Images negotiated API 1.40–1.56 schema fixtures", ImageChecks.ContractFixtures),
+    ("Images authoritative immutable projections and exact Inspect", ImageChecks.Projection),
+    ("Images reference escaping, invalid inputs and classified daemon failures", ImageChecks.ErrorsAndIdentity),
+    ("Images malformed responses and bounded success/error bodies", ImageChecks.MalformedAndBounds),
+    ("Images caller/header/body cancellation, deadlines and disposal", ImageChecks.CancellationAndDisposal),
+    ("Images retained transport continuity races", ImageChecks.Continuity),
+    ("Images late header/body results and decoder publication fences", ImageChecks.LateResponses),
     ("Presentation Logs bounded windows, search and sustained load", LogPresentationChecks.WindowsAndLoad),
     ("Presentation Logs mutable entries, revision races, Clear and TTY", LogPresentationChecks.RacesAndClear),
     ("Presentation Logs asynchronous close ownership and navigation", LogPresentationChecks.OwnershipAndNavigation),

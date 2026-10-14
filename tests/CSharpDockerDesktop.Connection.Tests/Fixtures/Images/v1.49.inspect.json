@@ -1,0 +1,85 @@
+{
+  "Id": "sha256:ec3f0931a6e6b6855d76b2d7b0be30e81860baccd891b2e243280bf1cd8ad710",
+  "RepoTags": [
+    "example:1.0",
+    "example:latest",
+    "example:stable",
+    "internal.registry.example.com:5000/example:1.0"
+  ],
+  "RepoDigests": [
+    "example@sha256:afcc7f1ac1b49db317a7196c902e61c6c3c4607d63599ee1a82d702d249a0ccb",
+    "internal.registry.example.com:5000/example@sha256:b69959407d21e8a062e0416bf13405bb2b71ed7a84dde4158ebafacfa06f5578"
+  ],
+  "Parent": "",
+  "Comment": "",
+  "Created": "2022-02-04T21:20:12.497794809Z",
+  "DockerVersion": "27.0.1",
+  "Author": "",
+  "Architecture": "arm",
+  "Variant": "v7",
+  "Os": "linux",
+  "OsVersion": "",
+  "Size": 1239828,
+  "GraphDriver": {},
+  "RootFS": {
+    "Type": "layers",
+    "Layers": [
+      "sha256:1834950e52ce4d5a88a1bbd131c537f4d0e56d10ff0dd69e66be3b7dfa9df7e6",
+      "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+    ]
+  },
+  "Metadata": {},
+  "Config": {
+    "Hostname": "",
+    "Domainname": "",
+    "User": "1000",
+    "AttachStdin": false,
+    "AttachStdout": false,
+    "AttachStderr": false,
+    "ExposedPorts": {
+      "80/tcp": {}
+    },
+    "Tty": false,
+    "OpenStdin": false,
+    "StdinOnce": false,
+    "Env": [
+      "SYNTHETIC_SECRET=retain-private"
+    ],
+    "Cmd": [
+      "echo",
+      "hello"
+    ],
+    "Healthcheck": {},
+    "ArgsEscaped": false,
+    "Image": "",
+    "Volumes": {
+      "/data": {}
+    },
+    "WorkingDir": "/app",
+    "Entrypoint": [],
+    "NetworkDisabled": false,
+    "MacAddress": "",
+    "OnBuild": [],
+    "Labels": {
+      "synthetic.label": "preserved"
+    },
+    "StopSignal": "SIGTERM",
+    "StopTimeout": 0,
+    "Shell": [
+      "/bin/sh",
+      "-c"
+    ],
+    "UnknownConfig": {
+      "sensitive": "retain-unknown"
+    }
+  },
+  "Descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "size": 123
+  },
+  "UnknownInspect": {
+    "sensitive": "retain-private",
+    "exactNumber": 9007199254740993
+  }
+}

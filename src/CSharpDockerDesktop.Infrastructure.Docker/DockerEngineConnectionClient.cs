@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource, IContainerCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IEngineEventSource, IContainerCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -304,7 +304,7 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
     public Task<EngineResourceResult<IReadOnlyList<ContainerSummary>>> ListContainersAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
-        return DockerContainerReader.ReadAsync(http, Metadata.Api.Negotiated, "containers/json?all=true",
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, "containers/json?all=true",
             DockerContainerJson.List, options, continuity, generation, lifetime.Token, cancellationToken);
     }
     public Task<EngineResourceResult<ContainerInspection>> InspectContainerAsync(string identity, CancellationToken cancellationToken = default)
@@ -314,8 +314,24 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
         if (string.IsNullOrWhiteSpace(identity) || identity.Length > 4096 || identity is "." or "..")
             return Task.FromResult(EngineResourceResult<ContainerInspection>.Failed(new(EngineResourceFailureKind.InvalidRequest,
                 "A non-empty container identity of at most 4096 characters is required.")));
-        return DockerContainerReader.ReadAsync(http, Metadata.Api.Negotiated, $"containers/{Uri.EscapeDataString(identity)}/json",
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"containers/{Uri.EscapeDataString(identity)}/json",
             DockerContainerJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken);
+    }
+    public Task<EngineResourceResult<IReadOnlyList<ImageSummary>>> ListImagesAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, "images/json?all=true&digests=true",
+            DockerImageJson.List, options, continuity, generation, lifetime.Token, cancellationToken, "image");
+    }
+    public Task<EngineResourceResult<ImageInspection>> InspectImageAsync(string reference, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!DockerImageReference.IsValid(reference))
+            return Task.FromResult(EngineResourceResult<ImageInspection>.Failed(new(EngineResourceFailureKind.InvalidRequest,
+                "A valid bounded image ID, repository name, tag or digest reference is required.")));
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"images/{Uri.EscapeDataString(reference)}/json",
+            DockerImageJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken, "image");
     }
     public ValueTask DisposeAsync()
     {

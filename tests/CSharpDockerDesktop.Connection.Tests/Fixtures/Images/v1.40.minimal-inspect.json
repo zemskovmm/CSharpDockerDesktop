@@ -1,0 +1,16 @@
+{
+  "Id": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "RepoTags": [
+    "<none>:<none>"
+  ],
+  "RepoDigests": [
+    "<none>@<none>"
+  ],
+  "Size": 0,
+  "RootFS": {
+    "Type": "layers",
+    "Layers": []
+  },
+  "Config": {},
+  "Created": "0001-01-01T00:00:00Z"
+}

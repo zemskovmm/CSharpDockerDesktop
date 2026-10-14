@@ -1,0 +1,11 @@
+{
+  "Id": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "RepoTags": [],
+  "RepoDigests": [],
+  "Size": 0,
+  "RootFS": {
+    "Type": "layers",
+    "Layers": []
+  },
+  "Config": {}
+}
