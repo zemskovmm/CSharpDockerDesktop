@@ -4,7 +4,7 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Presentation;
 
-/// <summary>UI-dispatched projection of Application-owned read-only network browsing.</summary>
+/// <summary>UI-dispatched projection of Application-owned network browsing and deletion evidence.</summary>
 public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Action, bool> dispatch) : IDisposable
 {
     private bool active;
@@ -79,6 +79,8 @@ public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Act
         if (active) return;
         active = true; Interlocked.Increment(ref epoch);
         browser.NetworksChanged += OnChanged; Inspect.Changed += OnInspectChanged;
+        if (preparationService is not null) preparationService.NetworkDeletionPreparationChanged += OnChanged;
+        if (operations is not null) operations.NetworkOperationChanged += OnChanged;
         Inspect.IsCurrentContent = raw => CurrentInspection(browser.NetworkSnapshot) && ReferenceEquals(Snapshot.Inspection?.RawJson, raw);
         ApplyLatest();
     }
@@ -88,6 +90,10 @@ public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Act
         bool clear = OwnsInspection(browser.NetworkSnapshot);
         active = false; Interlocked.Increment(ref epoch); Interlocked.Exchange(ref notificationQueued, 0);
         browser.NetworksChanged -= OnChanged; Inspect.Changed -= OnInspectChanged; Inspect.Dispose();
+        if (preparationService is not null) preparationService.NetworkDeletionPreparationChanged -= OnChanged;
+        if (operations is not null) operations.NetworkOperationChanged -= OnChanged;
+        CloseDeletion(); HideOperationDetails(); operation = null; attachmentIndexes.Clear(); preparationRows = operationRows = operationPreparationRows = null;
+        submitting = false; AdmissionMessage = "";
         CancelFilter(); ClearOverview(); HideEvidence(); filteredSource = rowsSource = null;
         DetailOpen = ShowingInspect = false; SelectedId = null; rows = Array.Empty<NetworkRow>();
         Snapshot = new(0, ResourceReadState.Unavailable, []);
@@ -117,7 +123,7 @@ public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Act
         if (!CurrentEvidence(latest)) HideEvidence();
         Snapshot = latest;
         if (!DetailOpen) ShowingInspect = false;
-        SyncDetails(); Filter();
+        SyncDeletion(); SyncOperation(); SyncDetails(); Filter();
         if (clear) browser.ClearNetworkInspection();
     }
     private void SyncDetails()
@@ -157,6 +163,7 @@ public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Act
         var latest = browser.NetworkSnapshot;
         if (!CurrentGeneration(latest) || name is null || !latest.Networks.Any(row => StringComparer.Ordinal.Equals(row.Id, name)) || StringComparer.Ordinal.Equals(SelectedId, name)) return;
         bool clear = OwnsInspection(latest);
+        CloseDeletion();
         DetailOpen = ShowingInspect = false; Inspect.Load(null); ClearOverview(); SelectedId = name;
         if (clear) browser.ClearNetworkInspection();
         Changed?.Invoke(this, EventArgs.Empty);
@@ -174,6 +181,7 @@ public sealed partial class NetworkBrowserView(INetworkBrowser browser, Func<Act
     {
         if (!active || !DetailOpen) return;
         bool clear = OwnsInspection(browser.NetworkSnapshot);
+        CloseDeletion();
         DetailOpen = ShowingInspect = false; Inspect.Load(null); ClearOverview();
         if (clear) browser.ClearNetworkInspection(); ApplyLatest();
     }

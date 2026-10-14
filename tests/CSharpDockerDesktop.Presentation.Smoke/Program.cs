@@ -41,7 +41,7 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
                 ?? Lists(frame).FirstOrDefault(list => list.Name is "ContainerList" or "ImageList" or "VolumeList" or "NetworkList");
             int loaded = list?.Items.Count ?? 0;
             int realized = list is null ? 0 : Count<ListViewItem>(list);
-            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}, volumes {browser.VolumeCancellations}, networks {browser.NetworkCancellations}; commands: containers {browser.Commands}, images {browser.ImageCommands}, volumes {browser.VolumeCommands}; volume prepares/closes: {browser.VolumePrepares}/{browser.VolumePreparationCloses}; volume target: {browser.LastVolumeRequest?.Target.Name}; volume phase: {browser.VolumeOperation?.Phase}/{browser.VolumeOperation?.Resolution}; image target: {browser.LastImageRequest?.Target.Id}; image phase: {browser.ImageOperation?.Phase}/{browser.ImageOperation?.Resolution}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last container: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
+            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}, volumes {browser.VolumeCancellations}, networks {browser.NetworkCancellations}; network commands {browser.NetworkCommands}, prepares/closes {browser.NetworkPrepares}/{browser.NetworkPreparationCloses}; commands: containers {browser.Commands}, images {browser.ImageCommands}, volumes {browser.VolumeCommands}; volume prepares/closes: {browser.VolumePrepares}/{browser.VolumePreparationCloses}; volume target: {browser.LastVolumeRequest?.Target.Name}; volume phase: {browser.VolumeOperation?.Phase}/{browser.VolumeOperation?.Resolution}; image target: {browser.LastImageRequest?.Target.Id}; image phase: {browser.ImageOperation?.Phase}/{browser.ImageOperation?.Resolution}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last container: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
             if (loaded >= 128 && (realized <= 0 || realized >= loaded)) throw new InvalidOperationException("Expected bounded virtualized row realization.");
         };
         controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(scenario);
@@ -84,10 +84,16 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         networkScenario.SelectionChanged += (_, _) => { browser.NetworkScenario = networkScenario.SelectedIndex; browser.RefreshNetworks(); };
         var networkChecks = new Button { Content = "Run network UI checks" };
         networkChecks.Click += async (_, _) => { networkChecks.IsEnabled = false; await NetworkUiSmokeChecks.Run(frame, browser, evidence); networkChecks.IsEnabled = true; };
+        var networkDeletion = new ComboBox { ItemsSource = new[] { "Network delete: inspected empty", "Network delete: attached", "Network delete: attached block", "Network delete: unavailable", "Network delete: failed", "Network delete: slow", "Network delete: 30,000 attachments", "Network delete: event invalidation", "Network delete: connection change", "Network delete: conflict", "Network delete: lost response", "Network delete: acknowledged present", "Network delete: not dispatched", "Network delete: target disappears" }, SelectedIndex = 0 };
+        networkDeletion.SelectionChanged += (_, _) => browser.NetworkDeletionScenario = networkDeletion.SelectedIndex;
+        var networkDeletionChecks = new Button { Content = "Run network deletion UI checks" };
+        networkDeletionChecks.Click += async (_, _) => { networkDeletionChecks.IsEnabled = false; await NetworkDeletionUiSmokeChecks.Run(frame, browser, evidence); networkDeletionChecks.IsEnabled = true; };
+        var networkActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        networkActions.Children.Add(networkDeletion); networkActions.Children.Add(networkDeletionChecks); tools.Children.Add(networkActions);
         networkTools.Children.Add(networks); networkTools.Children.Add(networkEvent); networkTools.Children.Add(networkScenario); networkTools.Children.Add(networkChecks);
         tools.Children.Add(networkTools);
-        tools.Children.Add(logScenarios); tools.Children.Add(new ScrollViewer { MaxHeight = 160, Content = evidence });
-        grid.Children.Add(tools); grid.Children.Add(frame); Grid.SetRow(frame, 1);
+        tools.Children.Add(logScenarios); tools.Children.Add(new ScrollViewer { MaxHeight = 80, Content = evidence });
+        grid.Children.Add(new ScrollViewer { Content = tools, MaxHeight = 160, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }); grid.Children.Add(frame); Grid.SetRow(frame, 1);
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
         frame.Navigate(typeof(NetworksPage), browser);
         window.Activate();

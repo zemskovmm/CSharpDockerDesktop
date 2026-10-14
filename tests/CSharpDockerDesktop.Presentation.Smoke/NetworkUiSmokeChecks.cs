@@ -29,8 +29,8 @@ internal static class NetworkUiSmokeChecks
             await Task.Delay(200); stage = "large list";
             var list = Control<ListView>("NetworkList"); int realized = Descendants<ListViewItem>(list).Count();
             Check(realized is > 0 and < 128, "Network table must recycle a bounded number of rows");
-            Check(Descendants<Button>((Page)frame.Content).All(b => b.Content?.ToString()?.Contains("Delete") != true), "No unsupported network Delete");
-            Pass($"virtualized table {realized}/20000 realized; no network mutation controls");
+            Check(Control<Button>("DeleteButton") is not null, "Network Delete entry point missing");
+            Pass($"virtualized table {realized}/20000 realized; network Delete entry point available");
             stage = "loaded search"; Control<TextBox>("SearchBox").Text = "network-19999";
             await Until(() => Control<ListView>("NetworkList").Items.Count == 1);
             Check(((NetworkRow)Control<ListView>("NetworkList").Items[0]).Id == "network-full-opaque-19999", "Search selected wrong opaque identity");

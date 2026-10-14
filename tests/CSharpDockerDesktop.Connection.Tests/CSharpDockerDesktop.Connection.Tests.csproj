@@ -12,6 +12,7 @@
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ImageBrowserView.Operations.cs" Link="Presentation/ImageBrowserView.Operations.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/VolumeBrowserView.cs" Link="Presentation/VolumeBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/VolumeBrowserView.Operations.cs" Link="Presentation/VolumeBrowserView.Operations.cs" />
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/NetworkBrowserView.Operations.cs" Link="Presentation/NetworkBrowserView.Operations.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/NetworkBrowserView.cs" Link="Presentation/NetworkBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/JsonInspectView.cs" Link="Presentation/JsonInspectView.cs" />
     <None Update="Fixtures/Logs/**" CopyToOutputDirectory="PreserveNewest" />

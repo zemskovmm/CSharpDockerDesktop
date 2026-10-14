@@ -3,7 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:CSharpDockerDesktop.Presentation">
   <Grid Padding="24" RowSpacing="12">
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <TextBlock Text="Networks" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.AutomationId="ResourcePageTitle" />
     <Grid Grid.Row="1" ColumnSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -11,6 +11,7 @@
       <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh networks" />
       <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" />
       <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full ID" />
+      <Button x:Name="DeleteButton" Grid.Column="4" Content="Delete…" AutomationProperties.AutomationId="NetworkDelete" />
     </Grid>
     <TextBlock x:Name="ListStatus" Grid.Row="2" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="NetworkListStatus" />
     <!-- A finite viewport with recycling; never wrap the resource list in another ScrollViewer. -->
@@ -32,7 +33,25 @@
       <Button x:Name="EvidenceButton" Content="Show original daemon messages (may be sensitive)" />
       <ScrollViewer x:Name="EvidencePanel" MaxHeight="120" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="EvidenceText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Original network daemon messages" /></ScrollViewer>
     </StackPanel>
-    <TextBlock Grid.Row="5" Text="Networks · Read-only Overview and Inspect. Attachments describe the returned observation; they do not establish cluster-wide completeness or deletion eligibility. F3 searches, F5 refreshes, Enter opens and Escape closes. Copy and original message reveal are deliberate." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
+    <Grid Grid.Row="5" RowSpacing="6" MaxHeight="270">
+      <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+      <ScrollViewer MaxHeight="90" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OperationStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="NetworkOperationStatus" /></ScrollViewer>
+      <TextBlock x:Name="AdmissionStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      <Button x:Name="OperationDetailsButton" Grid.Row="2" Content="Show original operation evidence and refreshed attachments (may be sensitive)" />
+      <Grid x:Name="OperationDetailsPanel" Grid.Row="3" Visibility="Collapsed" MinHeight="120" MaxHeight="180" ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OperationDetailsText" TextWrapping="Wrap" IsTextSelectionEnabled="True" /></ScrollViewer>
+        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <ComboBox x:Name="OperationAttachmentSource" SelectionChanged="OnOperationAttachmentSource" SelectedIndex="1" AutomationProperties.Name="Choose retained attachment evidence"><ComboBoxItem Content="Original precheck (historical)" /><ComboBoxItem Content="Refreshed conflict evidence (historical)" /></ComboBox>
+          <Button x:Name="CopyAttachmentButton" Grid.Row="1" Content="Copy selected attachment in full" />
+          <ListView x:Name="OperationAttachmentList" Grid.Row="2" SelectionMode="Single" AutomationProperties.Name="Refreshed conflict attachments, historical evidence only" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+            <ListView.ItemTemplate><DataTemplate x:DataType="local:NetworkAttachmentRow"><TextBlock Text="{x:Bind Text}" TextWrapping="Wrap" /></DataTemplate></ListView.ItemTemplate>
+          </ListView>
+        </Grid>
+      </Grid>
+    </Grid>
+    <TextBlock Grid.Row="6" Text="Networks · F3 searches, F5 refreshes, Enter opens, Delete begins a fresh attachment precheck, Escape closes. Inspected attachments do not establish cluster-wide completeness. Copy/reveal is deliberate." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
@@ -42,6 +61,7 @@
           <Button x:Name="InspectTab" Content="Inspect" AutomationProperties.Name="Show raw network JSON Inspect" />
           <Button x:Name="RefreshDetailButton" Content="Refresh details" />
           <Button x:Name="DetailCopyButton" Content="Copy full ID" />
+          <Button x:Name="DetailDeleteButton" Content="Delete…" AutomationProperties.AutomationId="NetworkDetailDelete" />
         </StackPanel>
         <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
         <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Network Overview" /></ScrollViewer>

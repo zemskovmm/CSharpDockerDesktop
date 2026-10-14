@@ -10,7 +10,7 @@ internal sealed partial class FixtureBrowser : INetworkBrowser
     public int NetworkScenario;
     private static readonly IReadOnlyList<NetworkSummary> networkRows = Enumerable.Range(0, 20000).Select(i => new NetworkSummary(
         i == 0 ? "Opaque-NETWORK-é " : i == 1 ? "opaque-NETWORK-é " : $"network-full-opaque-{i:D5}",
-        $"network-{i:D5}", i % 3 == 0 ? null : "bridge", i % 4 == 0 ? "" : "local", i % 5 == 0 ? null : i % 2 == 0,
+        i == 2 ? "bridge" : i == 3 ? "host" : i == 4 ? "none" : $"network-{i:D5}", i % 3 == 0 ? null : "bridge", i % 4 == 0 ? "" : "local", i % 5 == 0 ? null : i % 2 == 0,
         i % 3 == 0 ? null : new Dictionary<string, string> { ["fixture"] = "label-" + i, ["empty"] = "" })).ToArray();
     private NetworkBrowsingSnapshot networkSnapshot = new(1, ResourceReadState.Ready, networkRows);
     public NetworkBrowsingSnapshot NetworkSnapshot => Volatile.Read(ref networkSnapshot);
@@ -31,6 +31,7 @@ internal sealed partial class FixtureBrowser : INetworkBrowser
                     InspectionState = gone ? ResourceReadState.NotRequested : networkSnapshot.InspectionState };
             }
         }
+        if (NetworkScenario == 3) InvalidateNetworkPreparation(NetworkPreparationFailureKind.ConnectionChanged);
         NetworksChanged?.Invoke(this, EventArgs.Empty);
     }
     public void SelectNetwork(string? id)
@@ -79,7 +80,7 @@ internal sealed partial class FixtureBrowser : INetworkBrowser
         NetworksChanged?.Invoke(this, EventArgs.Empty);
     }
     public void InvalidateSelectedNetwork()
-    { if (NetworkSnapshot.SelectedNetworkId is { } id && NetworkSnapshot.InspectionState != ResourceReadState.NotRequested) RequestNetwork(id); }
+    { InvalidateNetworkPreparation(NetworkPreparationFailureKind.ObservedChange); if (NetworkSnapshot.SelectedNetworkId is { } id && NetworkSnapshot.InspectionState != ResourceReadState.NotRequested) RequestNetwork(id); }
     private void DisconnectNetworks()
     { NetworkScenario = 3; RefreshNetworks(); }
     private void CancelNetwork()

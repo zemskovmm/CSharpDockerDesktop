@@ -276,6 +276,17 @@ var tests = new (string, Func<Task>)[]
     ("Volumes presentation CompleteDisappearanceAndNotFound", VolumePresentationChecks.CompleteDisappearanceAndNotFound),
     ("Volumes presentation NotificationsNavigationAndRepeatedAttachment", VolumePresentationChecks.NotificationsNavigationAndRepeatedAttachment),
     ("Volumes presentation LargeCollectionsAndSupersededSearch", VolumePresentationChecks.LargeCollectionsAndSupersededSearch),
+    ("Network deletion presentation BuiltInsAndClassifiedBlockedEvidence", NetworkOperationPresentationChecks.BuiltInsAndClassifiedBlockedEvidence),
+    ("Network deletion presentation LoadingCancelFailureAndExactCapture", NetworkOperationPresentationChecks.LoadingCancelFailureAndExactCapture),
+    ("Network deletion presentation AttachmentsUnavailableAndBoundedFullCopy", NetworkOperationPresentationChecks.AttachmentsUnavailableAndBoundedFullCopy),
+    ("Network deletion presentation ExactSingleUseAndSessionOwnership", NetworkOperationPresentationChecks.ExactSingleUseAndSessionOwnership),
+    ("Network deletion presentation RevisionsReplacementAndLiveInvalidation", NetworkOperationPresentationChecks.RevisionsReplacementAndLiveInvalidation),
+    ("Network deletion presentation BlockedRevisionNeverRenewsConfirmation", NetworkOperationPresentationChecks.BlockedRevisionNeverRenewsConfirmation),
+    ("Network deletion presentation SelectionNavigationDisconnectAndDelayedCallbacks", NetworkOperationPresentationChecks.SelectionNavigationDisconnectAndDelayedCallbacks),
+    ("Network deletion presentation ConflictRetainedEvidenceAndFreshExplicitAttempt", NetworkOperationPresentationChecks.ConflictRetainedEvidenceAndFreshExplicitAttempt),
+    ("Network deletion presentation OffThreadCoalescingPrivateRevealAndCopyFences", NetworkOperationPresentationChecks.OffThreadCoalescingPrivateRevealAndCopyFences),
+    ("Network deletion presentation CommandOutcomeDistinctions", NetworkOperationPresentationChecks.CommandOutcomeDistinctions),
+    ("Network deletion presentation ExternalPendingAndRejectedAdmission", NetworkOperationPresentationChecks.ExternalPendingAndRejectedAdmission),
     ("Networks presentation MetadataAndSearch", NetworkPresentationChecks.MetadataAndSearch),
     ("Networks presentation StatesAndCoalescing", NetworkPresentationChecks.StatesAndCoalescing),
     ("Networks presentation IdentityOverviewAndAdmission", NetworkPresentationChecks.IdentityOverviewAndAdmission),
@@ -364,6 +375,8 @@ var tests = new (string, Func<Task>)[]
 };
 if (args.FirstOrDefault() == "--stream-termination")
     tests = tests.Where(test => test.Item1.StartsWith("Stream termination ", StringComparison.Ordinal)).ToArray();
+if (args.FirstOrDefault() == "--network-deletion-presentation")
+    tests = tests.Where(test => test.Item1.StartsWith("Network deletion presentation", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--network-preparation")
     tests = tests.Where(test => test.Item1.StartsWith("Network preparation ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--network-operations")

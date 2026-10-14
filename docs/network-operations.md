@@ -1,6 +1,6 @@
 # Application network deletion coordination
 
-`DesktopSession` implements `INetworkOperations`, borrowing the retained negotiated connection's `INetworkCommands` and `INetworkReader`. The caller owns deliberate confirmation and displaying inspected dependencies. This Application contract does not add a deletion dialog or connect the Networks page to deletion; presentation integration remains pending.
+`DesktopSession` implements `INetworkOperations`, borrowing the retained negotiated connection's `INetworkCommands` and `INetworkReader`. The caller owns deliberate confirmation and displaying inspected dependencies. The Networks [deletion presentation](network-deletion-presentation.md) supplies the explicit preparation/confirmation flow through these contracts.
 
 ## Admission and ownership
 
@@ -12,7 +12,7 @@ Only ordinary deletion is dispatched, once, with the captured complete ID. IDs a
 
 ## Retained outcomes
 
-`NetworkOperation` is an immutable private snapshot. `NetworkOperationChanged` may originate off-thread; a future presentation observer must read the latest snapshot and marshal it for display. Observer exceptions are isolated without logging. Collections and nested metadata are copied into read-only projections. Raw Inspect, labels, attachment identities, names and original daemon messages/bodies remain private in-memory evidence, with no automatic logging or reporting path.
+`NetworkOperation` is an immutable private snapshot. `NetworkOperationChanged` may originate off-thread; presentation observers must read the latest snapshot and marshal it for display. Observer exceptions are isolated without logging. Collections and nested metadata are copied into read-only projections. Raw Inspect, labels, attachment identities, names and original daemon messages/bodies remain private in-memory evidence, with no automatic logging or reporting path.
 
 | Evidence | Meaning |
 | --- | --- |
@@ -48,6 +48,6 @@ The existing network preparation groups separately cover replacement, close, inv
 
 ## Outstanding real Windows/Docker evidence
 
-These cases simulate daemon responses and do not delete a real network. macOS harness/build results do not establish Windows non-elevated named-pipe permissions, Docker Desktop/WSL2 attachment/deletion races, real Engine restart behavior, alternative Engine compatibility, Windows packaging/delivery or workstation performance. Those require recorded real Windows/Docker runs. Confirmation/dependency display and actual network deletion presentation also remain a subsequent task.
+These cases simulate daemon responses and do not delete a real network. macOS harness/build results do not establish Windows non-elevated named-pipe permissions, Docker Desktop/WSL2 attachment/deletion races, real Engine restart behavior, alternative Engine compatibility, Windows packaging/delivery or workstation performance. Those require recorded real Windows/Docker runs. Synthetic confirmation, attachment display and actual Uno interaction evidence are recorded separately in [network deletion presentation](network-deletion-presentation.md).
 
 On 2026-10-15, the complete harness passed **325/325 groups on macOS 26.7.1** using the established isolated .NET SDK environment. All **13/13 focused operation groups** also passed after strengthening the non-cooperative preparation/teardown case. The Release solution build passed with **zero warnings and zero errors**. The first complete run passed 324/325: the existing `VolumeActorIdentityAndConservativeDetail` case timed out awaiting its controlled event batching delay at `VolumeReconciliationChecks.cs:99`; the final complete run passed that case and every other group. No volume production or test code was changed. These recorded runs supplement the controlled race assertions; a rerun alone is not evidence of race correctness. Local logs: `/private/tmp/network-operations-complete.log`, `/private/tmp/network-operations-final.log`, `/private/tmp/network-operations-focused-final.log` and `/private/tmp/network-operations-release-final.log`.
