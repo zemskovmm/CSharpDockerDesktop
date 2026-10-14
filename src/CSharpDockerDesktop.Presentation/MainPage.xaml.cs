@@ -8,7 +8,7 @@ namespace CSharpDockerDesktop.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly DesktopSession session;
-    private EngineConnectionFailure? displayedFailure;
+    private string? displayedDaemonMessage;
     private bool attached;
 
     public MainPage(DesktopSession session)
@@ -32,7 +32,7 @@ public sealed partial class MainPage : Page
     private void OnRetry(object sender, RoutedEventArgs args) => session.Retry();
     private void OnShowDaemonMessage(object sender, RoutedEventArgs args)
     {
-        DaemonMessage.Text = session.Snapshot.Failure?.DaemonMessage ?? "No daemon message available.";
+        DaemonMessage.Text = session.Snapshot.Failure?.DaemonMessage ?? session.Snapshot.EventFailure?.DaemonMessage ?? "No daemon message available.";
         DaemonMessage.Visibility = Visibility.Visible;
     }
 
@@ -52,15 +52,20 @@ public sealed partial class MainPage : Page
             : s.State is EngineConnectionState.Unavailable or EngineConnectionState.Lost ? " Use Retry connection when ready." : "";
         ConnectionDiagnostic.Text = s.Failure is { } failure
             ? $"{FailureLabel(failure.Kind)}: {failure.Description}{recovery}"
+            : s.EventFailure is { } eventFailure
+                ? $"Automatic container updates interrupted ({eventFailure.Kind}): {eventFailure.Description} "
+                    + (s.EventRecoveryPending ? "Observation recovery is scheduled. " : "Use Retry connection to restore observation. ")
+                    + "Refresh containers and navigation remain available."
             : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
             : s.State == EngineConnectionState.Connected ? "Engine connected. Containers supports read-only browsing and Overview; Images, Volumes and Networks are pending." : "";
-        if (!Equals(displayedFailure, s.Failure))
+        var daemonMessage = s.Failure?.DaemonMessage ?? s.EventFailure?.DaemonMessage;
+        if (!Equals(displayedDaemonMessage, daemonMessage))
         {
             DaemonMessage.Visibility = Visibility.Collapsed;
             DaemonMessage.Text = "";
-            displayedFailure = s.Failure;
+            displayedDaemonMessage = daemonMessage;
         }
-        ShowDaemonMessage.Visibility = s.Failure?.DaemonMessage is null ? Visibility.Collapsed : Visibility.Visible;
+        ShowDaemonMessage.Visibility = daemonMessage is null ? Visibility.Collapsed : Visibility.Visible;
         ConnectionDetails.Text = FormatDetails(s);
         if (ResourceFrame.Content is ResourcePage page) page.UpdateConnection(s);
     }

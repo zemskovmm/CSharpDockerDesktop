@@ -30,6 +30,15 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Reconciliation initial snapshot boundaries and authoritative properties", ReconciliationChecks.SnapshotBoundariesAndAuthority),
+    ("Reconciliation sustained duplicate bursts and detail fairness", ReconciliationChecks.BurstProgressAndDetails),
+    ("Reconciliation external deletion and close-detail races", ReconciliationChecks.DeletionAndCloseRaces),
+    ("Reconciliation precise reconnect overlap and full resync", ReconciliationChecks.ReconnectOverlapAndFullResync),
+    ("Reconciliation classified stream diagnostics and bounded recovery", ReconciliationChecks.FailureDiagnosticsAndBoundedRecovery),
+    ("Reconciliation Engine identity and opening transport loss", ReconciliationChecks.EngineIdentityAndOpeningTransportFailure),
+    ("Reconciliation late opening/read completion and joined shutdown", ReconciliationChecks.LateOpeningReadsAndShutdown),
+    ("Reconciliation event transport loss joins outstanding reads", ReconciliationChecks.EventLossJoinsOutstandingReads),
+    ("Presentation automatic state updates and stale Inspect invalidation", ReconciliationChecks.PresentationAutomaticInvalidation),
     ("Event API 1.40–1.56 schemas, fragmented/coalesced reads", EventChecks.SchemasAndFragmentation),
     ("Event precision, duplicates, optional fields and replay cursor", EventChecks.TimestampsDuplicatesAndCursor),
     ("Event bounded slow-consumer backpressure and subscription limit", EventChecks.BoundedSlowConsumer),

@@ -4,7 +4,8 @@ namespace CSharpDockerDesktop.Application;
 
 public sealed record ConnectionSnapshot(EngineConnectionState State, EngineEndpoint Endpoint,
     EngineMetadata? Metadata = null, EngineConnectionFailure? Failure = null, int RecoveryAttempt = 0,
-    bool AutomaticRecoveryPending = false);
+    bool AutomaticRecoveryPending = false, EngineEventFailure? EventFailure = null,
+    bool EventRecoveryPending = false);
 
 /// <summary>Bounded implementation defaults; tune independently of product requirements.</summary>
 public sealed record ConnectionRecoveryOptions
@@ -36,6 +37,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private readonly IEngineConnectionClient client;
     private readonly ConnectionRecoveryOptions options;
     private readonly IConnectionDelay delay;
+    private readonly ContainerReconciliationOptions reconciliation;
     private CancellationTokenSource? workflowCancellation;
     private Task workflow = Task.CompletedTask;
     private long generation;
@@ -43,12 +45,15 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private ConnectionSnapshot snapshot;
 
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
-        IConnectionDelay? delay = null, EngineEndpoint? endpoint = null)
+        IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
+        ContainerReconciliationOptions? reconciliation = null)
     {
         this.client = client;
         this.options = options ?? new();
         this.options.Validate();
         this.delay = delay ?? new SystemConnectionDelay();
+        this.reconciliation = reconciliation ?? new();
+        this.reconciliation.Validate();
         snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);
     }
 

@@ -82,7 +82,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         lock (gate)
         {
             if (disposed || generation != currentGeneration || token.IsCancellationRequested) return null;
-            reads = new(connection as IContainerReader, token);
+            reads = new(connection, token);
             containerReads = reads;
             containerSnapshot = new(++containerGeneration,
                 reads.Reader is null ? ResourceReadState.Unavailable : ResourceReadState.Loading,
@@ -90,10 +90,9 @@ public sealed partial class DesktopSession : IContainerBrowser
                     ? ResourceReadState.Unavailable : ResourceReadState.NotRequested);
             if (reads.Reader is not null)
             {
-                reads.Refresh = true;
-                reads.Signal.Writer.TryWrite(0);
                 reads.Workflow = Task.Run(() => ReadContainersAsync(reads));
             }
+            reads.EventsWorkflow = Task.Run(() => ObserveContainerEventsAsync(reads));
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
         return reads;
@@ -121,7 +120,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         }
         if (changed) ContainersChanged?.Invoke(this, EventArgs.Empty);
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await reads.Workflow.ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -138,12 +137,30 @@ public sealed partial class DesktopSession : IContainerBrowser
                     long revision;
                     string? identity;
                     CancellationTokenSource request;
+                    bool batch;
                     lock (gate)
                     {
                         if (!ReferenceEquals(containerReads, reads) || reads.Lifetime.IsCancellationRequested) return;
-                        if (!reads.Refresh && !reads.Inspect) break;
-                        list = reads.Refresh;
-                        if (list) reads.Refresh = false; else reads.Inspect = false;
+                        batch = !reads.Refresh && reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList);
+                    }
+                    if (batch) await delay.DelayAsync(reconciliation.BatchInterval, reads.Lifetime.Token).ConfigureAwait(false);
+                    lock (gate)
+                    {
+                        if (!ReferenceEquals(containerReads, reads) || reads.Lifetime.IsCancellationRequested) return;
+                        if (reads.InitialObservationPending) break;
+                        if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
+                        // Give requested details a turn even under a continuous list-invalidating stream.
+                        list = reads.Refresh || (reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList));
+                        if (list)
+                        {
+                            reads.Refresh = false;
+                            // Observations buffered before the initial snapshot starts still need
+                            // reconciliation after it. Only subsequent snapshots consume this flag.
+                            if (!reads.InitialSnapshotPending) reads.EventRefresh = false;
+                            reads.InitialSnapshotPending = false;
+                        }
+                        else reads.Inspect = false;
+                        reads.LastReadWasList = list;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         identity = containerSnapshot.SelectedContainerId;
                         reads.InspectActive = !list;
@@ -228,10 +245,15 @@ public sealed partial class DesktopSession : IContainerBrowser
                 containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Failed,
                     Inspection = null, InspectionFailure = failure };
                 if (failure.Kind == EngineResourceFailureKind.NotFound)
+                {
+                    reads.Inspect = false;
                     containerSnapshot = containerSnapshot with { SelectedContainerId = null,
                         Containers = Array.AsReadOnly(containerSnapshot.Containers.Where(row => row.Id != identity).ToArray()) };
+                }
             }
-            else containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Ready,
+            // An observation during this read already invalidated its content. Finish the I/O but
+            // leave the pending authoritative reread to publish; never resurrect stale Inspect.
+            else if (!reads.Inspect) containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Ready,
                 Inspection = result.Value, InspectionFailure = null };
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
@@ -244,16 +266,20 @@ public sealed partial class DesktopSession : IContainerBrowser
             failure.Description, failure.HttpStatusCode, failure.DaemonMessage));
     }
 
-    private sealed class ContainerReads(IContainerReader? reader, CancellationToken token)
+    private sealed class ContainerReads(IEngineConnection connection, CancellationToken token)
     {
-        public IContainerReader? Reader { get; } = reader;
+        public IEngineConnection Connection { get; } = connection;
+        public IContainerReader? Reader { get; } = connection as IContainerReader;
         public CancellationTokenSource Lifetime { get; } = CancellationTokenSource.CreateLinkedTokenSource(token);
         public Channel<byte> Signal { get; } = Channel.CreateBounded<byte>(new BoundedChannelOptions(1)
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public TaskCompletionSource<EngineConnectionFailure> TransportLoss { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task Workflow = Task.CompletedTask;
+        public Task EventsWorkflow = Task.CompletedTask;
         public CancellationTokenSource? Active;
-        public bool Refresh, Inspect, InspectActive;
+        public bool Refresh, EventRefresh, Inspect, InspectActive, LastReadWasList;
+        public bool InitialSnapshotPending = true;
+        public bool InitialObservationPending = true;
         public long ListRevision, DetailRevision;
     }
 }
