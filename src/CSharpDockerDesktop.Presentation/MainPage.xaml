@@ -9,19 +9,33 @@
     </Grid.RowDefinitions>
     <Border Padding="24,16" BorderThickness="0,0,0,1"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
-      <Grid ColumnSpacing="24">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="CSharpDockerDesktop" Style="{ThemeResource TitleTextBlockStyle}"
-                   TextWrapping="Wrap" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-          <TextBlock Text="Docker Engine" Style="{ThemeResource CaptionTextBlockStyle}" />
-          <TextBlock x:Name="EngineStatus" AutomationProperties.AutomationId="EngineStatus"
-                     FontWeight="SemiBold" />
-        </StackPanel>
-      </Grid>
+      <StackPanel Spacing="8">
+        <Grid ColumnSpacing="24">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="CSharpDockerDesktop" Style="{ThemeResource TitleTextBlockStyle}"
+                     TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry connection" Click="OnRetry"
+                  AutomationProperties.AutomationId="RetryConnection"
+                  AutomationProperties.Name="Retry Docker Engine connection" />
+        </Grid>
+        <TextBlock x:Name="EngineStatus" AutomationProperties.AutomationId="EngineStatus"
+                   FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock x:Name="ConnectionDiagnostic" TextWrapping="Wrap" />
+        <Expander Header="Connection details" HorizontalAlignment="Stretch">
+          <ScrollViewer MaxHeight="240" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="8">
+              <TextBlock x:Name="ConnectionDetails" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+              <Button x:Name="ShowDaemonMessage" Content="Show daemon message" Click="OnShowDaemonMessage"
+                      Visibility="Collapsed" />
+              <TextBlock x:Name="DaemonMessage" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                         Visibility="Collapsed" />
+            </StackPanel>
+          </ScrollViewer>
+        </Expander>
+      </StackPanel>
     </Border>
     <NavigationView x:Name="ResourceNavigation" Grid.Row="1"
                     PaneDisplayMode="Left" IsPaneOpen="True" OpenPaneLength="220"

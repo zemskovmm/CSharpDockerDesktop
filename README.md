@@ -1,6 +1,6 @@
 # CSharpDockerDesktop
 
-A C#/.NET 10 Uno Skia Desktop client for an existing local Docker Engine. Windows x64 is the delivery baseline. This initial foundation opens without Docker or Administrator privileges and provides keyboard-accessible Containers, Images, Volumes, and Networks pages. The desktop shell reports **Not connected**; an independently tested named-pipe connection client is now available below the Application boundary, but desktop coordination and resource operations are not integrated yet.
+A C#/.NET 10 Uno Skia Desktop client for an existing local Docker Engine. Windows x64 is the delivery baseline. The desktop opens without Docker or Administrator privileges and provides keyboard-accessible Containers, Images, Volumes, and Networks pages. At launch it asynchronously connects to the default local Windows pipe, displays actual Engine metadata, monitors readiness and recovers after unavailability or transport loss. Resource loading and operations are still pending implementation.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ dotnet build CSharpDockerDesktop.slnx --no-restore
 dotnet run --project src/CSharpDockerDesktop.Presentation -f net10.0-desktop --no-build
 ```
 
-Use Tab to reach navigation items, arrow keys to move among them, and Enter/Space to select a page. The selected page title and empty-state explanation change; Docker Engine status remains visible. Test all four pages with Docker absent/stopped and without elevation.
+Use Tab to reach navigation items, arrow keys to move among them, and Enter/Space to select a page. The selected page title and empty-state explanation change; Docker Engine status remains visible. Tab also reaches Retry connection and the expandable connection details. Diagnostics distinguish unavailable pipes, permissions, compatibility, invalid responses and daemon/transport errors. A daemon message is shown only when you choose Show daemon message. Test all four pages with Docker absent/stopped and without elevation; start/stop/restart the Engine while the GUI stays open.
 
 The host explicitly uses Uno's Win32 shell on Windows. Its AppKit shell is enabled for local UI development checks on a Mac with a .NET 10 SDK; this does not establish a macOS delivery contract.
 
@@ -35,11 +35,11 @@ Launch `artifacts/win-x64/CSharpDockerDesktop.Presentation.exe`. Distribute the 
 ## Responsibilities
 
 - **Presentation**: Uno host, navigation, views, and display text; calls Application services.
-- **Application**: connection contract and session/operation coordination; the current desktop session still exposes the disconnected state without Engine I/O.
+- **Application**: connection contracts and observable session coordination, cancellation, recovery and lifetime ownership.
 - **Domain**: endpoint identity, actual Engine metadata, negotiated API ranges, capabilities and distinguishable failures, independent of the UI framework.
-- **Infrastructure.Docker**: thin asynchronous Engine handshake using HTTP over the local Windows named pipe; no Uno dependency.
+- **Infrastructure.Docker**: thin asynchronous Engine handshake and retained-transport liveness using HTTP over the local Windows named pipe; no Uno dependency.
 
-Application depends on Domain; Docker Infrastructure depends on Application/Domain; Presentation depends on Application. Future composition can register Docker implementations behind Application services. The shell currently has no Docker operations, resource snapshots, background polling, or streams.
+Application depends on Domain; Docker Infrastructure depends on Application/Domain; Presentation calls Application; its App composition root constructs the Infrastructure client. Healthy sessions check readiness on the retained transport rather than creating new handshakes. Recoverable failures use bounded retry bursts and a cooldown, continuing until recovery or shutdown. Manual retry cancels superseded work. The shell currently has no resource operations, snapshots, events, or streams.
 
 ## Engine connection client
 

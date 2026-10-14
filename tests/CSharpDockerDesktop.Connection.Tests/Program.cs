@@ -30,6 +30,15 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Coordinator initial failure and recovery", CoordinatorChecks.InitialRecovery),
+    ("Coordinator healthy retention and fresh negotiation after loss", CoordinatorChecks.HealthyAndLost),
+    ("Coordinator preserved failure distinctions and bounded attempts", CoordinatorChecks.FailuresAndBounds),
+    ("Coordinator retries reject late successes without overlap", CoordinatorChecks.RetryRace),
+    ("Coordinator cancellation during liveness and shutdown cleanup", CoordinatorChecks.Shutdown),
+    ("Coordinator deadlines and shutdown during recovery", CoordinatorChecks.DeadlinesAndRecoveryShutdown),
+    ("Coordinator shutdown rejects a late successful handshake", CoordinatorChecks.ShutdownLateSuccess),
+    ("Transport reopening invalidates metadata", TransportReopening),
+    ("Retained transport liveness, failure, cancellation and deadline", Liveness),
     ("API 1.40 schema metadata and actual request paths", SchemaAndPaths),
     ("Older and newer overlapping daemon ranges", CompatibleRanges),
     ("Current API 1.56 schema subset", CurrentSchema),
@@ -86,6 +95,61 @@ static async Task SchemaAndPaths()
     Check(transport.Handler.Contents.All(c => c.Disposed), "Every response must be released");
     await c.DisposeAsync(); await c.DisposeAsync();
     Check(transport.Handler.DisposeCount == 1, "Session disposal must be idempotent");
+}
+static async Task TransportReopening()
+{
+    var transport = new ContinuityTestTransport();
+    var attempt = await new DockerEngineConnectionClient(transport).ConnectAsync();
+    Check(attempt.IsConnected);
+    await using var connection = attempt.Connection!;
+    Check(await connection.CheckLivenessAsync() is null);
+    transport.Counter.Opened();
+    Check((await connection.CheckLivenessAsync())?.Kind == EngineConnectionFailureKind.TransientTransportFailure);
+    // Simulate the HTTP pool opening a fresh pipe during ping rather than before it.
+    var reopening = new ContinuityTestTransport(reopenAt: 3);
+    var second = await new DockerEngineConnectionClient(reopening).ConnectAsync();
+    await using var secondConnection = second.Connection!;
+    Check((await secondConnection.CheckLivenessAsync())?.Kind == EngineConnectionFailureKind.TransientTransportFailure);
+    var interrupted = new ContinuityTestTransport(reopenAt: 2);
+    var failed = await new DockerEngineConnectionClient(interrupted).ConnectAsync();
+    Check(failed.Failure?.Kind == EngineConnectionFailureKind.TransientTransportFailure && interrupted.Handler.Disposed);
+}
+static async Task Liveness()
+{
+    var transport = new FakeTransport((_, index, token) =>
+    {
+        if (index == 5) return Task.FromException<HttpResponseMessage>(new IOException("pipe lost"));
+        return Task.FromResult(Response(index switch { 0 or 3 => "OK", 1 => Version(), 2 => Info,
+            4 => "not OK", _ => "OK" }));
+    });
+    var result = await new DockerEngineConnectionClient(transport).ConnectAsync();
+    await using var c = result.Connection!;
+    Check(await c.CheckLivenessAsync() is null);
+    Check((await c.CheckLivenessAsync())?.Kind == EngineConnectionFailureKind.MalformedResponse);
+    Check((await c.CheckLivenessAsync())?.Kind == EngineConnectionFailureKind.TransientTransportFailure);
+    Check(transport.Handler.Paths.Skip(3).All(p => p == "/_ping"), "Health checks must not renegotiate");
+    Check(!transport.Handler.Disposed && transport.Handler.Contents.All(c => c.Disposed));
+    using var cancel = new CancellationTokenSource();
+    var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var blocked = new FakeTransport(async (_, index, token) =>
+    {
+        if (index >= 3) { started.TrySetResult(); await Task.Delay(Timeout.Infinite, token); }
+        return Response(index switch { 0 => "OK", 1 => Version(), _ => Info });
+    });
+    var ready = await new DockerEngineConnectionClient(blocked, new() { RequestTimeout = TimeSpan.FromMilliseconds(80) }).ConnectAsync();
+    var pending = ready.Connection!.CheckLivenessAsync(cancel.Token);
+    await started.Task.WaitAsync(TimeSpan.FromSeconds(2)); cancel.Cancel();
+    await ExpectCancellation(async () => await pending);
+    Check((await ready.Connection.CheckLivenessAsync())?.Kind == EngineConnectionFailureKind.TransientTransportFailure);
+    await ready.Connection.DisposeAsync();
+    Check(blocked.Handler.Disposed);
+    var errorTransport = new FakeTransport((_, index, _) => Task.FromResult(index < 3
+        ? Response(index switch { 0 => "OK", 1 => Version(), _ => Info })
+        : Response("""{"message":"deliberate private daemon message"}""", HttpStatusCode.ServiceUnavailable)));
+    var errorReady = await new DockerEngineConnectionClient(errorTransport).ConnectAsync();
+    await using var errorConnection = errorReady.Connection!;
+    var failure = await errorConnection.CheckLivenessAsync();
+    Check(failure?.Kind == EngineConnectionFailureKind.DaemonHttpError && failure.DaemonMessage == "deliberate private daemon message");
 }
 static async Task CompatibleRanges()
 {
@@ -278,7 +342,7 @@ static async Task ControlledPipe()
     var serving = Task.Run(async () =>
     {
         await server.WaitForConnectionAsync(deadline.Token);
-        for (int stage = 0; stage < 3; stage++)
+        for (int stage = 0; stage < 4; stage++)
         {
             var headers = new StringBuilder();
             var one = new byte[1];
@@ -288,7 +352,7 @@ static async Task ControlledPipe()
                 headers.Append((char)one[0]);
             }
             paths.Add(headers.ToString().Split(' ')[1]);
-            var bytes = Encoding.UTF8.GetBytes(stage switch { 0 => "OK", 1 => Version("1.12", "1.80"), _ => Info });
+            var bytes = Encoding.UTF8.GetBytes(stage switch { 0 or 3 => "OK", 1 => Version("1.12", "1.80"), _ => Info });
             var head = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Length: {bytes.Length}\r\nContent-Type: {(stage == 0 ? "text/plain" : "application/json")}\r\n\r\n");
             await server.WriteAsync(head, deadline.Token); await server.WriteAsync(bytes, deadline.Token); await server.FlushAsync(deadline.Token);
         }
@@ -299,9 +363,10 @@ static async Task ControlledPipe()
     var result = await client.ConnectAsync(new("npipe://./pipe/" + name, EngineTransport.WindowsNamedPipe), deadline.Token);
     Check(result.IsConnected, result.Failure?.Description ?? "Pipe connection failed");
     Check(result.Connection!.Metadata.Api.Negotiated == new EngineApiVersion(1, 56));
+    Check(await result.Connection.CheckLivenessAsync(deadline.Token) is null);
     await result.Connection.DisposeAsync();
     await serving;
-    Check(paths.SequenceEqual(new[] { "/_ping", "/version", "/v1.56/info" }));
+    Check(paths.SequenceEqual(new[] { "/_ping", "/version", "/v1.56/info", "/_ping" }));
 }
 static async Task FailedAndCanceledPipe()
 {
@@ -407,4 +472,25 @@ sealed class UnknownLengthContent(string body) : HttpContent
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(bytes).AsTask();
     protected override Task<Stream> CreateContentReadStreamAsync() => Task.FromResult<Stream>(new MemoryStream(bytes));
     protected override void Dispose(bool disposing) { if (disposing) Disposed = true; base.Dispose(disposing); }
+}
+
+sealed class ContinuityTestTransport(int reopenAt = -1) : IDockerTransportFactory
+{
+    public PipeConnectionCounter Counter { get; } = new();
+    public TrackingHandler Handler { get; private set; } = null!;
+    public HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options)
+    {
+        Counter.Opened();
+        Handler = new TrackingHandler((_, index, _) =>
+        {
+            if (index == reopenAt) Counter.Opened();
+            string body = index switch
+            {
+                1 => """{"Version":"fixture","ApiVersion":"1.56","MinAPIVersion":"1.40"}""",
+                2 => "{}", _ => "OK"
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new TrackedContent(body) });
+        });
+        return new ContinuityHandler(Handler, Counter);
+    }
 }

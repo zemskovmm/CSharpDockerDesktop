@@ -8,6 +8,24 @@ internal interface IDockerTransportFactory
     HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options);
 }
 
+internal interface ITransportContinuity
+{
+    long ConnectionGeneration { get; }
+}
+
+internal sealed class PipeConnectionCounter
+{
+    private long generation;
+    public long Generation => Interlocked.Read(ref generation);
+    public void Opened() => Interlocked.Increment(ref generation);
+}
+
+internal sealed class ContinuityHandler(HttpMessageHandler inner, PipeConnectionCounter counter)
+    : DelegatingHandler(inner), ITransportContinuity
+{
+    public long ConnectionGeneration => counter.Generation;
+}
+
 internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerTransportFactory
 {
     public HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options)
@@ -16,7 +34,8 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
             throw new ConnectionProtocolException(new(EngineConnectionFailureKind.UnsupportedEndpoint,
                 "The local Docker named-pipe transport requires Windows. WSL Unix sockets cannot be used directly from this client."));
         var name = GetLocalPipeName(endpoint);
-        return new SocketsHttpHandler
+        var counter = new PipeConnectionCounter();
+        var handler = new SocketsHttpHandler
         {
             UseProxy = false,
             AllowAutoRedirect = false,
@@ -27,6 +46,7 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
                 try
                 {
                     await pipe.ConnectAsync((int)Math.Ceiling(options.PipeConnectTimeout.TotalMilliseconds), cancellationToken).ConfigureAwait(false);
+                    counter.Opened();
                     return pipe; // SocketsHttpHandler now owns the stream.
                 }
                 catch (TimeoutException)
@@ -42,6 +62,7 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
                 }
             }
         };
+        return new ContinuityHandler(handler, counter);
     }
 
     internal static string GetLocalPipeName(EngineEndpoint endpoint)

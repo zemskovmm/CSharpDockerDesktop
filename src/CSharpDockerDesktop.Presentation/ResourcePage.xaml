@@ -16,11 +16,11 @@
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
         <StackPanel Spacing="12" MaxWidth="560" HorizontalAlignment="Center"
                     VerticalAlignment="Center">
-          <TextBlock Text="Connect to load resources" Style="{ThemeResource SubtitleTextBlockStyle}"
+          <TextBlock x:Name="EmptyStateTitle" Text="Resource loading pending" Style="{ThemeResource SubtitleTextBlockStyle}"
                      TextWrapping="Wrap" />
           <TextBlock x:Name="EmptyStateMessage" TextWrapping="Wrap"
                      AutomationProperties.AutomationId="ResourceEmptyState" />
-          <TextBlock Text="Engine connection is not available in this foundation build."
+          <TextBlock Text="Resource snapshots, events, and operations are pending implementation. No resource data has been loaded."
                      Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

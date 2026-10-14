@@ -1,6 +1,6 @@
 # Engine connection boundary
 
-Application exposes `IEngineConnectionClient`, `IEngineConnection` and `EngineConnectionAttempt`. Domain owns endpoint identity, metadata, capability observations, API compatibility and failure kinds. Docker Infrastructure implements HTTP, JSON decoding and pipe transport. Presentation contains no Docker protocol code. The current desktop session remains disconnected until a later coordinator composes this client.
+Application exposes `IEngineConnectionClient`, `IEngineConnection` and `EngineConnectionAttempt`. Domain owns endpoint identity, metadata, capability observations, API compatibility and failure kinds. Docker Infrastructure implements HTTP, JSON decoding and pipe transport. Presentation contains no Docker protocol code. The desktop App composition root supplies this client to Application-owned DesktopSession. Presentation observes immutable connection snapshots and queues updates to the UI thread; connection work never waits on the UI dispatcher.
 
 ```csharp
 using CSharpDockerDesktop.Application;
@@ -30,7 +30,25 @@ A null endpoint selects `EngineEndpoint.LocalWindows`, address `npipe://./pipe/d
 
 `SocketsHttpHandler.ConnectCallback` opens a local asynchronous `NamedPipeClientStream`; `http://docker/` is only the logical HTTP authority and cannot cause a network connection. Proxies and redirects are disabled. A successful connection retains its handler and pipe for later session reuse. `DisposeAsync` closes it idempotently. Failed/canceled attempts dispose their `HttpClient` and handler; failed/canceled pipe connects dispose the attempted stream. Every request and response body is disposed. A client instance holds no active connections of its own, so the caller owns every returned successful session independently.
 
-Each short request has a configurable five-second deadline, each pipe connect a two-second availability deadline, and every response a one-MiB byte limit. These are bounded initial implementation defaults, not performance promises or future streaming lifetimes. Cancellation covers send, connect and response reading. There are no automatic retries, reconnect coordination, event streams or resource operations.
+Each short request has a configurable five-second deadline, each pipe connect a two-second availability deadline, and every response a one-MiB byte limit. These are bounded initial implementation defaults, not performance promises or future streaming lifetimes. Cancellation covers send, connect and response reading. The Application coordinator supplies recovery and lifetime management described below. There are no event streams or resource operations.
+
+## Desktop connection workflow
+
+At launch DesktopSession.Start() opens the default local Windows pipe asynchronously. The selection is labeled **Default local Windows pipe (no Docker CLI context selected)**. It is not an invented Docker CLI context. Connecting, Connected, Unavailable, Connection lost and Unsupported remain visible above resource navigation. Details show the actual endpoint, transport, version, daemon API range, negotiated API, operating systems, host/runtime architecture and nullable capabilities. Absent values display unknown. Daemon messages remain separate from ordinary diagnostics; the user explicitly expands details and chooses **Show daemon message** to see them. No automatic daemon-response logging is introduced.
+
+A successful session checks GET /_ping on the retained HTTP transport. Healthy checks do not fetch version/info or replace the connection. The pipe transport tracks each successful pipe open: if HTTP pooling transparently reopens a broken pipe, the old metadata is invalidated and the coordinator performs a fresh readiness/version/negotiated-info handshake. Reopening during the handshake also rejects potentially mixed metadata. Liveness is read-only, cancelable, deadline-bound and response-size-bound, using the same classified failure contract as connection setup.
+
+Missing endpoints, transient transport failures and daemon HTTP errors recover automatically while the GUI remains open. Recovery is bounded in bursts: initially six retries at three-second delays, then a thirty-second cooldown before the next burst. Healthy liveness checks initially wait ten seconds. Application operations have a twenty-second deadline in addition to the Infrastructure short-request deadlines. These are configurable implementation defaults in ConnectionRecoveryOptions, not accepted product performance requirements. Tests inject a controlled delay to advance scheduling without sleeping through the production intervals. Access denial, unsupported endpoint/platform, incompatible API and malformed responses preserve their distinct diagnostics and wait for manual retry rather than hammering the Engine. A zero retry budget disables automatic recovery for controlled tests or explicit composition choices.
+
+**Retry connection** is a normal keyboard-accessible button. It cancels the current attempt, health check or recovery wait, then starts one new serialized workflow. Rapid retries supersede queued work; they never overlap active attempts or health checks. Every returned successful connection is owned even when cancellation arrives just before success. Superseded or expired results are disposed and never published. Closing the window cancels pending I/O and waits, detaches UI notifications and disposes the retained connection. Shutdown and disposal are idempotent. Cooperative cancellation is required by the client contract; a client that ignores cancellation is awaited for safe disposal rather than overlapped with another handshake.
+
+Recovery publishes newly negotiated metadata. Resource snapshots, event reconciliation and resource operations remain pending; Connected indicates readiness/metadata only. Resource pages explicitly say loading is pending and update their empty-state explanation with live connectivity. This workflow does not establish IDD-0006 resource reconciliation or complete Engine compatibility.
+
+## Desktop runtime evidence
+
+The connection suite passes **24/24 groups on macOS 26.7.1 with .NET SDK 10.0.402**. Deterministic coordinator checks cover initial failure/recovery, healthy retention, loss/fresh metadata, every failure kind, retry bursts/cooldown, overlapping retry cancellation, late/expired result disposal, and shutdown during connection, liveness and recovery. Liveness checks cover actual retained named-pipe HTTP requests as well as controlled malformed/daemon/transport errors, deadlines and cancellation. Transport-generation fixtures cover reopen before/during ping and during handshake. The solution builds with zero warnings and errors.
+
+The AppKit desktop process was launched for a local interaction check, but native UI inspection reported that the Mac was locked and automatic unlock failed. Startup/navigation/status/retry could not be visually or interactively verified in this session. Windows Win32 desktop startup, named-pipe ACLs, Docker Desktop/WSL2 restart recovery and real daemon compatibility also remain unverified on the Mac development host. Follow the smoke procedure below and record real Windows evidence before claiming those results.
 
 ## Handshake and compatibility evidence
 
@@ -70,7 +88,7 @@ dotnet run --project tests/CSharpDockerDesktop.Connection.Tests
 
 The dependency-free .NET 10 executable exits nonzero on failures and needs neither Uno nor Docker. Coverage includes negotiation/request paths, incompatible ranges, absent/additive fields, HTTP errors at every handshake stage, malformed/oversized bodies with known and unknown lengths, cancellation at every stage and during response reading, deadlines, failure classification and response/handler disposal. A real controlled named-pipe server verifies HTTP request framing, negotiated info path and pipe closure on successful session disposal and failed/canceled attempts. Missing/canceled pipe connection checks use the same production transport primitives.
 
-Recorded evidence: **15/15 test groups passed on macOS 26.7.1 with .NET SDK 10.0.402**. The internal test-only platform override permits .NET's Unix implementation of named pipes for this controlled fixture; production remains Windows-only. This proves the HTTP callback path and ownership on this host. It does not prove Windows named-pipe ACLs or real Docker Desktop compatibility. No real-Windows, WSL2-backed Docker Desktop or alternate-daemon run was available for this change.
+Recorded evidence: **24/24 test groups passed on macOS 26.7.1 with .NET SDK 10.0.402**. The internal test-only platform override permits .NET's Unix implementation of named pipes for this controlled fixture; production remains Windows-only. This proves the HTTP callback path and ownership on this host. It does not prove Windows named-pipe ACLs or real Docker Desktop compatibility. No real-Windows, WSL2-backed Docker Desktop or alternate-daemon run was available for this change.
 
 ## Windows smoke procedure
 
@@ -90,7 +108,7 @@ Use Windows x64, .NET 10 and a normal non-elevated account. Record OS, SDK, Dock
    dotnet run --project tests/CSharpDockerDesktop.Connection.Tests -- --smoke npipe://./pipe/cdd-no-engine-smoke
    ```
 
-   Expect exit 2, `MissingEndpoint`, and bounded completion. Also stop the Engine and rerun the default smoke probe, then start it and run a fresh probe to verify it can establish a new connection. This checks separate connection attempts; desktop restart recovery is not yet implemented.
+   Expect exit 2, `MissingEndpoint`, and bounded completion. Also stop the Engine and rerun the default smoke probe, then start it and run a fresh probe to verify it can establish a new connection. Also launch the desktop before starting the Engine, navigate all four pages during retries, and start it while the GUI stays open. Expect automatic Connected status with fresh metadata. Stop/restart it again and expect Connection lost followed by fresh negotiation without a GUI restart. Keep the Engine down longer than a retry burst to check continuing recovery after cooldown.
 
 3. **Denied access:** Use a dedicated controlled pipe, leaving real Docker permissions unchanged. In a separate **Windows PowerShell 5.1** window under the same normal account, run this .NET Framework fixture (its ACL APIs differ from PowerShell 7):
 

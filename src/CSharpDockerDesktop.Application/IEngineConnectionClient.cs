@@ -13,6 +13,8 @@ public interface IEngineConnectionClient
 public interface IEngineConnection : IAsyncDisposable
 {
     EngineMetadata Metadata { get; }
+    /// <summary>Checks the retained transport; null means ready. Cancellation is normal termination.</summary>
+    Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class EngineConnectionAttempt

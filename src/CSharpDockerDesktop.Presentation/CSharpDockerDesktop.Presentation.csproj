@@ -15,5 +15,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../CSharpDockerDesktop.Application/CSharpDockerDesktop.Application.csproj" />
+    <ProjectReference Include="../CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
   </ItemGroup>
 </Project>

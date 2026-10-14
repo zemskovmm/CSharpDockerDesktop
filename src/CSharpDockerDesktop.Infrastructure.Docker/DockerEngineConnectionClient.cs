@@ -33,13 +33,16 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
         {
             // Validation is shared by all transports, including deterministic test transports.
             NamedPipeTransport.GetLocalPipeName(endpoint);
-            http = new HttpClient(transport.Create(endpoint, options), disposeHandler: true)
+            var handler = transport.Create(endpoint, options);
+            var continuity = handler as ITransportContinuity;
+            http = new HttpClient(handler, disposeHandler: true)
             {
                 BaseAddress = new Uri("http://docker/"), // Logical HTTP authority only; ConnectCallback opens the pipe.
                 Timeout = Timeout.InfiniteTimeSpan
             };
             var ping = await GetAsync(http, "_ping", cancellationToken).ConfigureAwait(false);
             if (Encoding.UTF8.GetString(ping).Trim() != "OK") throw Malformed("The Engine readiness response is not OK.");
+            var pipeGeneration = continuity?.ConnectionGeneration;
             using var version = Parse(await GetAsync(http, "version", cancellationToken).ConfigureAwait(false));
             var v = version.RootElement;
             var engineVersion = RequiredString(v, "Version");
@@ -69,7 +72,9 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
                 OptionalString(i, "OperatingSystem"), OptionalString(i, "OSType"), OptionalString(i, "Architecture"),
                 OptionalString(i, "ServerVersion"), capabilities);
             cancellationToken.ThrowIfCancellationRequested();
-            var connection = new DockerEngineConnection(http, metadata);
+            if (continuity?.ConnectionGeneration != pipeGeneration)
+                throw TransportReopened();
+            var connection = new DockerEngineConnection(http, metadata, this, continuity, pipeGeneration);
             http = null; // Transfer sole ownership to the successful session.
             return EngineConnectionAttempt.Connected(connection);
         }
@@ -82,6 +87,27 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
             return EngineConnectionAttempt.Failed(failure!);
         }
         finally { http?.Dispose(); }
+    }
+
+    internal async Task<EngineConnectionFailure?> CheckLivenessAsync(HttpClient http, ITransportContinuity? continuity, long? generation, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        try
+        {
+            if (continuity?.ConnectionGeneration != generation) throw TransportReopened();
+            var ping = await GetAsync(http, "_ping", token).ConfigureAwait(false);
+            if (continuity?.ConnectionGeneration != generation) throw TransportReopened();
+            if (Encoding.UTF8.GetString(ping).Trim() != "OK") throw Malformed("The Engine readiness response is not OK.");
+            token.ThrowIfCancellationRequested();
+            return null;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (TryDescribeFailure(ex, out _))
+        {
+            token.ThrowIfCancellationRequested();
+            TryDescribeFailure(ex, out var failure);
+            return failure;
+        }
     }
 
     private async Task<byte[]> GetAsync(HttpClient http, string path, CancellationToken cancellationToken)
@@ -162,6 +188,8 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
         if (!element.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null) return null;
         return value.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => throw Malformed($"Engine field {name} is not a boolean.") };
     }
+    private static ConnectionProtocolException TransportReopened() => new(new(EngineConnectionFailureKind.TransientTransportFailure,
+        "The Engine transport reopened. A new connection must negotiate current Engine metadata."));
     private static ConnectionProtocolException Malformed(string description) => new(new(EngineConnectionFailureKind.MalformedResponse, description));
     private static bool TryDescribeFailure(Exception exception, out EngineConnectionFailure? failure)
     {
@@ -181,12 +209,17 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata) : IEngineConnection
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation) : IEngineConnection
 {
     private int disposed;
     public EngineMetadata Metadata { get; } = metadata;
     // Reserved for protocol operations behind future application contracts; never exposed to Presentation.
     internal HttpClient Http { get; } = http;
+    public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return client.CheckLivenessAsync(Http, continuity, generation, cancellationToken);
+    }
     public ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) == 0) Http.Dispose();
