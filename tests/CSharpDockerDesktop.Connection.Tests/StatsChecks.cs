@@ -44,10 +44,12 @@ internal static class StatsChecks
             Check(parameters.Any(p => p.GetProperty("name").GetString() == "one-shot") == (minor >= 41));
             Check(version.GetProperty("responses").EnumerateArray().Any(p => p.GetString() == "404"));
             var bytes = Encoding.UTF8.GetBytes(Fixture($"v1.{minor}.linux.json"));
-            var transport = new StatsTransport(new([.. bytes, .. bytes], fragment: minor % 2 == 0 ? 1 : 513, randomSeed: minor), minor);
+            var secondBytes = Encoding.UTF8.GetBytes(Fixture($"v1.{minor}.linux.json").Replace("2015-01-08T22:57:31.547920715Z", "2015-01-08T22:57:32.047920715Z", StringComparison.Ordinal));
+            var transport = new StatsTransport(new([.. bytes, .. secondBytes], fragment: minor % 2 == 0 ? 1 : 513, randomSeed: minor), minor);
             await using var owner = await Connect(transport); await using var stats = await Open(owner);
             var samples = await Drain(stats); Check(samples.Count == 2);
             var sample = samples[0];
+            StatsCalculationChecks.AcquiredLinux(sample, samples[1], minor);
             Check(sample.ContainerId == "canonical" && sample.OSType == "linux");
             Check(sample.Read?.Original == "2015-01-08T22:57:31.547920715Z" && sample.Read.Nanoseconds == 547920715);
             Check(sample.PreRead?.Nanoseconds == 123456789 && sample.Cpu?.TotalUsage == 100215355 && sample.PreviousCpu?.TotalUsage == 100093996);
@@ -66,6 +68,7 @@ internal static class StatsChecks
         var windowsTransport = new StatsTransport(new(Encoding.UTF8.GetBytes(Fixture("windows.json")), fragment: 1)) { OS = "windows" };
         await using var windowsOwner = await Connect(windowsTransport); await using var windowsStats = await Open(windowsOwner);
         var windows = (await Drain(windowsStats)).Single();
+        StatsCalculationChecks.AcquiredWindows(windows);
         Check(windows.OSType == "windows" && windows.NumberOfProcessors == 16 && windows.Cpu?.TotalUsage == 29912000);
         Check(windows.Cpu!.SystemUsage is null && windows.Cpu.PerCpuUsage is null && windows.Cpu.OnlineCpus is null);
         Check(windows.Memory?.Usage is null && windows.Memory!.Limit is null && windows.Memory!.Stats is null && windows.BlockIo is null);

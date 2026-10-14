@@ -30,6 +30,10 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Stats calculation CPU and exact time", StatsCalculationChecks.CpuAndExactTime),
+    ("Stats calculation memory and Windows", StatsCalculationChecks.MemoryAndWindows),
+    ("Stats calculation baselines and bounded state", StatsCalculationChecks.BaselinesAndBoundedState),
+    ("Stats calculation topology and integer boundaries", StatsCalculationChecks.TopologyAndIntegerBoundaries),
     ("Stats official negotiated contracts and platform evidence", StatsChecks.OfficialContracts),
     ("Stats decoder fragmentation types and bounds", StatsChecks.DecoderBoundsAndMalformed),
     ("Stats opening failures and deadlines", StatsChecks.OpeningFailures),
