@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Volumes negotiated API 1.40–1.56 contract fixtures", VolumeChecks.ContractFixtures),
+    ("Volumes immutable metadata, warnings and exact raw Inspect", VolumeChecks.ProjectionAndWarnings),
+    ("Volumes complete safe names and classified failures", VolumeChecks.ErrorsAndNames),
+    ("Volumes malformed responses and bounded success/error bodies", VolumeChecks.MalformedAndBounds),
+    ("Volumes caller/header/body cancellation, deadlines and disposal", VolumeChecks.CancellationAndDisposal),
+    ("Volumes retained connection continuity fences", VolumeChecks.Continuity),
+    ("Volumes late header/body results and decoder publication fences", VolumeChecks.LateResponses),
     ("Application Image Delete DeadlineCancellationEvidence", ImageBrowsingChecks.ImageDeleteDeadlineCancellationEvidence),
     ("Application Image Delete PreResponseReadFenceAndNotFoundInspect", ImageBrowsingChecks.ImageDeletePreResponseReadFenceAndNotFoundInspect),
     ("Application Image Delete JoinedRetryAndCoexistence", ImageBrowsingChecks.ImageDeleteJoinedRetryAndCoexistence),

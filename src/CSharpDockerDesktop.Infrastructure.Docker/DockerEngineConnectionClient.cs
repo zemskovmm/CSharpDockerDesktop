@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IEngineEventSource, IContainerCommands, IImageCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IEngineEventSource, IContainerCommands, IImageCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -335,6 +335,22 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
                 "A valid bounded image ID, repository name, tag or digest reference is required.")));
         return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"images/{Uri.EscapeDataString(reference)}/json",
             DockerImageJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken, "image");
+    }
+    public Task<EngineResourceResult<VolumeListing>> ListVolumesAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, "volumes",
+            DockerVolumeJson.List, options, continuity, generation, lifetime.Token, cancellationToken, "volume");
+    }
+    public Task<EngineResourceResult<VolumeInspection>> InspectVolumeAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!DockerVolumeName.IsValid(name))
+            return Task.FromResult(EngineResourceResult<VolumeInspection>.Failed(new(EngineResourceFailureKind.InvalidRequest,
+                "A non-empty bounded volume name or ID without controls or invalid Unicode is required.")));
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"volumes/{Uri.EscapeDataString(name)}",
+            DockerVolumeJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken, "volume");
     }
     public ValueTask DisposeAsync()
     {

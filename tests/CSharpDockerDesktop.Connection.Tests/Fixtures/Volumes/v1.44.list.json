@@ -1,0 +1,43 @@
+{
+  "Volumes": [
+    {
+      "Name": "tardis-complete-name-api-1.44",
+      "Driver": "custom",
+      "Mountpoint": "/var/lib/docker/volumes/tardis",
+      "CreatedAt": "2016-06-07T20:31:11.853781916Z",
+      "Status": {
+        "hello": "world",
+        "synthetic-secret": "retain-private"
+      },
+      "Labels": {
+        "com.example.some-label": "some-value",
+        "private.synthetic": "retain-private"
+      },
+      "Scope": "local",
+      "Options": {
+        "device": "tmpfs",
+        "o": "size=100m,uid=1000",
+        "type": "tmpfs"
+      },
+      "ClusterVolume": {
+        "ID": "synthetic-cluster-id",
+        "Spec": {
+          "AccessMode": {
+            "Scope": "single",
+            "Sharing": "none"
+          }
+        }
+      }
+    },
+    {
+      "Name": "empty-metadata",
+      "Driver": "",
+      "Scope": "",
+      "Mountpoint": "",
+      "Labels": {}
+    }
+  ],
+  "Warnings": [
+    "synthetic volume driver warning: incomplete listing"
+  ]
+}
