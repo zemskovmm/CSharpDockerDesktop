@@ -47,6 +47,7 @@ public sealed partial class DesktopSession
             reads.Signal.Writer.TryWrite(0);
             RequestImageEventSnapshotLocked(reads, initial);
             RequestVolumeEventSnapshotLocked(reads, initial);
+            RequestNetworkEventSnapshotLocked(reads, initial);
         }
         NotifyContainerBrowsers();
     }
@@ -167,6 +168,8 @@ public sealed partial class DesktopSession
                 notify = ObserveImageEventLocked(reads, observation.ResourceId);
             else if (string.Equals(observation.Type, "volume", StringComparison.Ordinal))
                 notify = ObserveVolumeEventLocked(reads, observation.ResourceId);
+            else if (string.Equals(observation.Type, "network", StringComparison.Ordinal))
+                notify = ObserveNetworkEventLocked(reads, observation.ResourceId);
             else if (string.Equals(observation.Type, "container", StringComparison.Ordinal))
             {
                 ++reads.ObservationRevision;

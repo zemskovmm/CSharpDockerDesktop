@@ -30,6 +30,18 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Networks NetworkEventFailureContentAndObsoleteFailures", NetworkBrowsingChecks.NetworkEventFailureContentAndObsoleteFailures),
+    ("Application Networks NetworkMissingCapabilityKeepsSharedObservation", NetworkBrowsingChecks.NetworkMissingCapabilityKeepsSharedObservation),
+    ("Application Networks NetworkStartupBridgeWithoutConcurrentObservation", NetworkBrowsingChecks.NetworkStartupBridgeWithoutConcurrentObservation),
+    ("Application Networks NetworkActorIdentityAndConservativeDetail", NetworkBrowsingChecks.NetworkActorIdentityAndConservativeDetail),
+    ("Application Networks NetworkSnapshotObservationBoundaries", NetworkBrowsingChecks.NetworkSnapshotObservationBoundaries),
+    ("Application Networks NetworkSelectedObservationFences", NetworkBrowsingChecks.NetworkSelectedObservationFences),
+    ("Application Networks NetworkBurstCoalescingAndFairness", NetworkBrowsingChecks.NetworkBurstCoalescingAndFairness),
+    ("Application Networks NetworkObservationFailureAndReopening", NetworkBrowsingChecks.NetworkObservationFailureAndReopening),
+    ("Application Networks NetworkObservationOpeningFallbackAndJoin", NetworkBrowsingChecks.NetworkObservationOpeningFallbackAndJoin),
+    ("Application Networks NetworkReconnectOverlapAndJoinedReplacement", NetworkBrowsingChecks.NetworkReconnectOverlapAndJoinedReplacement),
+    ("Application Networks NetworkObservationsCoexistWithCommandsAndLogs", NetworkBrowsingChecks.NetworkObservationsCoexistWithCommandsAndLogs),
+    ("Application Networks NetworkInvalidatedDeadlineAndReplacementCleanup", NetworkBrowsingChecks.NetworkInvalidatedDeadlineAndReplacementCleanup),
     ("Application Networks ImmutableEvidenceAndExactIdentity", NetworkBrowsingChecks.ImmutableEvidenceAndExactIdentity),
     ("Application Networks EmptyUnavailableAndDisappearance", NetworkBrowsingChecks.EmptyUnavailableAndDisappearance),
     ("Application Networks CancellationCallbacksSeeInvalidatedState", NetworkBrowsingChecks.CancellationCallbacksSeeInvalidatedState),

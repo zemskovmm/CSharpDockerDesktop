@@ -81,7 +81,7 @@ public sealed partial class DesktopSession : INetworkBrowser
         lock (gate)
         {
             if (!CurrentEventsLocked(containers)) return null;
-            reads = new(containers);
+            reads = new(containers) { EventRefresh = containers.NetworkRefreshPending };
             networkReads = reads;
             networkSnapshot = new(containerSnapshot.ConnectionGeneration,
                 reads.Reader is null ? ResourceReadState.Unavailable : ResourceReadState.Loading,
@@ -95,6 +95,53 @@ public sealed partial class DesktopSession : INetworkBrowser
         }
         NotifyNetworksChanged();
         return reads;
+    }
+
+    private void RequestNetworkEventSnapshotLocked(ContainerReads containers, bool initial)
+    {
+        if (!initial) containers.NetworkRefreshPending = true;
+        if (networkReads is not { Reader: not null } reads || reads.Containers != containers) return;
+        if (!initial) reads.EventRefresh = true;
+        InvalidateNetworkEventDetailLocked(reads, null);
+        reads.Signal.Writer.TryWrite(0);
+    }
+
+    private bool ObserveNetworkEventLocked(ContainerReads containers, string? identity)
+    {
+        // Only bounded invalidation state survives the startup race; never retain event attributes.
+        containers.NetworkRefreshPending = true;
+        if (networkReads is not { Reader: not null } reads || reads.Containers != containers) return false;
+        reads.EventRefresh = true;
+        bool changed = InvalidateNetworkEventDetailLocked(reads, UsableNetworkEventIdentity(identity));
+        reads.Signal.Writer.TryWrite(0);
+        return changed;
+    }
+
+    private bool InvalidateNetworkEventDetailLocked(NetworkReads reads, string? identity)
+    {
+        if (networkSnapshot.SelectedNetworkId is not { } selected
+            || networkSnapshot.InspectionState == ResourceReadState.NotRequested
+            || (identity is not null && !StringComparer.Ordinal.Equals(identity, selected))) return false;
+        // Finish owned I/O with its original deadline, but fence every obsolete result.
+        ++reads.DetailRevision;
+        reads.Inspect = true;
+        bool changed = networkSnapshot.Inspection is not null || networkSnapshot.InspectionState != ResourceReadState.Loading;
+        if (changed) networkSnapshot = networkSnapshot with { Inspection = null,
+            InspectionState = ResourceReadState.Loading, InspectionFailure = null };
+        return changed;
+    }
+
+    private static string? UsableNetworkEventIdentity(string? identity)
+    {
+        // Docker network Actor.ID is the complete opaque identity, not Attributes["name"].
+        // Match the borrowed read capability's usability bounds without narrowing opaque network IDs.
+        if (string.IsNullOrWhiteSpace(identity) || identity.Length > 4096 || identity is "." or "..") return null;
+        for (int index = 0; index < identity.Length; index++)
+        {
+            if (char.IsControl(identity[index]) || char.IsLowSurrogate(identity[index])) return null;
+            if (char.IsHighSurrogate(identity[index]) && (++index >= identity.Length || !char.IsLowSurrogate(identity[index]))) return null;
+        }
+        return identity;
     }
 
     private bool CurrentNetworksLocked(NetworkReads reads)
@@ -137,13 +184,29 @@ public sealed partial class DesktopSession : INetworkBrowser
                     CancellationTokenSource request;
                     // An independent clock still expires if superseding cancellation is ignored.
                     using var deadline = new CancellationTokenSource();
+                    bool batch;
                     lock (gate)
                     {
                         if (!CurrentNetworksLocked(reads)) return;
-                        if (!reads.Refresh && !reads.Inspect) break;
+                        batch = !reads.Refresh && reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList);
+                    }
+                    if (batch) await delay.DelayAsync(reconciliation.BatchInterval, reads.Lifetime.Token).ConfigureAwait(false);
+                    lock (gate)
+                    {
+                        if (!CurrentNetworksLocked(reads)) return;
+                        if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         // One pending bit per family; alternate turns under sustained refresh/selection bursts.
-                        list = reads.Refresh && !(reads.Inspect && reads.LastReadWasList);
-                        if (list) reads.Refresh = false; else reads.Inspect = false;
+                        list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
+                        if (list)
+                        {
+                            reads.Refresh = false;
+                            // Preserve pre-snapshot observations for one authoritative follow-up.
+                            // Later reads consume only observations pending at admission.
+                            if (!reads.InitialSnapshotPending) reads.EventRefresh = false;
+                            reads.InitialSnapshotPending = false;
+                        }
+                        else reads.Inspect = false;
                         reads.LastReadWasList = list;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         id = networkSnapshot.SelectedNetworkId;
@@ -223,11 +286,13 @@ public sealed partial class DesktopSession : INetworkBrowser
         bool lost = false;
         lock (gate)
         {
-            // Superseded failures, including transport/NotFound, cannot act on a newer selection or clear.
-            if (!CurrentNetworkRequestLocked(reads, request, revision, false)
-                || !StringComparer.Ordinal.Equals(networkSnapshot.SelectedNetworkId, id)) return;
+            if (!CurrentNetworksLocked(reads) || request.IsCancellationRequested
+                || reads.ActiveDeadline?.IsCancellationRequested != false) return;
+            // Content supersession cannot erase actual current-connection continuity evidence.
             if (result.Failure?.Kind == EngineResourceFailureKind.TransportLoss)
             { NetworkTransportLostLocked(reads, result.Failure, true); lost = true; }
+            else if (!CurrentNetworkRequestLocked(reads, request, revision, false)
+                || !StringComparer.Ordinal.Equals(networkSnapshot.SelectedNetworkId, id)) return;
             else
             {
                 var failure = result.Failure;
@@ -295,7 +360,8 @@ public sealed partial class DesktopSession : INetworkBrowser
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public Task Workflow = Task.CompletedTask;
         public CancellationTokenSource? Active, ActiveDeadline;
-        public bool Refresh = true, Inspect, InspectActive, LastReadWasList;
+        public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;
+        public bool InitialSnapshotPending = true;
         public long ListRevision, DetailRevision;
     }
 }

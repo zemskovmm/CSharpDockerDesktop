@@ -328,6 +328,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         // Bounded bridges for observations/reopening before each resource coordinator is created.
         public bool ImageRefreshPending;
         public bool VolumeRefreshPending;
+        public bool NetworkRefreshPending;
         public long ListRevision, DetailRevision;
     }
 }

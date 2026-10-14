@@ -520,15 +520,10 @@ internal static partial class NetworkBrowsingChecks
         public Task<ContainerCommandResult> DeleteContainerAsync(string identity, bool force = false, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
     }
 
-    private sealed class EventSubscription : IEngineEventSubscription
+    private sealed class EventSubscription : NetworkObservation
     {
-        private readonly Channel<EngineEvent> channel = Channel.CreateBounded<EngineEvent>(1);
-        private readonly TaskCompletionSource<EngineEventFailure?> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public bool Disposed;
-        public ChannelReader<EngineEvent> Events => channel.Reader;
-        public Task<EngineEventFailure?> Completion => completion.Task;
-        public void Fail() { completion.TrySetResult(new(EngineEventFailureKind.TransportLoss, "events lost")); channel.Writer.TryComplete(); }
-        public ValueTask DisposeAsync() { Disposed = true; completion.TrySetResult(null); channel.Writer.TryComplete(); return ValueTask.CompletedTask; }
+        public bool Disposed => DisposeCount > 0;
+        public void Fail() => End(new(EngineEventFailureKind.TransportLoss, "events lost"));
     }
 
     private sealed class LogSubscription : IContainerLogSubscription
