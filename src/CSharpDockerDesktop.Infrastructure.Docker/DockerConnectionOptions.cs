@@ -17,8 +17,27 @@ public sealed record DockerConnectionOptions
     public int MaximumCommandErrorBytes { get; init; } = 64 * 1024;
     public int MaximumConcurrentCommands { get; init; } = 4;
 
+    public TimeSpan LogOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
+    public int MaximumConcurrentLogSubscriptions { get; init; } = 4;
+    public int MaximumLogTailLines { get; init; } = 10_000;
+    public int LogBufferCapacity { get; init; } = 128;
+    public int MaximumLogFragmentCharacters { get; init; } = 4096;
+    public int MaximumLogErrorBytes { get; init; } = 64 * 1024;
+
     internal void Validate()
     {
+        if (LogOpeningTimeout <= TimeSpan.Zero || LogOpeningTimeout.TotalMilliseconds > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(LogOpeningTimeout));
+        if (MaximumConcurrentLogSubscriptions is < 1 or > 64)
+            throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentLogSubscriptions));
+        if (MaximumLogTailLines is < 1 or > 1_000_000)
+            throw new ArgumentOutOfRangeException(nameof(MaximumLogTailLines));
+        if (LogBufferCapacity is < 1 or > 4096)
+            throw new ArgumentOutOfRangeException(nameof(LogBufferCapacity));
+        if (MaximumLogFragmentCharacters is < 64 or > 65536)
+            throw new ArgumentOutOfRangeException(nameof(MaximumLogFragmentCharacters));
+        if (MaximumLogErrorBytes is < 64 or > 1024 * 1024)
+            throw new ArgumentOutOfRangeException(nameof(MaximumLogErrorBytes));
         if (CommandTimeout <= TimeSpan.Zero || CommandTimeout.TotalMilliseconds > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(CommandTimeout));
         if (GracefulCommandTimeout <= TimeSpan.Zero || GracefulCommandTimeout.TotalMilliseconds > int.MaxValue)

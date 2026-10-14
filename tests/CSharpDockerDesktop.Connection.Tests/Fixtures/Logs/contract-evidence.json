@@ -1,0 +1,1129 @@
+{
+  "provenance": "Synthetic contract-derived fixtures; not captured daemon output.",
+  "sources": [
+    "https://docs.docker.com/reference/api/engine/version/v1.40/",
+    "https://docs.docker.com/reference/api/engine/version/v1.56/",
+    "https://github.com/moby/moby/blob/v28.0.0/api/server/router/container/container_routes.go",
+    "https://github.com/moby/moby/blob/v28.0.0/api/server/httputils/write_log_stream.go",
+    "https://github.com/moby/moby/blob/v28.0.0/pkg/stdcopy/stdcopy.go",
+    "https://github.com/moby/moby/blob/v28.0.0/daemon/logs.go",
+    "https://github.com/moby/moby/blob/v19.03.0/daemon/logs.go",
+    "https://github.com/moby/moby/blob/v28.0.0/api/types/time/timestamp.go"
+  ],
+  "contract": {
+    "method": "GET",
+    "endpoint": "/containers/{id}/logs",
+    "ttySource": "Inspect.Config.Tty",
+    "header": "8 bytes: stream byte, three zero reserved bytes, uint32 big-endian payload length",
+    "streams": {
+      "1": "stdout",
+      "2": "stderr",
+      "3": "in-band daemon error"
+    },
+    "contentType": "raw-stream through API 1.41; non-TTY multiplexed-stream from API 1.42; TTY raw-stream",
+    "timestamps": "RFC3339NanoFixed timestamp plus space before each daemon log message",
+    "since": "Exact seconds.nanoseconds accepted by daemon ParseTimestamps"
+  },
+  "versions": [
+    {
+      "minor": 40,
+      "expectedCursorPath": "/v1.40/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.40.yaml",
+      "sha256": "020a79876fecf4b67920df94e7e39f217d8ce64df627ebd5b094e18720009ca5",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": []
+    },
+    {
+      "minor": 41,
+      "expectedCursorPath": "/v1.41/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.41.yaml",
+      "sha256": "150601c804f075e235f7ce9759909796b270d3ebe172067a638b16aea8254ca8",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": []
+    },
+    {
+      "minor": 42,
+      "expectedCursorPath": "/v1.42/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.42.yaml",
+      "sha256": "00057be6237ed000a47293c562254c4ff84daad52ede46ff49da8f041bba1ab1",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 43,
+      "expectedCursorPath": "/v1.43/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.43.yaml",
+      "sha256": "2590d14413f25581b61a2feb992b63867da0d53a476a2e6f34be9b2682e71c52",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 44,
+      "expectedCursorPath": "/v1.44/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.44.yaml",
+      "sha256": "97340315af1e1a957cd8e163e887cba11aaaf9d58bc6705d9da180ad76e5569f",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 45,
+      "expectedCursorPath": "/v1.45/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.45.yaml",
+      "sha256": "9167829335db9a45fc6b8521e06561da2db6f2bfa9d3530587859689d3c86a65",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 46,
+      "expectedCursorPath": "/v1.46/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.46.yaml",
+      "sha256": "7823b4ddb0e47dd12d16fb41771cbb14d4c75c831739dfc15720763457067cec",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 47,
+      "expectedCursorPath": "/v1.47/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.47.yaml",
+      "sha256": "9108f0595ed0b53a833459ddf50f5c0da498e78b53604bfaad02df5618366629",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 48,
+      "expectedCursorPath": "/v1.48/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.48.yaml",
+      "sha256": "b2be218811d321284ef85ab4ca3b7336f5d5014f3f3943a3c6cdf04f1a07b072",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 49,
+      "expectedCursorPath": "/v1.49/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.49.yaml",
+      "sha256": "a746096eaa890df7655025fcf6e56b0fb5fdb16c564b4f4a148e6bc2b753c477",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 50,
+      "expectedCursorPath": "/v1.50/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.50.yaml",
+      "sha256": "f10dc49581090cc172ad36a0830ea451a0c4422b93491d9179263ffb0fce3645",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 51,
+      "expectedCursorPath": "/v1.51/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.51.yaml",
+      "sha256": "f51b797750a7f64334e529e3ecaf3a28d0c531c07b54edeed06007c18bb605eb",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 52,
+      "expectedCursorPath": "/v1.52/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.52.yaml",
+      "sha256": "9f5ec065ffe2578f4919801ee3160a2d16061ebde121510c0d1c3ac1d0499e42",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 53,
+      "expectedCursorPath": "/v1.53/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.53.yaml",
+      "sha256": "6e79a473bdd4f0ef5394b069aa3a065e92a7fa947e940e78fa0af2100384afbe",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 54,
+      "expectedCursorPath": "/v1.54/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.54.yaml",
+      "sha256": "a0cf45b9601f37d83240b1cef658f3b88c9674bcef508bf904feb48151b1c3ab",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 55,
+      "expectedCursorPath": "/v1.55/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.55.yaml",
+      "sha256": "96f48176e6b00ced89d2e5479b43565847856b0d9522111b57383bfe15815a0e",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    },
+    {
+      "minor": 56,
+      "expectedCursorPath": "/v1.56/containers/canonical/logs?stdout=true&stderr=true&timestamps=true&details=false&tail=23&follow=true&since=1629574695.515050031",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.56.yaml",
+      "sha256": "00ccd7d2e6e0b7a943ac0067007d181d723b2513ef1f6af3b6b54145314a6fa7",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "follow",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stdout",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "stderr",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "until",
+          "in": "query",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "timestamps",
+          "in": "query",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "tail",
+          "in": "query",
+          "type": "string",
+          "default": "all"
+        }
+      ],
+      "responses": {
+        "200": "logs returned as a stream in response body.\nFor the stream format, [see the documentation for the attach endpoint](#operation/ContainerAttach).\nNote that unlike the attach endpoint, the logs endpoint does not\nupgrade the connection and does not set Content-Type.\n",
+        "404": "no such container",
+        "500": "server error"
+      },
+      "produces": [
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ]
+    }
+  ],
+  "reviewed": "2026-10-14"
+}

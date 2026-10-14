@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Logs negotiated API 1.40–1.56 contracts and fragmented frames/UTF-8", LogChecks.ContractsAndFragmentation),
+    ("Logs authoritative TTY, raw preservation and exact timestamps", LogChecks.TtyAndPrecision),
+    ("Logs bounded long output, malformed framing/text and partial EOF", LogChecks.LongOutputAndMalformed),
+    ("Logs parameter validation and bounded classified daemon errors", LogChecks.ErrorsAndValidation),
+    ("Logs bounded pressure, cancellation, disposal and admission", LogChecks.PressureCancellationAndAdmission),
+    ("Logs opening deadlines, long follow and transport continuity", LogChecks.LifetimesAndContinuity),
+    ("Logs opening/disposal races and concurrent admission", LogChecks.OpeningDisposalRaces),
+    ("Named-pipe simultaneous logs, events, reads, commands and liveness", LogChecks.SimultaneousNamedPipe),
     ("Lifecycle coordinator observation diagnostics and canceled restart preflight", OperationCoordinatorChecks.ObservationFailuresAndCanceledPreflight),
     ("Lifecycle coordinator explicit disconnect and unrelated detail progress", OperationCoordinatorChecks.DisconnectAndUnrelatedInspectionProgress),
     ("Lifecycle coordinator observation transport loss and joined late list", OperationCoordinatorChecks.ObservationLossAndJoinedLateList),

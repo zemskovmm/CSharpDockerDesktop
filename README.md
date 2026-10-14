@@ -47,7 +47,7 @@ Application depends on Domain; Docker Infrastructure depends on Application/Doma
 
 The maximum is supported by focused handshake-schema checks, not a claim that all resource APIs are implemented. The client exposes optional metadata as unknown when absent. It separates daemon HTTP status/messages from missing pipe, access denial, unsupported endpoint/platform, incompatible API, malformed response and transient failure. Cancellation propagates normally. It does not log raw responses or discover environment/context precedence.
 
-Read [borrowed lifecycle commands, uncertainty and lifecycle compatibility evidence](docs/container-commands.md). Read [connection boundary, compatibility evidence and Windows smoke procedures](docs/engine-connection.md) for usage and limits. To run independent checks without Uno, Docker, or external test packages:
+Read [borrowed read-only container logs, bounded framing and lifetime evidence](docs/container-logs.md); DesktopSession and Logs presentation integration remain pending. Read [borrowed lifecycle commands, uncertainty and lifecycle compatibility evidence](docs/container-commands.md). Read [connection boundary, compatibility evidence and Windows smoke procedures](docs/engine-connection.md) for usage and limits. To run independent checks without Uno, Docker, or external test packages:
 
 ```sh
 dotnet run --project tests/CSharpDockerDesktop.Connection.Tests

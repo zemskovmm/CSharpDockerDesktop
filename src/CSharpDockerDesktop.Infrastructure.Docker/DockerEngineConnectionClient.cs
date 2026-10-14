@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource, IContainerCommands
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource, IContainerCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -218,6 +218,7 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
     private readonly object eventGate = new();
     private DockerEventSubscription? eventSubscription;
     private Task? disposal;
+    private readonly HashSet<DockerLogSubscription> logSubscriptions = [];
     internal HttpClient Http => http;
     internal ITransportContinuity? Continuity => continuity;
     internal bool HasContinuity => Volatile.Read(ref disposed) == 0 && continuity?.ConnectionGeneration == generation;
@@ -247,6 +248,39 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
             await subscription.DisposeAsync().ConfigureAwait(false);
         if (result.IsSubscribed && !HasContinuity)
             result = EngineEventSubscriptionAttempt.Failed(new(EngineEventFailureKind.TransportLoss, "The selected connection ended while opening events."));
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+    public async Task<ContainerLogSubscriptionAttempt> OpenLogsAsync(ContainerLogRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request is null || string.IsNullOrWhiteSpace(request.ContainerId) || request.ContainerId.Length > 4096
+            || request.ContainerId is "." or ".." || request.TailLines < 0 || request.TailLines > options.MaximumLogTailLines
+            || request.Since is { IsValid: false })
+            return ContainerLogSubscriptionAttempt.Failed(new(ContainerLogFailureKind.InvalidRequest,
+                "Logs require a valid container identity, finite bounded tail, and valid timestamp cursor."));
+        DockerLogSubscription subscription;
+        lock (eventGate)
+        {
+            ObjectDisposedException.ThrowIf(disposed != 0, this);
+            if (!HasContinuity)
+                return ContainerLogSubscriptionAttempt.Failed(new(ContainerLogFailureKind.TransportLoss,
+                    "The selected connection changed; negotiate a new connection before opening logs."));
+            if (logSubscriptions.Count >= options.MaximumConcurrentLogSubscriptions)
+                return ContainerLogSubscriptionAttempt.Failed(new(ContainerLogFailureKind.SubscriptionLimit,
+                    "Dispose an existing logs subscription before opening another."));
+            subscription = new(this, client, options, request, lifetime.Token, cancellationToken,
+                ended => { lock (eventGate) logSubscriptions.Remove(ended); });
+            logSubscriptions.Add(subscription);
+            subscription.Start();
+        }
+        var result = await subscription.Opened.ConfigureAwait(false);
+        if (!result.IsSubscribed || cancellationToken.IsCancellationRequested || !HasContinuity)
+            await subscription.DisposeAsync().ConfigureAwait(false);
+        if (result.IsSubscribed && !HasContinuity)
+            result = ContainerLogSubscriptionAttempt.Failed(new(ContainerLogFailureKind.TransportLoss,
+                "The selected connection ended while opening logs."));
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }
@@ -291,11 +325,11 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
             Volatile.Write(ref disposed, 1);
             lifetime.Cancel();
             http.Dispose();
-            disposal = eventSubscription is { } subscription ? DisposeSubscriptionAsync(subscription) : Task.CompletedTask;
+            var pending = logSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()).ToList();
+            if (eventSubscription is { } subscription) pending.Add(subscription.DisposeAsync().AsTask());
+            disposal = Task.WhenAll(pending);
             // Keep lifetime source usable by racing borrowed calls; it owns no wait handle.
             return new(disposal);
         }
     }
-    private static async Task DisposeSubscriptionAsync(DockerEventSubscription subscription)
-        => await subscription.DisposeAsync().ConfigureAwait(false);
 }
