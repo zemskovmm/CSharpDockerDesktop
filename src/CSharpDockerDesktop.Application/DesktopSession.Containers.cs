@@ -106,9 +106,12 @@ public sealed partial class DesktopSession : IContainerBrowser
     private void InvalidateContainersLocked(EngineResourceFailure? failure = null, bool inspectionFailure = false)
     {
         var previous = containerReads;
-        InvalidateImagesLocked();
-        SuspendLogsLocked();
+        // Every borrowed family checks this shared identity. Fence all of them before
+        // any cancellation callback can reenter while subordinate state is cleared.
         containerReads = null;
+        InvalidateImagesLocked();
+        InvalidateVolumesLocked();
+        SuspendLogsLocked();
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ContainerSummary>(), Failure: inspectionFailure ? null : failure,
             InspectionFailure: inspectionFailure ? failure : null);

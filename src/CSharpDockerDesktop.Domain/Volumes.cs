@@ -1,5 +1,8 @@
 namespace CSharpDockerDesktop.Domain;
 
+/// <summary>A null collection is unavailable. Any warning makes an available listing incomplete.</summary>
+public enum VolumeListCompleteness { Unavailable, Incomplete, Complete }
+
 /// <summary>Name is the complete daemon identity. Null metadata is unavailable; empty values are valid.</summary>
 public sealed record VolumeSummary(string Name, string? Driver, string? Scope, string? Mountpoint,
     IReadOnlyDictionary<string, string>? Labels);

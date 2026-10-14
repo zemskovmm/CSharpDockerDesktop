@@ -30,6 +30,18 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Volumes immutable metadata and exact inspection", VolumeBrowsingChecks.InitialMetadataAndImmutableState),
+    ("Application Volumes partial/unavailable listing and warnings", VolumeBrowsingChecks.PartialUnavailableWarningsAndDisappearance),
+    ("Application Volumes null/empty and missing capability", VolumeBrowsingChecks.InitialNullEmptyAndMissingCapability),
+    ("Application Volumes classified failures and returned identity", VolumeBrowsingChecks.ClassifiedFailuresAndReturnedIdentity),
+    ("Application Volumes burst bounds, fairness and stale fences", VolumeBrowsingChecks.SelectionRefreshFencesAndFairness),
+    ("Application Volumes reconnect and joined replacement", VolumeBrowsingChecks.ReconnectAndJoinedReplacement),
+    ("Application Volumes refresh bursts fence late list failures", VolumeBrowsingChecks.RefreshBurstFencesLateListFailures),
+    ("Application Volumes deadlines and superseded non-cooperative reads", VolumeBrowsingChecks.DeadlinesIncludingSupersededNonCooperativeReads),
+    ("Application Volumes transport loss uses shared recovery", VolumeBrowsingChecks.VolumeLossUsesSharedRecovery),
+    ("Application Volumes repeated disconnect/disposal joins", VolumeBrowsingChecks.RepeatedDisconnectAndDisposalJoin),
+    ("Application Volumes every shared owner invalidates state", VolumeBrowsingChecks.EverySharedOwnerInvalidatesVolumes),
+    ("Application Volumes shared deadline recovery and capability coexistence", VolumeBrowsingChecks.VolumeDeadlineRecoveryAndCapabilityCoexistence),
     ("Volumes negotiated API 1.40–1.56 contract fixtures", VolumeChecks.ContractFixtures),
     ("Volumes immutable metadata, warnings and exact raw Inspect", VolumeChecks.ProjectionAndWarnings),
     ("Volumes complete safe names and classified failures", VolumeChecks.ErrorsAndNames),

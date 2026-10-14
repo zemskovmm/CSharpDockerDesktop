@@ -138,6 +138,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
         IEngineConnection? connection = null;
         ContainerReads? reads = null;
         ImageReads? images = null;
+        VolumeReads? volumes = null;
         var endpoint = Snapshot.Endpoint;
         var lost = false;
         int retries = 0;
@@ -175,15 +176,19 @@ public sealed partial class DesktopSession : IAsyncDisposable
                     reads = BeginContainerReads(currentGeneration, connection, token);
                     if (reads is null) return;
                     images = BeginImageReads(reads);
+                    volumes = BeginVolumeReads(reads);
                     retries = 0;
                     lastFailure = await WatchConnectionAsync(connection, reads, token).ConfigureAwait(false);
                     lost = true;
                     var finishedReads = reads;
                     var finishedImages = images;
+                    var finishedVolumes = volumes;
                     reads = null;
                     images = null;
+                    volumes = null;
                     await Task.WhenAll(EndContainerReadsAsync(finishedReads),
-                        finishedImages is null ? Task.CompletedTask : EndImageReadsAsync(finishedImages)).ConfigureAwait(false);
+                        finishedImages is null ? Task.CompletedTask : EndImageReadsAsync(finishedImages),
+                        finishedVolumes is null ? Task.CompletedTask : EndVolumeReadsAsync(finishedVolumes)).ConfigureAwait(false);
                     await connection.DisposeAsync().ConfigureAwait(false);
                     connection = null;
                 }
@@ -205,7 +210,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
             try
             {
                 await Task.WhenAll(reads is null ? Task.CompletedTask : EndContainerReadsAsync(reads),
-                    images is null ? Task.CompletedTask : EndImageReadsAsync(images)).ConfigureAwait(false);
+                    images is null ? Task.CompletedTask : EndImageReadsAsync(images),
+                    volumes is null ? Task.CompletedTask : EndVolumeReadsAsync(volumes)).ConfigureAwait(false);
             }
             finally { if (connection is not null) await connection.DisposeAsync().ConfigureAwait(false); }
         }

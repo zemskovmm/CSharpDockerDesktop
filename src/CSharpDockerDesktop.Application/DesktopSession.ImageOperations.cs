@@ -151,7 +151,12 @@ public sealed partial class DesktopSession : IImageOperations
                 if (lost) ImageTransportLostLocked(reads, new(EngineResourceFailureKind.TransportLoss,
                     outcome.Failure!.Description, outcome.HttpStatusCode, outcome.DaemonMessage), false);
             }
-            NotifyImagesChanged();
+            if (lost)
+            {
+                NotifyContainerBrowsers();
+                ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+            }
+            else NotifyImagesChanged();
             NotifyImageOperationChanged();
             if (!lost && outcome.RequiresReconciliation) await ObserveImageOperationAsync(reads, id, first).ConfigureAwait(false);
         }
