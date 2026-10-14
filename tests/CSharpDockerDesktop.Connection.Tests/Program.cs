@@ -30,6 +30,16 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Event API 1.40–1.56 schemas, fragmented/coalesced reads", EventChecks.SchemasAndFragmentation),
+    ("Event precision, duplicates, optional fields and replay cursor", EventChecks.TimestampsDuplicatesAndCursor),
+    ("Event bounded slow-consumer backpressure and subscription limit", EventChecks.BoundedSlowConsumer),
+    ("Event malformed/oversized input and exact size boundary", EventChecks.InvalidAndOversized),
+    ("Event HTTP diagnostics, denied access and transport loss", EventChecks.HttpAndTransportFailures),
+    ("Event opening deadline and established long stream lifetime", EventChecks.OpeningAndLongLifetime),
+    ("Event cancellation, connection disposal and races", EventChecks.CancellationAndDisposal),
+    ("Event independently negotiated metadata and continuity rejection", EventChecks.ContinuityAndMetadata),
+    ("Event format negotiation, late opening rejection and blocked cancellation", EventChecks.FormatsAndLateOpening),
+    ("Named-pipe active event stream with container reads/liveness", EventChecks.ConcurrentNamedPipe),
     ("Inspect structure, exact copying, search and replacement", InspectChecks.StructureAndSearch),
     ("Inspect selected session refresh and lifetime", ContainerPresentationChecks.InspectLifetime),
     ("Presentation search fields and unknown metadata", ContainerPresentationChecks.SearchAndUnknownMetadata),

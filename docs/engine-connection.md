@@ -136,3 +136,6 @@ Use Windows x64, .NET 10 and a normal non-elevated account. Record OS, SDK, Dock
    ```
 
    Expect exit 2 with `AccessDenied`, distinct from the missing-pipe result. Close the fixture by pressing Enter. The client must neither elevate nor modify permissions. This Windows-only fixture/procedure has not been executed on the current Mac host; record real evidence before claiming Windows permission verification.
+
+
+The borrowed event capability uses a separately negotiated, bounded stream transport while preserving ordinary-pool continuity checks. See [event observations and verification](engine-events.md).

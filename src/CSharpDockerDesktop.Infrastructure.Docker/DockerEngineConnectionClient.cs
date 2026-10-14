@@ -191,7 +191,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     private static ConnectionProtocolException TransportReopened() => new(new(EngineConnectionFailureKind.TransientTransportFailure,
         "The Engine transport reopened. A new connection must negotiate current Engine metadata."));
     private static ConnectionProtocolException Malformed(string description) => new(new(EngineConnectionFailureKind.MalformedResponse, description));
-    private static bool TryDescribeFailure(Exception exception, out EngineConnectionFailure? failure)
+    internal static bool TryDescribeFailure(Exception exception, out EngineConnectionFailure? failure)
     {
         failure = null;
         // SocketsHttpHandler wraps ConnectCallback failures. Preserve their classification.
@@ -209,10 +209,45 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IEngineEventSource
 {
     private int disposed;
     private readonly CancellationTokenSource lifetime = new();
+    private readonly object eventGate = new();
+    private DockerEventSubscription? eventSubscription;
+    private Task? disposal;
+    internal HttpClient Http => http;
+    internal ITransportContinuity? Continuity => continuity;
+    internal bool HasContinuity => Volatile.Read(ref disposed) == 0 && continuity?.ConnectionGeneration == generation;
+
+    public async Task<EngineEventSubscriptionAttempt> SubscribeEventsAsync(EngineEventCursor? since = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var cursor = since?.ToString(); // Validate before allocating any transport/work.
+        DockerEventSubscription subscription;
+        lock (eventGate)
+        {
+            ObjectDisposedException.ThrowIf(disposed != 0, this);
+            if (!HasContinuity)
+                return EngineEventSubscriptionAttempt.Failed(new(EngineEventFailureKind.TransportLoss,
+                    "The Engine transport changed; negotiate a new connection before observing events."));
+            if (eventSubscription is not null)
+                return EngineEventSubscriptionAttempt.Failed(new(EngineEventFailureKind.SubscriptionLimit,
+                    "Dispose the existing event subscription before opening another."));
+            subscription = new DockerEventSubscription(this, client, options, cursor, lifetime.Token, cancellationToken,
+                ended => { lock (eventGate) { if (ReferenceEquals(eventSubscription, ended)) eventSubscription = null; } });
+            eventSubscription = subscription;
+            subscription.Start();
+        }
+        var result = await subscription.Opened.ConfigureAwait(false);
+        if (!result.IsSubscribed || cancellationToken.IsCancellationRequested || !HasContinuity)
+            await subscription.DisposeAsync().ConfigureAwait(false);
+        if (result.IsSubscribed && !HasContinuity)
+            result = EngineEventSubscriptionAttempt.Failed(new(EngineEventFailureKind.TransportLoss, "The selected connection ended while opening events."));
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
     public EngineMetadata Metadata { get; } = metadata;
     public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default)
     {
@@ -237,12 +272,17 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
     }
     public ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref disposed, 1) == 0)
+        lock (eventGate)
         {
+            if (disposal is not null) return new(disposal);
+            Volatile.Write(ref disposed, 1);
             lifetime.Cancel();
             http.Dispose();
-            // Keep the source usable by racing borrowed calls; it owns no wait handle.
+            disposal = eventSubscription is { } subscription ? DisposeSubscriptionAsync(subscription) : Task.CompletedTask;
+            // Keep lifetime source usable by racing borrowed calls; it owns no wait handle.
+            return new(disposal);
         }
-        return ValueTask.CompletedTask;
     }
+    private static async Task DisposeSubscriptionAsync(DockerEventSubscription subscription)
+        => await subscription.DisposeAsync().ConfigureAwait(false);
 }

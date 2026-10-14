@@ -11,19 +11,29 @@ internal interface IDockerTransportFactory
 internal interface ITransportContinuity
 {
     long ConnectionGeneration { get; }
+    event Action? Reopened;
 }
 
 internal sealed class PipeConnectionCounter
 {
     private long generation;
     public long Generation => Interlocked.Read(ref generation);
-    public void Opened() => Interlocked.Increment(ref generation);
+    public event Action? Reopened;
+    public void Opened()
+    {
+        if (Interlocked.Increment(ref generation) > 1) Reopened?.Invoke();
+    }
 }
 
 internal sealed class ContinuityHandler(HttpMessageHandler inner, PipeConnectionCounter counter)
     : DelegatingHandler(inner), ITransportContinuity
 {
     public long ConnectionGeneration => counter.Generation;
+    public event Action? Reopened
+    {
+        add => counter.Reopened += value;
+        remove => counter.Reopened -= value;
+    }
 }
 
 internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerTransportFactory
@@ -39,6 +49,8 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
         {
             UseProxy = false,
             AllowAutoRedirect = false,
+            // Ordinary and event pools each own one connection. Independent pools negotiate
+            // independently; a replacement within either pool invalidates its metadata.
             MaxConnectionsPerServer = 1,
             ConnectCallback = async (_, cancellationToken) =>
             {
