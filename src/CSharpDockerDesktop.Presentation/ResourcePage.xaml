@@ -1,0 +1,29 @@
+<Page x:Class="CSharpDockerDesktop.Presentation.ResourcePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <Grid Padding="32" RowSpacing="32">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <StackPanel Spacing="8">
+        <TextBlock x:Name="PageTitle" Style="{ThemeResource TitleTextBlockStyle}"
+                   AutomationProperties.AutomationId="ResourcePageTitle" />
+        <TextBlock x:Name="PageDescription" TextWrapping="Wrap" />
+      </StackPanel>
+      <Border Grid.Row="1" Padding="32" CornerRadius="8" BorderThickness="1"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+        <StackPanel Spacing="12" MaxWidth="560" HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+          <TextBlock Text="Connect to load resources" Style="{ThemeResource SubtitleTextBlockStyle}"
+                     TextWrapping="Wrap" />
+          <TextBlock x:Name="EmptyStateMessage" TextWrapping="Wrap"
+                     AutomationProperties.AutomationId="ResourceEmptyState" />
+          <TextBlock Text="Engine connection is not available in this foundation build."
+                     Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </ScrollViewer>
+</Page>

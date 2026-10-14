@@ -1,0 +1,48 @@
+<Page x:Class="CSharpDockerDesktop.Presentation.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Border Padding="24,16" BorderThickness="0,0,0,1"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+      <Grid ColumnSpacing="24">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="CSharpDockerDesktop" Style="{ThemeResource TitleTextBlockStyle}"
+                   TextWrapping="Wrap" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="Docker Engine" Style="{ThemeResource CaptionTextBlockStyle}" />
+          <TextBlock x:Name="EngineStatus" AutomationProperties.AutomationId="EngineStatus"
+                     FontWeight="SemiBold" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <NavigationView x:Name="ResourceNavigation" Grid.Row="1"
+                    PaneDisplayMode="Left" IsPaneOpen="True" OpenPaneLength="220"
+                    IsSettingsVisible="False" IsBackButtonVisible="Collapsed"
+                    AlwaysShowHeader="False" SelectionChanged="OnResourceSelectionChanged"
+                    AutomationProperties.Name="Resources">
+      <NavigationView.MenuItems>
+        <NavigationViewItem x:Name="ContainersItem" Content="Containers" Tag="Containers"
+                            AutomationProperties.AutomationId="ContainersNavigation">
+        </NavigationViewItem>
+        <NavigationViewItem Content="Images" Tag="Images"
+                            AutomationProperties.AutomationId="ImagesNavigation">
+        </NavigationViewItem>
+        <NavigationViewItem Content="Volumes" Tag="Volumes"
+                            AutomationProperties.AutomationId="VolumesNavigation">
+        </NavigationViewItem>
+        <NavigationViewItem Content="Networks" Tag="Networks"
+                            AutomationProperties.AutomationId="NetworksNavigation">
+        </NavigationViewItem>
+      </NavigationView.MenuItems>
+      <Frame x:Name="ResourceFrame" IsNavigationStackEnabled="False" />
+    </NavigationView>
+  </Grid>
+</Page>

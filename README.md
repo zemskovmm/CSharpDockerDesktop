@@ -1,0 +1,56 @@
+# CSharpDockerDesktop
+
+A C#/.NET 10 Uno Skia Desktop client for an existing local Docker Engine. Windows x64 is the delivery baseline. This initial foundation opens without Docker or Administrator privileges and provides keyboard-accessible Containers, Images, Volumes, and Networks pages. The desktop shell reports **Not connected**; an independently tested named-pipe connection client is now available below the Application boundary, but desktop coordination and resource operations are not integrated yet.
+
+## Prerequisites
+
+- Windows x64 with the .NET 10 SDK. `global.json` selects stable .NET 10 and pins Uno.Sdk 6.7.30.
+- Internet access for the initial NuGet restore. Desktop-only builds need no Android, iOS, or WebAssembly workloads.
+- A graphical desktop session to launch the UI. Visual Studio with Uno support is optional; the CLI is sufficient.
+
+## Restore, build, and launch
+
+Run from the repository root:
+
+```sh
+dotnet restore CSharpDockerDesktop.slnx
+dotnet build CSharpDockerDesktop.slnx --no-restore
+dotnet run --project src/CSharpDockerDesktop.Presentation -f net10.0-desktop --no-build
+```
+
+Use Tab to reach navigation items, arrow keys to move among them, and Enter/Space to select a page. The selected page title and empty-state explanation change; Docker Engine status remains visible. Test all four pages with Docker absent/stopped and without elevation.
+
+The host explicitly uses Uno's Win32 shell on Windows. Its AppKit shell is enabled for local UI development checks on a Mac with a .NET 10 SDK; this does not establish a macOS delivery contract.
+
+## Produce the Windows x64 application
+
+On a Windows x64 machine with the .NET 10 SDK:
+
+```sh
+dotnet publish src/CSharpDockerDesktop.Presentation/CSharpDockerDesktop.Presentation.csproj -c Release -f net10.0-desktop -r win-x64 -p:PublishProfile=win-x64 -o artifacts/win-x64
+```
+
+Launch `artifacts/win-x64/CSharpDockerDesktop.Presentation.exe`. Distribute the complete output folder; the profile is self-contained, without trimming, NativeAOT, or single-file packaging. No installer or update mechanism is selected. Windows publish and runtime behavior must be verified on Windows; a Mac build alone cannot establish them.
+
+## Responsibilities
+
+- **Presentation**: Uno host, navigation, views, and display text; calls Application services.
+- **Application**: connection contract and session/operation coordination; the current desktop session still exposes the disconnected state without Engine I/O.
+- **Domain**: endpoint identity, actual Engine metadata, negotiated API ranges, capabilities and distinguishable failures, independent of the UI framework.
+- **Infrastructure.Docker**: thin asynchronous Engine handshake using HTTP over the local Windows named pipe; no Uno dependency.
+
+Application depends on Domain; Docker Infrastructure depends on Application/Domain; Presentation depends on Application. Future composition can register Docker implementations behind Application services. The shell currently has no Docker operations, resource snapshots, background polling, or streams.
+
+## Engine connection client
+
+`IEngineConnectionClient.ConnectAsync` opens an explicitly supplied local Windows named pipe, or defaults to `npipe://./pipe/docker_engine` without Docker CLI discovery. It checks readiness, discovers the daemon version/API range, negotiates client API **1.40–1.56**, and fetches Engine information using that negotiated version. A successful `IEngineConnection` retains the HTTP transport; its owner must dispose it when replaced or on shutdown. Failed and canceled attempts release the transport.
+
+The maximum is supported by focused handshake-schema checks, not a claim that all resource APIs are implemented. The client exposes optional metadata as unknown when absent. It separates daemon HTTP status/messages from missing pipe, access denial, unsupported endpoint/platform, incompatible API, malformed response and transient failure. Cancellation propagates normally. It does not log raw responses or discover environment/context precedence.
+
+Read [connection boundary, compatibility evidence and Windows smoke procedures](docs/engine-connection.md) for usage and limits. To run independent checks without Uno, Docker, or external test packages:
+
+```sh
+dotnet run --project tests/CSharpDockerDesktop.Connection.Tests
+```
+
+This executable suite returns a nonzero exit code on any failure. Its controlled named-pipe HTTP server exercises real `SocketsHttpHandler` framing and transport ownership on supported .NET hosts. Real Windows Docker/ACL smoke evidence is still required; a passing Mac fixture does not establish Windows compatibility.

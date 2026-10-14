@@ -1,0 +1,19 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <ApplicationTitle>CSharpDockerDesktop</ApplicationTitle>
+    <ApplicationId>com.csharpdockerdesktop.app</ApplicationId>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationPublisher>CSharpDockerDesktop</ApplicationPublisher>
+    <Description>A desktop client for an existing local Docker Engine.</Description>
+    <UnoFeatures>SkiaRenderer</UnoFeatures>
+    <UseMonoRuntime>false</UseMonoRuntime>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CSharpDockerDesktop.Application/CSharpDockerDesktop.Application.csproj" />
+  </ItemGroup>
+</Project>

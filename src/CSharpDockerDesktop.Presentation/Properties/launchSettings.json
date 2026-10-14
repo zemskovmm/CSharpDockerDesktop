@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CSharpDockerDesktop": {
+      "commandName": "Project",
+      "compatibleTargetFramework": "desktop"
+    }
+  }
+}

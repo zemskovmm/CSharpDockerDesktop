@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CSharpDockerDesktop.Domain/CSharpDockerDesktop.Domain.csproj" />
+    <Project Path="src/CSharpDockerDesktop.Application/CSharpDockerDesktop.Application.csproj" />
+    <Project Path="src/CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
+    <Project Path="src/CSharpDockerDesktop.Presentation/CSharpDockerDesktop.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CSharpDockerDesktop.Connection.Tests/CSharpDockerDesktop.Connection.Tests.csproj" />
+  </Folder>
+</Solution>

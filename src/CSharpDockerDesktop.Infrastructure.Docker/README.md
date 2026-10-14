@@ -1,0 +1,3 @@
+Docker Engine protocol, decoding, and platform transport implementations live here, independently of Uno. `DockerEngineConnectionClient` implements the Application connection contract with `System.Text.Json`, `HttpClient`/`SocketsHttpHandler`, and `NamedPipeClientStream`.
+
+The client performs only readiness, version discovery, API negotiation, and Engine information retrieval. See [connection contract and verification](../../docs/engine-connection.md). Production transport supports local Windows pipes only; the internal cross-platform fixture override is restricted to the test assembly. No desktop coordination, discovery precedence, reconnect, resource operations, or streaming is implemented here yet.
