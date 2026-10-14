@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -298,6 +298,9 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
             options, continuity, generation, commandSlots, lifetime.Token, token);
     public Task<ImageCommandResult> DeleteImageAsync(string reference, CancellationToken cancellationToken = default)
         => DockerImageCommands.ExecuteAsync(http, Metadata.Api.Negotiated, reference, options,
+            continuity, generation, commandSlots, lifetime.Token, cancellationToken);
+    public Task<VolumeCommandResult> DeleteVolumeAsync(string name, CancellationToken cancellationToken = default)
+        => DockerVolumeCommands.ExecuteAsync(http, Metadata.Api.Negotiated, name, options,
             continuity, generation, commandSlots, lifetime.Token, cancellationToken);
     public EngineMetadata Metadata { get; } = metadata;
     public Task<EngineConnectionFailure?> CheckLivenessAsync(CancellationToken cancellationToken = default)

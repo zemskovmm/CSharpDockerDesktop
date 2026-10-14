@@ -367,7 +367,7 @@ internal static class LogChecks
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
-                bool command = path.EndsWith("/start"); if (command) payload = [];
+                bool command = path.EndsWith("/start") || path == "/v1.56/volumes/plugin%2Ffull%3Fname?force=false"; if (command) payload = [];
                 await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {(command ? "204 No Content" : "200 OK")}\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
                 await pipe.WriteAsync(payload, deadline.Token); await pipe.FlushAsync(deadline.Token);
             }
@@ -408,6 +408,10 @@ internal static class LogChecks
             var removal = await ((IImageCommands)owner).DeleteImageAsync("repo/name:tag", deadline.Token);
             Check(removal.Disposition == ImageCommandDisposition.Acknowledged && removal.RemovalRecords!.Single().Untagged == "repo/name:tag" && removal.RequiresReconciliation);
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Image mutation leaves retained live streams running");
+            var volumeRemoval = await ((IVolumeCommands)owner).DeleteVolumeAsync("plugin/full?name", deadline.Token);
+            Check(volumeRemoval.Disposition == VolumeCommandDisposition.Acknowledged && volumeRemoval.RequiresReconciliation);
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Volume deletion leaves unrelated live streams running");
+            Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).IsSuccess);
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
