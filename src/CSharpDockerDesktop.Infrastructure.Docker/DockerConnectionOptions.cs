@@ -15,6 +15,7 @@ public sealed record DockerConnectionOptions
     public TimeSpan CommandTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public TimeSpan GracefulCommandTimeout { get; init; } = TimeSpan.FromMinutes(2);
     public int MaximumCommandErrorBytes { get; init; } = 64 * 1024;
+    public int MaximumImageCommandResponseBytes { get; init; } = 64 * 1024;
     public int MaximumConcurrentCommands { get; init; } = 4;
 
     public TimeSpan LogOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
@@ -44,6 +45,8 @@ public sealed record DockerConnectionOptions
             throw new ArgumentOutOfRangeException(nameof(GracefulCommandTimeout));
         if (MaximumCommandErrorBytes < 64 || MaximumCommandErrorBytes > 1024 * 1024)
             throw new ArgumentOutOfRangeException(nameof(MaximumCommandErrorBytes));
+        if (MaximumImageCommandResponseBytes is < 64 or > 1024 * 1024)
+            throw new ArgumentOutOfRangeException(nameof(MaximumImageCommandResponseBytes));
         if (MaximumConcurrentCommands < 1 || MaximumConcurrentCommands > 64)
             throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentCommands));
         if (RequestTimeout <= TimeSpan.Zero || RequestTimeout.TotalMilliseconds > int.MaxValue)

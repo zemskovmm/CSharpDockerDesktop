@@ -1,0 +1,1551 @@
+{
+  "reviewed": "2026-10-14",
+  "kind": "Selected official OpenAPI contracts; simulated response evidence, not captured daemon data",
+  "versions": [
+    {
+      "api": "1.40",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.40.yaml",
+      "sha256": "020a79876fecf4b67920df94e7e39f217d8ce64df627ebd5b094e18720009ca5",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.41",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.41.yaml",
+      "sha256": "150601c804f075e235f7ce9759909796b270d3ebe172067a638b16aea8254ca8",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.42",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.42.yaml",
+      "sha256": "00057be6237ed000a47293c562254c4ff84daad52ede46ff49da8f041bba1ab1",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.43",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.43.yaml",
+      "sha256": "2590d14413f25581b61a2feb992b63867da0d53a476a2e6f34be9b2682e71c52",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.44",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.44.yaml",
+      "sha256": "97340315af1e1a957cd8e163e887cba11aaaf9d58bc6705d9da180ad76e5569f",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.45",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.45.yaml",
+      "sha256": "9167829335db9a45fc6b8521e06561da2db6f2bfa9d3530587859689d3c86a65",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.46",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.46.yaml",
+      "sha256": "7823b4ddb0e47dd12d16fb41771cbb14d4c75c831739dfc15720763457067cec",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.47",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.47.yaml",
+      "sha256": "9108f0595ed0b53a833459ddf50f5c0da498e78b53604bfaad02df5618366629",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.48",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.48.yaml",
+      "sha256": "b2be218811d321284ef85ab4ca3b7336f5d5014f3f3943a3c6cdf04f1a07b072",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.49",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.49.yaml",
+      "sha256": "a746096eaa890df7655025fcf6e56b0fb5fdb16c564b4f4a148e6bc2b753c477",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.50",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.50.yaml",
+      "sha256": "f10dc49581090cc172ad36a0830ea451a0c4422b93491d9179263ffb0fce3645",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.51",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.51.yaml",
+      "sha256": "f51b797750a7f64334e529e3ecaf3a28d0c531c07b54edeed06007c18bb605eb",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.52",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.52.yaml",
+      "sha256": "9f5ec065ffe2578f4919801ee3160a2d16061ebde121510c0d1c3ac1d0499e42",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.53",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.53.yaml",
+      "sha256": "6e79a473bdd4f0ef5394b069aa3a065e92a7fa947e940e78fa0af2100384afbe",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.54",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.54.yaml",
+      "sha256": "a0cf45b9601f37d83240b1cef658f3b88c9674bcef508bf904feb48151b1c3ab",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.55",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.55.yaml",
+      "sha256": "96f48176e6b00ced89d2e5479b43565847856b0d9522111b57383bfe15815a0e",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "api": "1.56",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.56.yaml",
+      "sha256": "00ccd7d2e6e0b7a943ac0067007d181d723b2513ef1f6af3b6b54145314a6fa7",
+      "path": "/images/{name}",
+      "method": "DELETE",
+      "description": "Remove an image, along with any untagged parent images that were\nreferenced by that image.\n\nImages can't be removed if they have descendant images, are being\nused by a running container or are being used by a build.\n",
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Image name or ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "force",
+          "in": "query",
+          "description": "Remove the image even if it is being used by stopped containers or has other tags",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "noprune",
+          "in": "query",
+          "description": "Do not delete untagged parent images",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "platforms",
+          "in": "query",
+          "description": "Select platform-specific content to delete.\nRepeat the parameter to select multiple platforms.\nEach platform is a OCI platform encoded as a JSON string.\n",
+          "type": "array",
+          "collectionFormat": "multi",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "The image was deleted successfully",
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ImageDeleteResponseItem"
+            }
+          },
+          "examples": {
+            "application/json": [
+              {
+                "Untagged": "3e2f21a89f"
+              },
+              {
+                "Deleted": "3e2f21a89f"
+              },
+              {
+                "Deleted": "53b4f83ac9"
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "No such image",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "409": {
+          "description": "Conflict",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "removalRecord": {
+        "type": "object",
+        "x-go-name": "DeleteResponse",
+        "properties": {
+          "Untagged": {
+            "description": "The image ID of an image that was untagged",
+            "type": "string"
+          },
+          "Deleted": {
+            "description": "The image ID of an image that was deleted",
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

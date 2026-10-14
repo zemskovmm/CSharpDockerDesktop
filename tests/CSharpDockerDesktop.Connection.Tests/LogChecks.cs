@@ -360,6 +360,7 @@ internal static class LogChecks
                     "/v1.56/containers/canonical/json" => "{\"Id\":\"canonical\",\"Config\":{\"Tty\":false}}",
                     "/v1.56/images/json?all=true&digests=true" => "[{\"Id\":\"sha256:authoritative-image\",\"RepoTags\":[\"repo/name:tag\"],\"Size\":0}]",
                     "/v1.56/images/repo%2Fname%3Atag/json" => "{\"Id\":\"sha256:authoritative-image\",\"Config\":{\"Env\":[\"SYNTHETIC_SECRET=preserve\"]}}",
+                    "/v1.56/images/repo%2Fname%3Atag?force=false&noprune=false" => "[{\"Untagged\":\"repo/name:tag\"}]",
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
@@ -392,6 +393,11 @@ internal static class LogChecks
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).Value![0].Id == "sha256:authoritative-image");
             Check((await ((IImageReader)owner).InspectImageAsync("repo/name:tag", deadline.Token)).Value!.Configuration!.Environment!.Single() == "SYNTHETIC_SECRET=preserve");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed image reads must leave live streams running");
+            Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
+            var removal = await ((IImageCommands)owner).DeleteImageAsync("repo/name:tag", deadline.Token);
+            Check(removal.Disposition == ImageCommandDisposition.Acknowledged && removal.RemovalRecords!.Single().Untagged == "repo/name:tag" && removal.RequiresReconciliation);
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Image mutation leaves retained live streams running");
+            Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await logs.DisposeAsync(); await events.DisposeAsync();

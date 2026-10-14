@@ -13,6 +13,7 @@
     <None Update="Fixtures/Logs/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Events/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Commands/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/ImageCommands/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Containers/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Images/**" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />

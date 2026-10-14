@@ -7,3 +7,5 @@ The desktop composes this client through Application-owned `DesktopSession`. Suc
 The borrowed `IContainerLogSource` capability uses independently negotiated, capped log pools, authoritative TTY inspection and bounded UTF-8/framing delivery. See [logs contract, budgets, cleanup and simulated evidence](../../docs/container-logs.md). DesktopSession and presentation integration are subsequent work.
 
 The retained connection also provides borrowed `IImageReader` list/inspect reads through the shared bounded resource GET path. See [image projections, references, API 1.40–1.56 evidence and verification limits](../../docs/image-acquisition.md). Image session, event reconciliation, presentation and deletion integration remain subsequent work.
+
+The retained connection provides borrowed `IImageCommands` for single-image non-force deletion, sharing container-command admission and sealed transport continuity. See [removal evidence, alias/parent consequences, uncertainty and API contract checks](../../docs/image-commands.md). Application operation coordination and deletion presentation integration remain subsequent work.
