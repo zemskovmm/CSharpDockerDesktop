@@ -30,6 +30,7 @@ public sealed partial class DesktopSession : INetworkDeletionPreparation
                     || target.ConnectionGeneration != networkSnapshot.ConnectionGeneration ? NetworkPreparationFailureKind.StaleConnection
                 : networkReads.Reader is null ? NetworkPreparationFailureKind.CapabilityUnavailable
                 : !networkSnapshot.Networks.Any(row => StringComparer.Ordinal.Equals(row.Id, target.Id)) ? NetworkPreparationFailureKind.TargetAbsent
+                : networkOperation is { Pending: true } || networkOperationCompletion?.IsCompleted == false ? NetworkPreparationFailureKind.CapacityExceeded
                 : networkPreparation is { Waiting: true } && !networkPreparation.Work.IsCompleted ? NetworkPreparationFailureKind.CapacityExceeded : null;
             if (failure is { } rejected)
                 return Task.FromResult(new NetworkDeletionPreparationSnapshot(default, target, NetworkPreparationPhase.Failed,

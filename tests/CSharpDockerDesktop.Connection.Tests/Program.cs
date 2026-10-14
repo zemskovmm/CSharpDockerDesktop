@@ -30,6 +30,19 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Network operations NetworkDeletionAtomicAdmissionAndReplay", NetworkBrowsingChecks.NetworkDeletionAtomicAdmissionAndReplay),
+    ("Network operations NetworkDeletionEligibilityAndStaleness", NetworkBrowsingChecks.NetworkDeletionEligibilityAndStaleness),
+    ("Network operations NetworkDeletionExactIdentityAndSelection", NetworkBrowsingChecks.NetworkDeletionExactIdentityAndSelection),
+    ("Network operations NetworkDeletionProtocolOutcomesAndCancellation", NetworkBrowsingChecks.NetworkDeletionProtocolOutcomesAndCancellation),
+    ("Network operations NetworkDeletionConflictAttachments", NetworkBrowsingChecks.NetworkDeletionConflictAttachments),
+    ("Network operations NetworkDeletionContradictoryAndFailedObservations", NetworkBrowsingChecks.NetworkDeletionContradictoryAndFailedObservations),
+    ("Network operations NetworkDeletionReadFencesAndEvents", NetworkBrowsingChecks.NetworkDeletionReadFencesAndEvents),
+    ("Network operations NetworkDeletionConflictEventAndTransportFences", NetworkBrowsingChecks.NetworkDeletionConflictEventAndTransportFences),
+    ("Network operations NetworkDeletionRecoveryIdentity", NetworkBrowsingChecks.NetworkDeletionRecoveryIdentity),
+    ("Network operations NetworkDeletionCommandDeadlinesAndLateEvidence", NetworkBrowsingChecks.NetworkDeletionCommandDeadlinesAndLateEvidence),
+    ("Network operations NetworkDeletionNonCooperativeReadsAndTeardown", NetworkBrowsingChecks.NetworkDeletionNonCooperativeReadsAndTeardown),
+    ("Network operations NetworkDeletionRetryJoinsCommandAndPreparation", NetworkBrowsingChecks.NetworkDeletionRetryJoinsCommandAndPreparation),
+    ("Network operations NetworkDeletionCoexistenceAndLateCallerResponse", NetworkBrowsingChecks.NetworkDeletionCoexistenceAndLateCallerResponse),
     ("Network preparation NetworkPreparationEvidenceAndEligibility", NetworkBrowsingChecks.NetworkPreparationEvidenceAndEligibility),
     ("Network preparation NetworkPreparationAdmissionFreshnessAndSelection", NetworkBrowsingChecks.NetworkPreparationAdmissionFreshnessAndSelection),
     ("Network preparation NetworkPreparationEventFencesAndGaps", NetworkBrowsingChecks.NetworkPreparationEventFencesAndGaps),
@@ -353,6 +366,8 @@ if (args.FirstOrDefault() == "--stream-termination")
     tests = tests.Where(test => test.Item1.StartsWith("Stream termination ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--network-preparation")
     tests = tests.Where(test => test.Item1.StartsWith("Network preparation ", StringComparison.Ordinal)).ToArray();
+if (args.FirstOrDefault() == "--network-operations")
+    tests = tests.Where(test => test.Item1.StartsWith("Network operations ", StringComparison.Ordinal)).ToArray();
 int failed = 0;
 foreach (var (name, test) in tests)
 {

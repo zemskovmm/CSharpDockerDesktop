@@ -48,7 +48,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
         IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
         ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null,
-        ContainerLogsOptions? logOptions = null, ImageOperationOptions? imageOperationOptions = null, VolumeOperationOptions? volumeOperationOptions = null)
+        ContainerLogsOptions? logOptions = null, ImageOperationOptions? imageOperationOptions = null, VolumeOperationOptions? volumeOperationOptions = null, NetworkOperationOptions? networkOperationOptions = null)
     {
         this.client = client;
         this.options = options ?? new();
@@ -62,6 +62,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
         this.imageOperationOptions.Validate();
         this.volumeOperationOptions = volumeOperationOptions ?? new();
         this.volumeOperationOptions.Validate();
+        this.networkOperationOptions = networkOperationOptions ?? new();
+        this.networkOperationOptions.Validate();
         this.logOptions = logOptions ?? new();
         this.logOptions.Validate();
         snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);

@@ -26,7 +26,7 @@ public sealed partial class DesktopSession : INetworkBrowser
                     && networkSnapshot.InspectionState == ResourceReadState.Loading;
             networkSnapshot = networkSnapshot with { State = ResourceReadState.Loading, Failure = null };
             // Fence and expose the new state before a cancellation callback can reenter.
-            reads.Active?.Cancel();
+            if (!reads.OperationReadActive) reads.Active?.Cancel();
             reads.Signal.Writer.TryWrite(0);
         }
         NotifyNetworksChanged();
@@ -71,7 +71,7 @@ public sealed partial class DesktopSession : INetworkBrowser
         reads.Inspect = inspect;
         networkSnapshot = networkSnapshot with { SelectedNetworkId = id, Inspection = null,
             InspectionState = inspect ? ResourceReadState.Loading : ResourceReadState.NotRequested, InspectionFailure = null };
-        if (reads.InspectActive) reads.Active?.Cancel();
+        if (reads.InspectActive && !reads.OperationReadActive) reads.Active?.Cancel();
         reads.Signal.Writer.TryWrite(0);
     }
 
@@ -91,6 +91,7 @@ public sealed partial class DesktopSession : INetworkBrowser
             {
                 reads.Signal.Writer.TryWrite(0);
                 reads.Workflow = Task.Run(() => ReadNetworksAsync(reads));
+                ResumeNetworkOperationLocked(reads);
             }
         }
         NotifyNetworksChanged();
@@ -103,6 +104,9 @@ public sealed partial class DesktopSession : INetworkBrowser
         if (!initial) containers.NetworkRefreshPending = true;
         if (networkReads is not { Reader: not null } reads || reads.Containers != containers) return;
         if (!initial) reads.EventRefresh = true;
+        ++reads.ObservationRevision;
+        // Retained operation evidence requires event-obsolete rows to remain fenced as well.
+        if (networkOperation is not null) ++reads.ListRevision;
         InvalidateNetworkEventDetailLocked(reads, null);
         reads.Signal.Writer.TryWrite(0);
     }
@@ -114,6 +118,9 @@ public sealed partial class DesktopSession : INetworkBrowser
         containers.NetworkRefreshPending = true;
         if (networkReads is not { Reader: not null } reads || reads.Containers != containers) return false;
         reads.EventRefresh = true;
+        ++reads.ObservationRevision;
+        // Retained operation evidence requires event-obsolete rows to remain fenced as well.
+        if (networkOperation is not null) ++reads.ListRevision;
         bool changed = InvalidateNetworkEventDetailLocked(reads, UsableNetworkEventIdentity(identity));
         reads.Signal.Writer.TryWrite(0);
         return changed;
@@ -155,6 +162,7 @@ public sealed partial class DesktopSession : INetworkBrowser
         InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ConnectionChanged, cancel: true);
         var previous = networkReads;
         networkReads = null;
+        InvalidateNetworkOperationLocked();
         networkSnapshot = new(networkSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<NetworkSummary>(), Failure: inspection ? null : failure, InspectionFailure: inspection ? failure : null);
         previous?.Lifetime.Cancel();
@@ -168,7 +176,7 @@ public sealed partial class DesktopSession : INetworkBrowser
             else reads.Lifetime.Cancel();
         }
         // Keep ownership even when a reader ignores cancellation; never dispose its borrowed transport early.
-        try { await Task.WhenAll(reads.Workflow, reads.NetworkPreparationWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.NetworkPreparationWorkflow, reads.OperationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -181,6 +189,20 @@ public sealed partial class DesktopSession : INetworkBrowser
                 reads.Signal.Reader.TryRead(out _);
                 while (true)
                 {
+                    NetworkObservationRequest? operationRead;
+                    lock (gate)
+                    {
+                        if (!CurrentNetworksLocked(reads)) return;
+                        operationRead = reads.Containers.InitialObservationPending || reads.InitialSnapshotPending
+                            || reads.LastReadWasOperation && (reads.Refresh || reads.EventRefresh || reads.Inspect)
+                            ? null : reads.OperationObservation;
+                        if (operationRead is not null) reads.OperationObservation = null;
+                    }
+                    if (operationRead is not null)
+                    {
+                        await ReadNetworkObservationAsync(reads, operationRead).ConfigureAwait(false);
+                        continue;
+                    }
                     bool list;
                     long revision;
                     string? id;
@@ -198,6 +220,8 @@ public sealed partial class DesktopSession : INetworkBrowser
                     {
                         if (!CurrentNetworksLocked(reads)) return;
                         if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.InitialSnapshotPending && reads.OperationObservation is not null
+                            && (!reads.LastReadWasOperation || !(reads.Refresh || reads.EventRefresh || reads.Inspect))) continue;
                         if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         // One pending bit per family; alternate turns under sustained refresh/selection bursts.
                         list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
@@ -211,6 +235,7 @@ public sealed partial class DesktopSession : INetworkBrowser
                         }
                         else reads.Inspect = false;
                         reads.LastReadWasList = list;
+                        reads.LastReadWasOperation = false;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         id = networkSnapshot.SelectedNetworkId;
                         reads.InspectActive = !list;
@@ -252,8 +277,13 @@ public sealed partial class DesktopSession : INetworkBrowser
         lock (gate)
         {
             if (!CurrentNetworksLocked(reads) || !ReferenceEquals(reads.Active, request)) return;
-            NetworkTransportLostLocked(reads, new(EngineResourceFailureKind.TransportLoss,
-                "The network request exceeded its deadline."), !list);
+            var failure = new EngineResourceFailure(EngineResourceFailureKind.TransportLoss,
+                "The network request exceeded its deadline.");
+            if (reads.OperationReadActive && networkOperation is { Pending: true } current)
+                networkOperation = current with { ObservationFailure = failure, ObservationInvalidated = true,
+                    AttachmentObservationState = current.CommandOutcome?.Failure?.Kind == NetworkCommandFailureKind.Conflict
+                        ? NetworkAttachmentObservationState.Failed : current.AttachmentObservationState };
+            NetworkTransportLostLocked(reads, failure, !list);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -272,24 +302,32 @@ public sealed partial class DesktopSession : INetworkBrowser
                 networkSnapshot = networkSnapshot with { State = ResourceReadState.Failed, Failure = failure };
             else
             {
-                var rows = Array.AsReadOnly(result.Value!.DistinctBy(row => row.Id, StringComparer.Ordinal)
-                    .Select(row => row with { Labels = CopyNetworkMap(row.Labels) }).ToArray());
-                networkSnapshot = networkSnapshot with { State = ResourceReadState.Ready, Networks = rows, Failure = null };
-                if (networkPreparation is { } preparation && ReferenceEquals(preparation.Reads, reads))
-                {
-                    var row = rows.FirstOrDefault(row => StringComparer.Ordinal.Equals(row.Id, preparation.Snapshot.Target.Id));
-                    if (row is null) InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.TargetAbsent);
-                    else if (row.Name is not null &&
-                        ((preparation.ListedName is not null && !StringComparer.Ordinal.Equals(row.Name, preparation.ListedName))
-                        || (preparation.Snapshot.Inspection is { } evidence && !StringComparer.Ordinal.Equals(row.Name, evidence.Name))))
-                        InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ObservedChange);
-                }
-                if (networkSnapshot.SelectedNetworkId is { } selected
-                    && !rows.Any(row => StringComparer.Ordinal.Equals(row.Id, selected)))
-                    RequestNetworkInspectionLocked(reads, null, false);
+                ApplyNetworkListingLocked(reads, result.Value!);
             }
         }
         NotifyNetworkRead(lost);
+    }
+
+    private static IReadOnlyList<NetworkSummary> CopyNetworkListing(IReadOnlyList<NetworkSummary> value)
+        => Array.AsReadOnly(value.DistinctBy(row => row.Id, StringComparer.Ordinal)
+            .Select(row => row with { Labels = CopyNetworkMap(row.Labels) }).ToArray());
+
+    private void ApplyNetworkListingLocked(NetworkReads reads, IReadOnlyList<NetworkSummary> value)
+    {
+        var rows = CopyNetworkListing(value);
+        networkSnapshot = networkSnapshot with { State = ResourceReadState.Ready, Networks = rows, Failure = null };
+        if (networkPreparation is { } preparation && ReferenceEquals(preparation.Reads, reads))
+        {
+            var row = rows.FirstOrDefault(row => StringComparer.Ordinal.Equals(row.Id, preparation.Snapshot.Target.Id));
+            if (row is null) InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.TargetAbsent);
+            else if (row.Name is not null &&
+                ((preparation.ListedName is not null && !StringComparer.Ordinal.Equals(row.Name, preparation.ListedName))
+                || (preparation.Snapshot.Inspection is { } evidence && !StringComparer.Ordinal.Equals(row.Name, evidence.Name))))
+                InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ObservedChange);
+        }
+        if (networkSnapshot.SelectedNetworkId is { } selected
+            && !rows.Any(row => StringComparer.Ordinal.Equals(row.Id, selected)))
+            RequestNetworkInspectionLocked(reads, null, false);
     }
 
     private void CompleteNetworkInspection(NetworkReads reads, CancellationTokenSource request, long revision, string id,
@@ -359,6 +397,7 @@ public sealed partial class DesktopSession : INetworkBrowser
     private void NotifyNetworksChanged()
     {
         NotifyNetworkPreparationChanged();
+        NotifyNetworkOperationChanged();
         lock (gate)
         {
             if (ReferenceEquals(notifiedNetworkSnapshot, networkSnapshot)) return;
@@ -375,6 +414,10 @@ public sealed partial class DesktopSession : INetworkBrowser
         public Channel<byte> Signal { get; } = Channel.CreateBounded<byte>(new BoundedChannelOptions(1)
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public Task Workflow = Task.CompletedTask;
+        public Task OperationWorkflow = Task.CompletedTask;
+        public NetworkObservationRequest? OperationObservation;
+        public bool OperationReadActive, LastReadWasOperation;
+        public long ObservationRevision;
         public Task NetworkPreparationWorkflow = Task.CompletedTask;
         public CancellationTokenSource? Active, ActiveDeadline;
         public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;
