@@ -1,6 +1,6 @@
-# ChatGPT project context
+# CSharpDockerDesktop
 
-This directory is a local mirror of the ChatGPT project “OpenDockerDesktop”.
+This directory contains the CSharpDockerDesktop repository.
 
 - Treat every file under `sources/` as read-only reference material.
 - Do not edit, rename, move, or delete synced project files.
