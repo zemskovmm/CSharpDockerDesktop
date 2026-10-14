@@ -38,10 +38,10 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         {
             var list = Lists(frame).FirstOrDefault(list => list.Name == "LogsList" && list.Visibility == Visibility.Visible && list.Items.Count > 0)
                 ?? Lists(frame).FirstOrDefault(list => list.Name == "InspectList" && list.Visibility == Visibility.Visible && list.Items.Count > 0)
-                ?? Lists(frame).FirstOrDefault(list => list.Name == "ContainerList");
+                ?? Lists(frame).FirstOrDefault(list => list.Name is "ContainerList" or "ImageList");
             int loaded = list?.Items.Count ?? 0;
             int realized = list is null ? 0 : Count<ListViewItem>(list);
-            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: {browser.Cancellations}; commands: {browser.Commands}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
+            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: containers {browser.Cancellations}, images {browser.ImageCancellations}; commands: {browser.Commands}; Logs opens/closes: {browser.LogOpens}/{browser.LogCloses}; last: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
             if (loaded >= 128 && (realized <= 0 || realized >= loaded)) throw new InvalidOperationException("Expected bounded virtualized row realization.");
         };
         controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(scenario);
@@ -49,6 +49,13 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         tools.Children.Add(controls);
         var logScenarios = new ComboBox { ItemsSource = new[] { "Sustained stdout/stderr", "TTY combined", "Recovery then streaming", "Logging driver unavailable", "Access denied", "Finite completion", "Canceled stream", "Malformed output" }, SelectedIndex = 0, Header = "Logs scenario on next open" };
         logScenarios.SelectionChanged += (_, _) => browser.LogScenario = logScenarios.SelectedIndex;
+        var imageTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var images = new Button { Content = "Images fixture" };
+        var imageEvent = new Button { Content = "Invalidate selected image" };
+        images.Click += (_, _) => frame.Navigate(typeof(ImagesPage), browser);
+        imageEvent.Click += (_, _) => browser.InvalidateSelectedImage();
+        imageTools.Children.Add(images); imageTools.Children.Add(imageEvent);
+        tools.Children.Add(imageTools);
         tools.Children.Add(logScenarios); tools.Children.Add(evidence);
         grid.Children.Add(tools); grid.Children.Add(frame); Grid.SetRow(frame, 1);
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
@@ -159,7 +166,7 @@ internal sealed partial class FixtureBrowser : IContainerBrowser, IContainerOper
     public void ClearContainerInspection()
     { Cancel(); ContainerSnapshot = ContainerSnapshot with { Inspection = null, InspectionState = ResourceReadState.NotRequested }; Notify(); }
     public void Disconnect()
-    { Cancel(); _ = CloseContainerLogsAsync(); ContainerSnapshot = new(2, ResourceReadState.Unavailable, []); Notify(); }
+    { Cancel(); DisconnectImages(); _ = CloseContainerLogsAsync(); ContainerSnapshot = new(2, ResourceReadState.Unavailable, []); Notify(); }
     private void Cancel()
     {
         if (inspection is { } pending)

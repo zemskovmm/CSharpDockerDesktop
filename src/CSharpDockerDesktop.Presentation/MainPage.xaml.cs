@@ -26,6 +26,7 @@ public sealed partial class MainPage : Page
         session.Changed -= OnSessionChanged;
         attached = false;
         if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
+        if (ResourceFrame.Content is ImagesPage images) images.Detach();
     }
     private void OnSessionChanged(object? sender, EventArgs args)
         => DispatcherQueue.TryEnqueue(() => { if (attached) UpdateConnection(); });
@@ -53,11 +54,11 @@ public sealed partial class MainPage : Page
         ConnectionDiagnostic.Text = s.Failure is { } failure
             ? $"{FailureLabel(failure.Kind)}: {failure.Description}{recovery}"
             : s.EventFailure is { } eventFailure
-                ? $"Automatic container updates interrupted ({eventFailure.Kind}): {eventFailure.Description} "
+                ? $"Automatic updates for containers and images interrupted ({eventFailure.Kind}): {eventFailure.Description} "
                     + (s.EventRecoveryPending ? "Observation recovery is scheduled. " : "Use Retry connection to restore observation. ")
-                    + "Refresh containers and navigation remain available."
+                    + "Manual refresh for containers and images remains available, and you can continue navigating."
             : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
-            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers supports browsing, Overview, Inspect, Logs and lifecycle actions; Images, Volumes and Networks are pending." : "";
+            : s.State == EngineConnectionState.Connected ? "Engine connected. Container browsing includes Overview, Inspect, Logs and lifecycle actions. Image browsing includes Overview and Inspect. Volumes and Networks are pending." : "";
         var daemonMessage = s.Failure?.DaemonMessage ?? s.EventFailure?.DaemonMessage;
         if (!Equals(displayedDaemonMessage, daemonMessage))
         {
@@ -97,8 +98,9 @@ public sealed partial class MainPage : Page
             && Enum.TryParse<ResourceSection>(sectionName, out var section))
         {
             if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
-            ResourceFrame.Navigate(section == ResourceSection.Containers ? typeof(ContainersPage) : typeof(ResourcePage),
-                section == ResourceSection.Containers ? (object)session : section);
+            if (ResourceFrame.Content is ImagesPage images) images.Detach();
+            var pageType = section switch { ResourceSection.Containers => typeof(ContainersPage), ResourceSection.Images => typeof(ImagesPage), _ => typeof(ResourcePage) };
+            ResourceFrame.Navigate(pageType, section is ResourceSection.Containers or ResourceSection.Images ? (object)session : section);
             if (ResourceFrame.Content is ResourcePage page) page.UpdateConnection(session.Snapshot);
         }
     }
