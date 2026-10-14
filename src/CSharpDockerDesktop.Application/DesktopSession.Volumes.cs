@@ -24,7 +24,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
             if (reads.InspectActive)
                 reads.Inspect = volumeSnapshot.SelectedVolumeName is not null
                     && volumeSnapshot.InspectionState == ResourceReadState.Loading;
-            reads.Active?.Cancel();
+            if (!reads.OperationReadActive) reads.Active?.Cancel();
             volumeSnapshot = volumeSnapshot with { State = ResourceReadState.Loading, Failure = null,
                 Completeness = VolumeListCompleteness.Unavailable, HasRetainedRows = volumeSnapshot.Volumes.Count > 0 };
             reads.Signal.Writer.TryWrite(0);
@@ -70,7 +70,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
     {
         ++reads.DetailRevision;
         reads.Inspect = inspect;
-        if (reads.InspectActive) reads.Active?.Cancel();
+        if (reads.InspectActive && !reads.OperationReadActive) reads.Active?.Cancel();
         volumeSnapshot = volumeSnapshot with { SelectedVolumeName = name, Inspection = null,
             InspectionState = inspect ? ResourceReadState.Loading : ResourceReadState.NotRequested, InspectionFailure = null };
         reads.Signal.Writer.TryWrite(0);
@@ -92,6 +92,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
             {
                 reads.Signal.Writer.TryWrite(0);
                 reads.Workflow = Task.Run(() => ReadVolumesAsync(reads));
+                ResumeVolumeOperationLocked(reads);
             }
         }
         NotifyVolumesChanged();
@@ -103,6 +104,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
         if (!initial) containers.VolumeRefreshPending = true;
         if (volumeReads is not { Reader: not null } reads || reads.Containers != containers) return;
         if (!initial) reads.EventRefresh = true;
+        ++reads.ObservationRevision;
         InvalidateVolumeEventDetailLocked(reads, null);
         reads.Signal.Writer.TryWrite(0);
     }
@@ -113,6 +115,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
         containers.VolumeRefreshPending = true;
         if (volumeReads is not { Reader: not null } reads || reads.Containers != containers) return false;
         reads.EventRefresh = true;
+        ++reads.ObservationRevision;
         bool changed = InvalidateVolumeEventDetailLocked(reads, UsableVolumeEventIdentity(identity));
         reads.Signal.Writer.TryWrite(0);
         return changed;
@@ -154,6 +157,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
     {
         var previous = volumeReads;
         volumeReads = null;
+        InvalidateVolumeOperationLocked();
         volumeSnapshot = new(volumeSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<VolumeSummary>(), Failure: inspection ? null : failure, InspectionFailure: inspection ? failure : null);
         previous?.Lifetime.Cancel();
@@ -166,7 +170,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
             if (ReferenceEquals(volumeReads, reads)) InvalidateVolumesLocked();
             else reads.Lifetime.Cancel();
         }
-        try { await reads.Workflow.ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.OperationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -179,6 +183,20 @@ public sealed partial class DesktopSession : IVolumeBrowser
                 reads.Signal.Reader.TryRead(out _);
                 while (true)
                 {
+                    VolumeObservationRequest? operationRead;
+                    lock (gate)
+                    {
+                        if (!CurrentVolumesLocked(reads)) return;
+                        operationRead = reads.Containers.InitialObservationPending || reads.InitialSnapshotPending
+                            || reads.LastReadWasOperation && (reads.Refresh || reads.EventRefresh || reads.Inspect)
+                            ? null : reads.OperationObservation;
+                        if (operationRead is not null) reads.OperationObservation = null;
+                    }
+                    if (operationRead is not null)
+                    {
+                        await ReadVolumeObservationAsync(reads, operationRead).ConfigureAwait(false);
+                        continue;
+                    }
                     bool list;
                     long revision;
                     string? name;
@@ -196,6 +214,8 @@ public sealed partial class DesktopSession : IVolumeBrowser
                     {
                         if (!CurrentVolumesLocked(reads)) return;
                         if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.InitialSnapshotPending && reads.OperationObservation is not null
+                            && (!reads.LastReadWasOperation || !(reads.Refresh || reads.EventRefresh || reads.Inspect))) continue;
                         if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
                         if (list)
@@ -208,6 +228,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
                         }
                         else reads.Inspect = false;
                         reads.LastReadWasList = list;
+                        reads.LastReadWasOperation = false;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         name = volumeSnapshot.SelectedVolumeName;
                         reads.InspectActive = !list;
@@ -249,8 +270,13 @@ public sealed partial class DesktopSession : IVolumeBrowser
         lock (gate)
         {
             if (!CurrentVolumesLocked(reads) || !ReferenceEquals(reads.Active, request)) return;
-            VolumeTransportLostLocked(reads, new(EngineResourceFailureKind.TransportLoss,
-                "The volume request exceeded its deadline."), !list);
+            var failure = new EngineResourceFailure(EngineResourceFailureKind.TransportLoss,
+                "The volume request exceeded its deadline.");
+            if (reads.OperationReadActive && volumeOperation is { Pending: true } current)
+                volumeOperation = current with { ObservationFailure = failure, ObservationInvalidated = true,
+                    DependencyObservationState = current.CommandOutcome?.Failure?.Kind == VolumeCommandFailureKind.Conflict
+                        ? VolumeDependencyObservationState.Failed : current.DependencyObservationState };
+            VolumeTransportLostLocked(reads, failure, !list);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -270,26 +296,31 @@ public sealed partial class DesktopSession : IVolumeBrowser
                     Completeness = VolumeListCompleteness.Unavailable, HasRetainedRows = volumeSnapshot.Volumes.Count > 0 };
             else
             {
-                var listing = CopyVolumeListing(result.Value!);
-                bool complete = listing.Volumes is not null && !listing.HasWarnings;
-                var current = listing.Volumes?.DistinctBy(row => row.Name, StringComparer.Ordinal).ToArray();
-                var names = current?.Select(row => row.Name).ToHashSet(StringComparer.Ordinal);
-                var retained = complete ? Array.Empty<VolumeSummary>() : volumeSnapshot.Volumes
-                    .Where(old => names is null || !names.Contains(old.Name)).ToArray();
-                var rows = Array.AsReadOnly((current ?? Array.Empty<VolumeSummary>()).Concat(retained).ToArray());
-                volumeSnapshot = volumeSnapshot with { State = listing.Volumes is null ? ResourceReadState.Unavailable : ResourceReadState.Ready,
-                    Volumes = rows, LatestListing = listing, Failure = null, HasRetainedRows = retained.Length > 0,
-                    Completeness = listing.Volumes is null ? VolumeListCompleteness.Unavailable
-                        : complete ? VolumeListCompleteness.Complete : VolumeListCompleteness.Incomplete };
-                if (complete && preparation is { } captured
-                    && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, captured.Snapshot.Target.Name)))
-                    InvalidatePreparationLocked(VolumePreparationFailureKind.TargetAbsent);
-                if (complete && volumeSnapshot.SelectedVolumeName is { } selected
-                    && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, selected)))
-                    RequestVolumeInspectionLocked(reads, null, false);
+                ApplyVolumeListingLocked(reads, result.Value!);
             }
         }
         NotifyVolumeRead(lost);
+    }
+
+    private void ApplyVolumeListingLocked(VolumeReads reads, VolumeListing value)
+    {
+        var listing = CopyVolumeListing(value);
+        bool complete = listing.Volumes is not null && !listing.HasWarnings;
+        var current = listing.Volumes?.DistinctBy(row => row.Name, StringComparer.Ordinal).ToArray();
+        var names = current?.Select(row => row.Name).ToHashSet(StringComparer.Ordinal);
+        var retained = complete ? Array.Empty<VolumeSummary>() : volumeSnapshot.Volumes
+            .Where(old => names is null || !names.Contains(old.Name)).ToArray();
+        var rows = Array.AsReadOnly((current ?? Array.Empty<VolumeSummary>()).Concat(retained).ToArray());
+        volumeSnapshot = volumeSnapshot with { State = listing.Volumes is null ? ResourceReadState.Unavailable : ResourceReadState.Ready,
+            Volumes = rows, LatestListing = listing, Failure = null, HasRetainedRows = retained.Length > 0,
+            Completeness = listing.Volumes is null ? VolumeListCompleteness.Unavailable
+                : complete ? VolumeListCompleteness.Complete : VolumeListCompleteness.Incomplete };
+        if (complete && preparation is { } captured
+            && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, captured.Snapshot.Target.Name)))
+            InvalidatePreparationLocked(VolumePreparationFailureKind.TargetAbsent);
+        if (complete && volumeSnapshot.SelectedVolumeName is { } selected
+            && !rows.Any(row => StringComparer.Ordinal.Equals(row.Name, selected)))
+            RequestVolumeInspectionLocked(reads, null, false);
     }
 
     private void CompleteVolumeInspection(VolumeReads reads, CancellationTokenSource request, long revision, string name,
@@ -352,6 +383,7 @@ public sealed partial class DesktopSession : IVolumeBrowser
     private void NotifyVolumesChanged()
     {
         NotifyPreparationChanged();
+        NotifyVolumeOperationChanged();
         lock (gate)
         {
             if (ReferenceEquals(notifiedVolumeSnapshot, volumeSnapshot)) return;
@@ -368,6 +400,10 @@ public sealed partial class DesktopSession : IVolumeBrowser
         public Channel<byte> Signal { get; } = Channel.CreateBounded<byte>(new BoundedChannelOptions(1)
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public Task Workflow = Task.CompletedTask;
+        public Task OperationWorkflow = Task.CompletedTask;
+        public VolumeObservationRequest? OperationObservation;
+        public bool OperationReadActive, LastReadWasOperation;
+        public long ObservationRevision;
         public CancellationTokenSource? Active;
         public CancellationTokenSource? ActiveDeadline;
         public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;

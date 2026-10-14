@@ -4,7 +4,7 @@ namespace CSharpDockerDesktop.Application;
 
 public sealed record VolumeDeletionTarget(long ConnectionGeneration, string Name);
 public readonly record struct VolumePreparationIdentity(long PreparationId, long Revision);
-public enum VolumePreparationPhase { Loading, Completed, Invalidated, Failed }
+public enum VolumePreparationPhase { Loading, Completed, Invalidated, Failed, Consumed }
 public enum VolumePreparationFailureKind
 {
     InvalidRequest, CapabilityUnavailable, StaleConnection, CapacityExceeded, Canceled, Deadline,

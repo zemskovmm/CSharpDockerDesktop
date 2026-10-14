@@ -29,6 +29,8 @@ public sealed partial class DesktopSession : IVolumeDeletionPreparation
                     || target.ConnectionGeneration != containerSnapshot.ConnectionGeneration ? VolumePreparationFailureKind.StaleConnection
                 : UsableVolumeEventIdentity(target.Name) is null ? VolumePreparationFailureKind.InvalidRequest
                 : containerReads.Connection is not IVolumeDependencyReader ? VolumePreparationFailureKind.CapabilityUnavailable
+                : volumeOperation is { Pending: true } || volumeOperationCompletion?.IsCompleted == false
+                    ? VolumePreparationFailureKind.CapacityExceeded
                 : preparation is { Waiting: true } && !preparation.Work.IsCompleted ? VolumePreparationFailureKind.CapacityExceeded : null;
             if (failure is { } rejected)
                 return Task.FromResult(new VolumeDeletionPreparationSnapshot(default, target, VolumePreparationPhase.Failed,

@@ -170,6 +170,7 @@ public sealed partial class DesktopSession
             else if (string.Equals(observation.Type, "container", StringComparison.Ordinal))
             {
                 ++reads.ObservationRevision;
+                if (volumeReads is { } volumes && volumes.Containers == reads) ++volumes.ObservationRevision;
                 reads.EventRefresh = true;
                 notify = InvalidateEventDetailLocked(reads, observation.ResourceId);
                 reads.Signal.Writer.TryWrite(0);
