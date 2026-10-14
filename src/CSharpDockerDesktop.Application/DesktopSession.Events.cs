@@ -108,6 +108,12 @@ public sealed partial class DesktopSession
                             ?? new(EngineEventFailureKind.UnexpectedEnd, "Engine event observation ended unexpectedly.");
                     }
                     else failure = attempt.Failure!;
+                    // Fence preparation as soon as a continuity gap is known, before joining a
+                    // potentially slow subscription disposal or invoking connection observers.
+                    lock (gate)
+                        if (CurrentEventsLocked(reads))
+                            InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ObservedChange);
+                    NotifyNetworkPreparationChanged();
                 }
                 finally
                 {
@@ -182,6 +188,7 @@ public sealed partial class DesktopSession
         }
         // List publication is batched; only the first invalidation clears exposed detail content.
         NotifyPreparationChanged();
+        NotifyNetworkPreparationChanged();
         if (notify) NotifyContainerBrowsers();
     }
 

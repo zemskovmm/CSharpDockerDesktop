@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Network preparation NetworkPreparationEvidenceAndEligibility", NetworkBrowsingChecks.NetworkPreparationEvidenceAndEligibility),
+    ("Network preparation NetworkPreparationAdmissionFreshnessAndSelection", NetworkBrowsingChecks.NetworkPreparationAdmissionFreshnessAndSelection),
+    ("Network preparation NetworkPreparationEventFencesAndGaps", NetworkBrowsingChecks.NetworkPreparationEventFencesAndGaps),
+    ("Network preparation NetworkPreparationDisappearanceAndFailures", NetworkBrowsingChecks.NetworkPreparationDisappearanceAndFailures),
+    ("Network preparation NetworkPreparationCapacityCancellationAndJoin", NetworkBrowsingChecks.NetworkPreparationCapacityCancellationAndJoin),
+    ("Network preparation NetworkPreparationDeadlineRecoveryAndReconnection", NetworkBrowsingChecks.NetworkPreparationDeadlineRecoveryAndReconnection),
+    ("Network preparation NetworkPreparationCoexistence", NetworkBrowsingChecks.NetworkPreparationCoexistence),
     ("Application Networks NetworkEventFailureContentAndObsoleteFailures", NetworkBrowsingChecks.NetworkEventFailureContentAndObsoleteFailures),
     ("Application Networks NetworkMissingCapabilityKeepsSharedObservation", NetworkBrowsingChecks.NetworkMissingCapabilityKeepsSharedObservation),
     ("Application Networks NetworkStartupBridgeWithoutConcurrentObservation", NetworkBrowsingChecks.NetworkStartupBridgeWithoutConcurrentObservation),
@@ -344,6 +351,8 @@ var tests = new (string, Func<Task>)[]
 };
 if (args.FirstOrDefault() == "--stream-termination")
     tests = tests.Where(test => test.Item1.StartsWith("Stream termination ", StringComparison.Ordinal)).ToArray();
+if (args.FirstOrDefault() == "--network-preparation")
+    tests = tests.Where(test => test.Item1.StartsWith("Network preparation ", StringComparison.Ordinal)).ToArray();
 int failed = 0;
 foreach (var (name, test) in tests)
 {
