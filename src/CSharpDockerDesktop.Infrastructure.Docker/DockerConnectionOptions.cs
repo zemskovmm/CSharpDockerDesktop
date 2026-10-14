@@ -7,6 +7,10 @@ public sealed record DockerConnectionOptions
     public TimeSpan PipeConnectTimeout { get; init; } = TimeSpan.FromSeconds(2);
     public int MaximumResponseBytes { get; init; } = 1024 * 1024;
 
+    // One sequential candidate inspection per query; queueing shares the whole-query request deadline.
+    public int MaximumConcurrentVolumeDependencyQueries { get; init; } = 2;
+    public int MaximumVolumeDependencyContainers { get; init; } = 4096;
+
     public TimeSpan EventOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public int MaximumEventBytes { get; init; } = 64 * 1024;
     public int EventBufferCapacity { get; init; } = 128;
@@ -27,6 +31,10 @@ public sealed record DockerConnectionOptions
 
     internal void Validate()
     {
+        if (MaximumConcurrentVolumeDependencyQueries is < 1 or > 64)
+            throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentVolumeDependencyQueries));
+        if (MaximumVolumeDependencyContainers is < 1 or > 65536)
+            throw new ArgumentOutOfRangeException(nameof(MaximumVolumeDependencyContainers));
         if (LogOpeningTimeout <= TimeSpan.Zero || LogOpeningTimeout.TotalMilliseconds > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(LogOpeningTimeout));
         if (MaximumConcurrentLogSubscriptions is < 1 or > 64)

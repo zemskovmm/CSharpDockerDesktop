@@ -357,7 +357,8 @@ internal static class LogChecks
                 {
                     "/_ping" => "OK", "/version" => "{\"Version\":\"fixture\",\"ApiVersion\":\"1.56\",\"MinAPIVersion\":\"1.40\"}",
                     "/v1.56/containers/json?all=true" => "[{\"Id\":\"canonical\"}]",
-                    "/v1.56/containers/canonical/json" => "{\"Id\":\"canonical\",\"Config\":{\"Tty\":false}}",
+                    "/v1.56/containers/canonical/json" => "{\"Id\":\"canonical\",\"Config\":{\"Tty\":false},\"State\":{\"Status\":\"exited\",\"Running\":false},\"Mounts\":[{\"Type\":\"volume\",\"Name\":\"plugin/full?name\"}]}",
+                    var candidatePath when candidatePath.StartsWith("/v1.56/containers/json?all=true&filters=") => "[{\"Id\":\"canonical\",\"Names\":[\"/private-original-name\"]}]",
                     "/v1.56/images/json?all=true&digests=true" => "[{\"Id\":\"sha256:authoritative-image\",\"RepoTags\":[\"repo/name:tag\"],\"Size\":0}]",
                     "/v1.56/images/repo%2Fname%3Atag/json" => "{\"Id\":\"sha256:authoritative-image\",\"Config\":{\"Env\":[\"SYNTHETIC_SECRET=preserve\"]}}",
                     "/v1.56/images/repo%2Fname%3Atag?force=false&noprune=false" => "[{\"Untagged\":\"repo/name:tag\"}]",
@@ -399,6 +400,10 @@ internal static class LogChecks
             Check(volumes.Volumes![0].Name == "plugin/full?name" && volumes.HasWarnings);
             Check((await ((IVolumeReader)owner).InspectVolumeAsync(volumes.Volumes[0].Name, deadline.Token)).Value!.RawJson.Contains("private synthetic secret"));
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed volume reads must leave live streams running");
+            var dependencies = (await ((IVolumeDependencyReader)owner).QueryVolumeDependenciesAsync("plugin/full?name", deadline.Token)).Value!;
+            Check(dependencies.Completeness == VolumeDependencyCompleteness.Complete && dependencies.Containers!.Single().Id == "canonical"
+                && dependencies.Containers![0].State == "exited" && dependencies.Containers![0].Names!.Single() == "/private-original-name");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed dependency reads leave live streams running");
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             var removal = await ((IImageCommands)owner).DeleteImageAsync("repo/name:tag", deadline.Token);
             Check(removal.Disposition == ImageCommandDisposition.Acknowledged && removal.RemovalRecords!.Single().Untagged == "repo/name:tag" && removal.RequiresReconciliation);

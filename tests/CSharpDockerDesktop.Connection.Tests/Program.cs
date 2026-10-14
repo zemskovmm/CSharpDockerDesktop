@@ -30,6 +30,11 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Volume dependencies API 1.40–1.56 contracts and exact running/stopped mounts", VolumeDependencyChecks.ContractsAndExactMatching),
+    ("Volume dependencies original names, encoding and evidence completeness", VolumeDependencyChecks.NamesAndEvidenceStates),
+    ("Volume dependencies classified failures, malformed evidence and bounds", VolumeDependencyChecks.FailuresAndBounds),
+    ("Volume dependencies cancellation, bounded admission and late results", VolumeDependencyChecks.CancellationAdmissionAndLateFences),
+    ("Volume dependencies continuity fences and retained capability coexistence", VolumeDependencyChecks.ContinuityAndResourceCoexistence),
     ("Application Volumes startup bridge without a concurrent observation", VolumeBrowsingChecks.VolumeStartupBridgeWithoutConcurrentObservation),
     ("Application Volumes exact actor identity and conservative requested detail", VolumeBrowsingChecks.VolumeActorIdentityAndConservativeDetail),
     ("Application Volumes event/list evidence and obsolete failure fences", VolumeBrowsingChecks.VolumeEventListingEvidenceAndObsoleteFailures),

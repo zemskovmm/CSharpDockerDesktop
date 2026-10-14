@@ -210,10 +210,11 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IEngineEventSource, IContainerCommands, IImageCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
+    private readonly SemaphoreSlim volumeDependencySlots = new(options.MaximumConcurrentVolumeDependencyQueries);
     private readonly CancellationTokenSource lifetime = new();
     private readonly object eventGate = new();
     private DockerEventSubscription? eventSubscription;
@@ -351,6 +352,12 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
                 "A non-empty bounded volume name or ID without controls or invalid Unicode is required.")));
         return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"volumes/{Uri.EscapeDataString(name)}",
             DockerVolumeJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken, "volume");
+    }
+    public Task<EngineResourceResult<VolumeDependencies>> QueryVolumeDependenciesAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return DockerVolumeDependencies.QueryAsync(http, Metadata.Api.Negotiated, name, options,
+            continuity, generation, volumeDependencySlots, lifetime.Token, cancellationToken);
     }
     public ValueTask DisposeAsync()
     {

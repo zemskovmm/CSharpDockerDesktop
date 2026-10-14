@@ -59,7 +59,7 @@ internal static class DockerResourceReader
         }
     }
 
-    private static void EnsureContinuity(ITransportContinuity? continuity, long? generation)
+    internal static void EnsureContinuity(ITransportContinuity? continuity, long? generation)
     {
         if (continuity?.ConnectionGeneration != generation)
             throw new ResourceProtocolException(new(EngineResourceFailureKind.TransportLoss,
