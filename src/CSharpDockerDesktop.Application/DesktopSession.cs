@@ -38,6 +38,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private readonly ConnectionRecoveryOptions options;
     private readonly IConnectionDelay delay;
     private readonly ContainerReconciliationOptions reconciliation;
+    private readonly ContainerOperationOptions operationOptions;
     private CancellationTokenSource? workflowCancellation;
     private Task workflow = Task.CompletedTask;
     private long generation;
@@ -46,7 +47,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
 
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
         IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
-        ContainerReconciliationOptions? reconciliation = null)
+        ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null)
     {
         this.client = client;
         this.options = options ?? new();
@@ -54,6 +55,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
         this.delay = delay ?? new SystemConnectionDelay();
         this.reconciliation = reconciliation ?? new();
         this.reconciliation.Validate();
+        this.operationOptions = operationOptions ?? new();
+        this.operationOptions.Validate();
         snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);
     }
 
@@ -63,6 +66,26 @@ public sealed partial class DesktopSession : IAsyncDisposable
     public EngineConnectionState EngineState => Snapshot.State;
     public void Start() => Restart(onlyIfNotStarted: true);
     public void Retry() => Restart(onlyIfNotStarted: false);
+
+    /// <summary>Cancel and join owned work while keeping the session available for a later Start/Retry.</summary>
+    public Task DisconnectAsync()
+    {
+        Task completion;
+        lock (gate)
+        {
+            if (disposed) return workflow;
+            started = false;
+            ++generation;
+            InvalidateContainersLocked();
+            workflowCancellation?.Cancel();
+            snapshot = new(EngineConnectionState.NotConnected, snapshot.Endpoint);
+            completion = workflow;
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        return completion;
+    }
 
     private void Restart(bool onlyIfNotStarted)
     {
@@ -90,6 +113,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
             });
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
+        ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private bool Publish(long currentGeneration, ConnectionSnapshot value)
@@ -226,7 +250,11 @@ public sealed partial class DesktopSession : IAsyncDisposable
             }
             completion = workflow;
         }
-        if (changed) ContainersChanged?.Invoke(this, EventArgs.Empty);
+        if (changed)
+        {
+            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        }
         return new ValueTask(completion);
     }
 

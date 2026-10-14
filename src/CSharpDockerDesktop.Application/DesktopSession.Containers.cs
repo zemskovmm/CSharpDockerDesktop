@@ -26,7 +26,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                 reads.Inspect = containerSnapshot.SelectedContainerId is not null
                     && containerSnapshot.InspectionState == ResourceReadState.Loading;
             }
-            reads.Active?.Cancel();
+            if (!reads.OperationReadActive) reads.Active?.Cancel();
             containerSnapshot = containerSnapshot with { State = ResourceReadState.Loading, Failure = null };
             reads.Signal.Writer.TryWrite(0);
         }
@@ -70,7 +70,7 @@ public sealed partial class DesktopSession : IContainerBrowser
     {
         reads.DetailRevision++;
         reads.Inspect = inspect;
-        if (reads.InspectActive) reads.Active?.Cancel();
+        if (reads.InspectActive && !reads.OperationReadActive) reads.Active?.Cancel();
         containerSnapshot = containerSnapshot with { SelectedContainerId = id, Inspection = null,
             InspectionState = inspect ? ResourceReadState.Loading : ResourceReadState.NotRequested, InspectionFailure = null };
         reads.Signal.Writer.TryWrite(0);
@@ -93,8 +93,10 @@ public sealed partial class DesktopSession : IContainerBrowser
                 reads.Workflow = Task.Run(() => ReadContainersAsync(reads));
             }
             reads.EventsWorkflow = Task.Run(() => ObserveContainerEventsAsync(reads));
+            ResumeContainerOperationLocked(reads);
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
+        ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         return reads;
     }
 
@@ -106,6 +108,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ContainerSummary>(), Failure: inspectionFailure ? null : failure,
             InspectionFailure: inspectionFailure ? failure : null);
+        InvalidateContainerOperationLocked();
         previous?.Lifetime.Cancel();
     }
 
@@ -118,9 +121,13 @@ public sealed partial class DesktopSession : IContainerBrowser
             if (changed) InvalidateContainersLocked();
             else reads.Lifetime.Cancel();
         }
-        if (changed) ContainersChanged?.Invoke(this, EventArgs.Empty);
+        if (changed)
+        {
+            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -133,6 +140,18 @@ public sealed partial class DesktopSession : IContainerBrowser
                 reads.Signal.Reader.TryRead(out _);
                 while (true)
                 {
+                    OperationObservationRequest? operationRead;
+                    lock (gate)
+                    {
+                        if (!CurrentEventsLocked(reads)) return;
+                        operationRead = reads.InitialObservationPending || reads.InitialSnapshotPending ? null : reads.OperationObservation;
+                        if (operationRead is not null) reads.OperationObservation = null;
+                    }
+                    if (operationRead is not null)
+                    {
+                        await ReadOperationObservationAsync(reads, operationRead).ConfigureAwait(false);
+                        continue;
+                    }
                     bool list;
                     long revision;
                     string? identity;
@@ -148,6 +167,8 @@ public sealed partial class DesktopSession : IContainerBrowser
                     {
                         if (!ReferenceEquals(containerReads, reads) || reads.Lifetime.IsCancellationRequested) return;
                         if (reads.InitialObservationPending) break;
+                        // A command may queue observation between the scheduling locks.
+                        if (!reads.InitialSnapshotPending && reads.OperationObservation is not null) continue;
                         if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         // Give requested details a turn even under a continuous list-invalidating stream.
                         list = reads.Refresh || (reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList));
@@ -199,7 +220,11 @@ public sealed partial class DesktopSession : IContainerBrowser
                             reads.InspectActive = false;
                             request.Dispose();
                         }
-                        if (notify) ContainersChanged?.Invoke(this, EventArgs.Empty);
+                        if (notify)
+                        {
+                            ContainersChanged?.Invoke(this, EventArgs.Empty);
+                            ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+                        }
                     }
                 }
             }
@@ -230,6 +255,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             }
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
+        ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void CompleteInspectionRead(ContainerReads reads, CancellationTokenSource request, long revision, string identity,
@@ -257,6 +283,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                 Inspection = result.Value, InspectionFailure = null };
         }
         ContainersChanged?.Invoke(this, EventArgs.Empty);
+        ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ResourceTransportLostLocked(ContainerReads reads, EngineResourceFailure failure, bool inspection)
@@ -276,6 +303,10 @@ public sealed partial class DesktopSession : IContainerBrowser
         public TaskCompletionSource<EngineConnectionFailure> TransportLoss { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task Workflow = Task.CompletedTask;
         public Task EventsWorkflow = Task.CompletedTask;
+        public Task OperationWorkflow = Task.CompletedTask;
+        public OperationObservationRequest? OperationObservation;
+        public bool OperationReadActive;
+        public long ObservationRevision;
         public CancellationTokenSource? Active;
         public bool Refresh, EventRefresh, Inspect, InspectActive, LastReadWasList;
         public bool InitialSnapshotPending = true;

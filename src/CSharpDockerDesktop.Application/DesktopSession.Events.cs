@@ -114,6 +114,7 @@ public sealed partial class DesktopSession
                     }
                     Changed?.Invoke(this, EventArgs.Empty);
                     ContainersChanged?.Invoke(this, EventArgs.Empty);
+                    ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
                     return;
                 }
                 // Observation failure does not disable manual browsing or navigation.
@@ -148,6 +149,7 @@ public sealed partial class DesktopSession
             if (!CurrentEventsLocked(reads)) return;
             RememberCursorLocked(reads.Connection.Metadata, observation.Timestamp);
             if (!string.Equals(observation.Type, "container", StringComparison.Ordinal)) return;
+            ++reads.ObservationRevision;
             reads.EventRefresh = true;
             notify = InvalidateEventDetailLocked(reads, observation.ResourceId);
             reads.Signal.Writer.TryWrite(0);

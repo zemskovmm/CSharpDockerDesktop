@@ -30,6 +30,17 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Lifecycle coordinator observation diagnostics and canceled restart preflight", OperationCoordinatorChecks.ObservationFailuresAndCanceledPreflight),
+    ("Lifecycle coordinator explicit disconnect and unrelated detail progress", OperationCoordinatorChecks.DisconnectAndUnrelatedInspectionProgress),
+    ("Lifecycle coordinator observation transport loss and joined late list", OperationCoordinatorChecks.ObservationLossAndJoinedLateList),
+    ("Lifecycle coordinator acknowledged transitions and restart evidence", OperationCoordinatorChecks.AcknowledgedTransitionsAndRestartEvidence),
+    ("Lifecycle coordinator classified rejections and safe Delete choices", OperationCoordinatorChecks.RejectionsDeleteAndExplicitForce),
+    ("Lifecycle coordinator cancellation evidence and bounded uncertainty", OperationCoordinatorChecks.CancellationAndUnknownOutcomes),
+    ("Lifecycle coordinator duplicate bounds and scoped full identities", OperationCoordinatorChecks.DuplicateBoundsAndGenerationValidation),
+    ("Lifecycle coordinator stale reads, event races and deselected targets", OperationCoordinatorChecks.StaleReadsEventRacesAndDeselectedTargets),
+    ("Lifecycle coordinator selected Inspect, disappearance and navigation", OperationCoordinatorChecks.SelectedInspectionDisappearanceAndNavigation),
+    ("Lifecycle coordinator applied mutation, lost response and no replay", OperationCoordinatorChecks.LostResponseRecoveryWithoutReplay),
+    ("Lifecycle coordinator joined retry/disconnect and late shutdown", OperationCoordinatorChecks.JoinedRetryDisconnectAndLateShutdown),
     ("Reconciliation initial snapshot boundaries and authoritative properties", ReconciliationChecks.SnapshotBoundariesAndAuthority),
     ("Reconciliation sustained duplicate bursts and detail fairness", ReconciliationChecks.BurstProgressAndDetails),
     ("Reconciliation external deletion and close-detail races", ReconciliationChecks.DeletionAndCloseRaces),
