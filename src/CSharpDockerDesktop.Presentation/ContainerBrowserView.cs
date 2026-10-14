@@ -4,7 +4,7 @@ using CSharpDockerDesktop.Domain;
 namespace CSharpDockerDesktop.Presentation;
 
 /// <summary>Presentation state only. All methods except the notification handler run on the UI dispatcher.</summary>
-public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action, bool> dispatch) : IDisposable
+public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func<Action, bool> dispatch) : IDisposable
 {
     private int epoch;
     private int notificationQueued;
@@ -41,7 +41,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
     {
         ResourceReadState.Loading => $"Loading {(ShowingInspect ? "Inspect" : "Overview")}…",
         ResourceReadState.Failed => $"{(ShowingInspect ? "Inspect" : "Overview")} failed. Choose Refresh details to retry." + FailureSuffix(Snapshot.InspectionFailure),
-        ResourceReadState.Ready => ShowingInspect ? "Read-only Inspect" : "Read-only Overview",
+        ResourceReadState.Ready => ShowingInspect ? "Raw Inspect" : "Container Overview",
         ResourceReadState.Unavailable => $"{(ShowingInspect ? "Inspect" : "Overview")} unavailable. Check connection status above.",
         _ => "Choose Refresh details to load details."
     };
@@ -55,6 +55,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         active = true;
         Interlocked.Increment(ref epoch);
         browser.ContainersChanged += OnChanged;
+        if (operations is not null) operations.ContainerOperationChanged += OnChanged;
         Inspect.Changed += OnInspectChanged;
         Inspect.IsCurrentContent = raw =>
         {
@@ -74,6 +75,13 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         Interlocked.Increment(ref epoch);
         Interlocked.Exchange(ref notificationQueued, 0);
         browser.ContainersChanged -= OnChanged;
+        if (operations is not null) operations.ContainerOperationChanged -= OnChanged;
+        DeleteConfirmation = null;
+        submitting = false;
+        Operation = null;
+        AdmissionMessage = "";
+        ShowingOperationDetails = false;
+        SelectedId = null;
         Inspect.Changed -= OnInspectChanged;
         Inspect.Dispose();
         Snapshot = new(0, ResourceReadState.Unavailable, []);
@@ -108,6 +116,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
             filteredSource = null;
         }
         Snapshot = latest;
+        SyncOperation();
         if (SelectedId is not null && !latest.Containers.Any(row => row.Id == SelectedId))
         {
             SelectedId = null;
@@ -116,6 +125,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         }
         // A detail belongs to exactly one session selection. Never display another identity's result.
         if (DetailOpen && latest.SelectedContainerId != SelectedId) DetailOpen = false;
+        if (DeleteConfirmation is { } confirmation && !ConfirmationCurrent(confirmation)) DeleteConfirmation = null;
         SyncInspect();
         Filter();
     }
@@ -142,6 +152,7 @@ public sealed class ContainerBrowserView(IContainerBrowser browser, Func<Action,
         if (DetailOpen) browser.ClearContainerInspection();
         DetailOpen = false;
         ShowingInspect = false; Inspect.Load(null);
+        DeleteConfirmation = null;
         SelectedId = id;
         Changed?.Invoke(this, EventArgs.Empty);
     }

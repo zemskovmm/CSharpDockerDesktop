@@ -3,7 +3,7 @@ using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 using CSharpDockerDesktop.Presentation;
 
-internal static class ContainerPresentationChecks
+internal static partial class ContainerPresentationChecks
 {
     private static readonly string A = new('a', 64), B = new('b', 64);
     private static ContainerSummary Row(string id, string? name = null, string? image = null, string? state = null,
@@ -174,9 +174,38 @@ internal static class ContainerPresentationChecks
             do { Pump(); if (!view.Filtering && !view.Inspect.Busy && queue.IsEmpty) return; await Task.Delay(1, timeout.Token); } while (true);
         }
     }
-    private sealed class Browser : IContainerBrowser
+    private sealed class Browser : IContainerBrowser, IContainerOperations
     {
         private EventHandler? changed;
+        private EventHandler? operationChanged;
+        public int OperationSubscribers;
+        public List<ContainerOperationRequest> Requests { get; } = [];
+        public TaskCompletionSource<ContainerOperationSnapshot>? Completion;
+        public bool RejectNext;
+        public Exception? ExecuteFailure;
+        public ContainerOperationSnapshot? ContainerOperation { get; private set; }
+        public event EventHandler? ContainerOperationChanged { add { operationChanged += value; ++OperationSubscribers; } remove { operationChanged -= value; --OperationSubscribers; } }
+        public void PublishOperation(ContainerOperationSnapshot? operation) { ContainerOperation = operation; operationChanged?.Invoke(this, EventArgs.Empty); }
+        public Task<ContainerOperationSnapshot> ExecuteContainerOperationAsync(ContainerOperationRequest request, CancellationToken cancellationToken = default)
+        {
+            if (ExecuteFailure is { } failure) throw failure;
+            if (RejectNext)
+            {
+                RejectNext = false;
+                return Task.FromResult(new ContainerOperationSnapshot(0, request, ContainerOperationPhase.Completed,
+                    new(request.Command, ContainerCommandDisposition.NotDispatched, Failure: new(ContainerCommandFailureKind.CapacityExceeded, "Another operation is pending.")),
+                    ContainerOperationResolution.NotDispatched));
+            }
+            Requests.Add(request);
+            Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            PublishOperation(new(Requests.Count, request, ContainerOperationPhase.CommandPending));
+            return Completion.Task;
+        }
+        public void CompleteOperation(ContainerOperationResolution resolution, ContainerCommandResult? command = null, EngineResourceFailure? failure = null)
+        {
+            var completed = ContainerOperation! with { Phase = ContainerOperationPhase.Completed, Resolution = resolution, CommandOutcome = command, ObservationFailure = failure };
+            PublishOperation(completed); Completion!.TrySetResult(completed);
+        }
         public int Subscribers, SelectCalls, ClearCalls, RefreshCalls, InspectionRefreshCalls;
         public ContainerBrowsingSnapshot ContainerSnapshot { get; set; } = new(0, ResourceReadState.Unavailable, []);
         public event EventHandler? ContainersChanged { add { changed += value; ++Subscribers; } remove { changed -= value; --Subscribers; } }

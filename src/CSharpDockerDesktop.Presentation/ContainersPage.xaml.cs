@@ -1,4 +1,5 @@
 using CSharpDockerDesktop.Application;
+using CSharpDockerDesktop.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,6 +14,9 @@ public sealed partial class ContainersPage : Page
     private ContainerBrowserView? view;
     private IReadOnlyList<ContainerRow>? displayedRows;
     private bool rendering;
+    private ContentDialog? deletionDialog;
+    private ContainerDeleteConfirmation? dialogConfirmation;
+    private int pageEpoch;
     private IReadOnlyList<JsonInspectRow>? displayedInspect;
     public ContainersPage()
     {
@@ -20,12 +24,13 @@ public sealed partial class ContainersPage : Page
         // ListViewItem handles Enter for selection; also observe it to open the selected resource.
         ContainerList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnListKeyDown), true);
         InspectList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnInspectKeyDown), true);
-        Loaded += (_, _) => view?.Attach();
+        Loaded += (_, _) => { if (view is not null) { view.Changed -= OnViewChanged; view.Changed += OnViewChanged; view.Attach(); } };
         Unloaded += (_, _) => Detach();
     }
     protected override void OnNavigatedTo(NavigationEventArgs args)
     {
         base.OnNavigatedTo(args);
+        Detach();
         view = new((IContainerBrowser)args.Parameter, action => DispatcherQueue.TryEnqueue(() => action()));
         view.Changed += OnViewChanged;
         view.Attach();
@@ -37,7 +42,13 @@ public sealed partial class ContainersPage : Page
     }
     public void Detach()
     {
+        ++pageEpoch;
+        deletionDialog?.Hide();
+        deletionDialog = null; dialogConfirmation = null;
+        if (view is not null) view.Changed -= OnViewChanged;
         view?.Dispose();
+        OperationStatus.Text = AdmissionStatus.Text = OperationDetailsText.Text = "";
+        OperationDetailsPanel.Visibility = Visibility.Collapsed;
         InspectList.ItemsSource = null; displayedInspect = null; OverviewText.Text = "";
         ContainerList.ItemsSource = null; displayedRows = null;
     }
@@ -48,6 +59,19 @@ public sealed partial class ContainersPage : Page
         rendering = true;
         try
         {
+            if (deletionDialog is not null && !ReferenceEquals(dialogConfirmation, view.DeleteConfirmation)) deletionDialog.Hide();
+            StartButton.IsEnabled = view.CanStart;
+            StopButton.IsEnabled = view.CanStop;
+            RestartButton.IsEnabled = view.CanRestart;
+            DeleteButton.IsEnabled = view.CanDelete;
+            ForceDeleteButton.IsEnabled = view.CanForceDelete;
+            ActionStatus.Text = view.ActionMessage;
+            OperationStatus.Text = view.OperationMessage;
+            AdmissionStatus.Text = view.AdmissionMessage;
+            OperationDetailsButton.Visibility = view.HasOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsButton.Content = view.ShowingOperationDetails ? "Hide original daemon content" : "Show original daemon content (may be sensitive)";
+            OperationDetailsPanel.Visibility = view.ShowingOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsText.Text = view.OperationDetails;
             bool rowsChanged = !ReferenceEquals(displayedRows, view.Rows);
             if (rowsChanged)
             {
@@ -93,6 +117,44 @@ public sealed partial class ContainersPage : Page
                 ContainerList.ScrollIntoView(anchor, ScrollIntoViewAlignment.Leading);
         }
         finally { rendering = false; }
+    }
+    private void OnStart(object sender, RoutedEventArgs args) => view?.Execute(ContainerCommand.Start);
+    private void OnStop(object sender, RoutedEventArgs args) => view?.Execute(ContainerCommand.Stop);
+    private void OnRestart(object sender, RoutedEventArgs args) => view?.Execute(ContainerCommand.Restart);
+    private void OnDelete(object sender, RoutedEventArgs args) => ShowDelete(false);
+    private void OnForceDelete(object sender, RoutedEventArgs args) => ShowDelete(true);
+    private void OnOperationDetails(object sender, RoutedEventArgs args) => view?.ShowOperationDetails(!view.ShowingOperationDetails);
+    private async void ShowDelete(bool force)
+    {
+        var owner = view;
+        if (deletionDialog is not null || owner?.BeginDelete(force) is not { } confirmation) return;
+        int lifetime = pageEpoch;
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot, Title = $"Confirm {confirmation.Action}",
+            Content = new TextBlock { Text = confirmation.Message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true },
+            PrimaryButtonText = confirmation.Action, CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close
+        };
+        deletionDialog = dialog; dialogConfirmation = confirmation;
+        try
+        {
+            var result = await dialog.ShowAsync();
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner) && result == ContentDialogResult.Primary) owner.ConfirmDelete(confirmation);
+            else owner.CancelDelete(confirmation);
+        }
+        catch (Exception) { owner.CancelDelete(confirmation); }
+        finally
+        {
+            if (ReferenceEquals(deletionDialog, dialog)) { deletionDialog = null; dialogConfirmation = null; }
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner))
+            {
+                Render();
+                var button = force ? ForceDeleteButton : DeleteButton;
+                if (button.IsEnabled) button.Focus(FocusState.Programmatic);
+                else if (owner.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
+                else ContainerList.Focus(FocusState.Programmatic);
+            }
+        }
     }
     private void OnOverviewTab(object sender, RoutedEventArgs args) { view?.ShowInspect(false); RefreshDetailButton.Focus(FocusState.Programmatic); }
     private void OnInspectTab(object sender, RoutedEventArgs args) { view?.ShowInspect(true); InspectSearch.Focus(FocusState.Programmatic); }

@@ -28,7 +28,9 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         var other = new Button { Content = "Navigate away" };
         var invalidate = new Button { Content = "Disconnect fixture" };
         var measure = new Button { Content = "Check realized rows" };
-        var evidence = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+        var scenario = new ComboBox { ItemsSource = new[] { "Observed requested state", "Observed different state", "Unresolved", "Not dispatched" }, SelectedIndex = 0 };
+        scenario.SelectionChanged += (_, _) => browser.Scenario = scenario.SelectedIndex;
+        var evidence = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         browse.Click += (_, _) => frame.Navigate(typeof(ContainersPage), browser);
         other.Click += (_, _) => frame.Content = new TextBlock { Text = "Other resource screen — navigation remains usable during reads." };
         invalidate.Click += (_, _) => browser.Disconnect();
@@ -38,11 +40,13 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
                 ?? Lists(frame).FirstOrDefault(list => list.Name == "ContainerList");
             int loaded = list?.Items.Count ?? 0;
             int realized = list is null ? 0 : Count<ListViewItem>(list);
-            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: {browser.Cancellations}";
+            evidence.Text = $"{list?.Name}: {realized} realized / {loaded} loaded; inspection cancellations: {browser.Cancellations}; commands: {browser.Commands}; last: {browser.LastRequest?.Command}, force={browser.LastRequest?.ForceDelete}, volumes preserved";
             if (loaded >= 1000 && (realized <= 0 || realized >= 1000)) throw new InvalidOperationException("Expected bounded virtualized row realization.");
         };
-        controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(evidence);
-        grid.Children.Add(controls); grid.Children.Add(frame); Grid.SetRow(frame, 1);
+        controls.Children.Add(browse); controls.Children.Add(other); controls.Children.Add(invalidate); controls.Children.Add(measure); controls.Children.Add(scenario);
+        var tools = new StackPanel { Spacing = 4 };
+        tools.Children.Add(controls); tools.Children.Add(evidence);
+        grid.Children.Add(tools); grid.Children.Add(frame); Grid.SetRow(frame, 1);
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
         frame.Navigate(typeof(ContainersPage), browser);
         window.Activate();
@@ -61,11 +65,54 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
     }
 }
 
-internal sealed class FixtureBrowser : IContainerBrowser
+internal sealed class FixtureBrowser : IContainerBrowser, IContainerOperations
 {
     private CancellationTokenSource? inspection;
     public int Cancellations;
-    private readonly IReadOnlyList<ContainerSummary> rows = Enumerable.Range(0, 20000).Select(i => new ContainerSummary(
+    public int Commands, Scenario;
+    public ContainerOperationRequest? LastRequest;
+    public ContainerOperationSnapshot? ContainerOperation { get; private set; }
+    public event EventHandler? ContainerOperationChanged;
+    public async Task<ContainerOperationSnapshot> ExecuteContainerOperationAsync(ContainerOperationRequest request, CancellationToken cancellationToken = default)
+    {
+        if (ContainerOperation?.Pending == true || request.Target.ConnectionGeneration != ContainerSnapshot.ConnectionGeneration)
+            return new(0, request, ContainerOperationPhase.Completed, new(request.Command, ContainerCommandDisposition.NotDispatched,
+                Failure: new(ContainerCommandFailureKind.StaleConnection, "Fixture admission rejected.")), ContainerOperationResolution.NotDispatched);
+        int scenario = Scenario;
+        LastRequest = request;
+        var current = new ContainerOperationSnapshot(++Commands, request, ContainerOperationPhase.CommandPending);
+        ContainerOperation = current; ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        await Task.Delay(1500).ConfigureAwait(false);
+        var outcome = scenario == 3 ? new ContainerCommandResult(request.Command, ContainerCommandDisposition.NotDispatched,
+            Failure: new(ContainerCommandFailureKind.Canceled, "Synthetic no-dispatch evidence."))
+            : scenario == 1 ? new ContainerCommandResult(request.Command, ContainerCommandDisposition.DaemonResponse, 409, "fixture-sensitive rejection content",
+                Failure: new(ContainerCommandFailureKind.Conflict, "Synthetic daemon conflict."))
+            : scenario == 2 ? new ContainerCommandResult(request.Command, ContainerCommandDisposition.Uncertain,
+                Failure: new(ContainerCommandFailureKind.TransportFailure, "Synthetic lost response."))
+            : new ContainerCommandResult(request.Command, ContainerCommandDisposition.Acknowledged, 204,
+                Acknowledgement: ContainerCommandAcknowledgement.Accepted);
+        current = current with { Phase = ContainerOperationPhase.Reconciling, CommandOutcome = outcome };
+        ContainerOperation = current; ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        await Task.Delay(2000).ConfigureAwait(false);
+        bool currentGeneration = ContainerSnapshot.ConnectionGeneration == request.Target.ConnectionGeneration;
+        var resolution = scenario == 3 ? ContainerOperationResolution.NotDispatched
+            : !currentGeneration || scenario == 2 ? ContainerOperationResolution.Unresolved
+            : scenario == 1 ? ContainerOperationResolution.ObservedDifferentState : ContainerOperationResolution.ObservedRequestedState;
+        if (resolution == ContainerOperationResolution.ObservedRequestedState)
+        {
+            rows = rows.Where(row => request.Command != ContainerCommand.Delete || row.Id != request.Target.Id)
+                .Select(row => row.Id == request.Target.Id ? row with { State = request.Command == ContainerCommand.Stop ? "exited" : "running" } : row).ToArray();
+            ContainerSnapshot = ContainerSnapshot with { Containers = rows, Inspection = null, InspectionState = ResourceReadState.NotRequested };
+            Notify();
+        }
+        current = current with { Phase = ContainerOperationPhase.Completed, Resolution = resolution,
+            ObservedConnectionGeneration = currentGeneration ? ContainerSnapshot.ConnectionGeneration : null,
+            ObservedExists = resolution == ContainerOperationResolution.ObservedRequestedState ? request.Command != ContainerCommand.Delete : null,
+            ObservationFailure = scenario == 2 ? new(EngineResourceFailureKind.TransportLoss, "Synthetic observation unavailable", 500, "fixture-sensitive observation content") : null };
+        ContainerOperation = current; ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
+        return current;
+    }
+    private IReadOnlyList<ContainerSummary> rows = Enumerable.Range(0, 20000).Select(i => new ContainerSummary(
         i.ToString("x64"), [$"/container-{i}"], i % 3 == 0 ? null : "example/image:latest", null,
         new[] { "running", "exited", "paused", "restarting", "dead", "created" }[i % 6], "Fixture status", DateTimeOffset.UnixEpoch.AddHours(i),
         i % 2 == 0 ? [new(80, "tcp", "127.0.0.1", 8080)] : null, null, null,
@@ -91,9 +138,12 @@ internal sealed class FixtureBrowser : IContainerBrowser
             await Task.Delay(2500, token).ConfigureAwait(false);
             string raw = InspectFixture(id);
             token.ThrowIfCancellationRequested();
+            var row = rows.FirstOrDefault(row => row.Id == id);
+            if (row is null) return;
+            string? state = row.State;
             ContainerSnapshot = ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = new(id,
-                rows.First(row => row.Id == id).Names![0], "example/image:latest", null, DateTimeOffset.UnixEpoch,
-                new("running", true, false, false, false, 0, null, DateTimeOffset.UnixEpoch, null, new("healthy", 0)),
+                row.Names![0], "example/image:latest", null, DateTimeOffset.UnixEpoch,
+                new(state, state is "running" or "paused" or "restarting", state == "paused", state == "restarting", state == "dead", 0, null, DateTimeOffset.UnixEpoch, null, new("healthy", 0)),
                 [new(80, "tcp", "127.0.0.1", 8080)], [new("bind", null, "/fixture/source", "/app", null, "rw", true, null)],
                 [new("bridge", "fixture-network", null, "172.17.0.2", 16, "172.17.0.1", null, null, null, null, null)], raw) };
             Notify(); // Deliberately originates off the UI thread.
