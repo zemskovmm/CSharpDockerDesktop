@@ -2,7 +2,7 @@ using System.Threading.Channels;
 using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 
-internal static class ImageBrowsingChecks
+internal static partial class ImageBrowsingChecks
 {
     private static readonly TimeSpan Limit = TimeSpan.FromSeconds(3);
     private static readonly string A = "sha256:" + new string('a', 64), B = "sha256:" + new string('b', 64), C = "sha256:" + new string('c', 64);
@@ -417,6 +417,7 @@ internal static class ImageBrowsingChecks
         public readonly LogsSubscription Logs = new();
         public readonly TaskCompletionSource CommandStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken EventToken, LogToken, CommandToken;
+        public int EventCalls, ContainerListCalls;
         public EngineResourceFailure? ContainerFailure;
         private int activeCommands;
         public override EngineMetadata Metadata => base.Metadata with { EngineId = "same-engine" };
@@ -426,14 +427,17 @@ internal static class ImageBrowsingChecks
             return base.DisposeAsync();
         }
         public Task<EngineResourceResult<IReadOnlyList<ContainerSummary>>> ListContainersAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(ContainerFailure is { } failure ? EngineResourceResult<IReadOnlyList<ContainerSummary>>.Failed(failure)
+        {
+            Interlocked.Increment(ref ContainerListCalls);
+            return Task.FromResult(ContainerFailure is { } failure ? EngineResourceResult<IReadOnlyList<ContainerSummary>>.Failed(failure)
                 : EngineResourceResult<IReadOnlyList<ContainerSummary>>.Success(new[] { new ContainerSummary(ContainerId,
                     null, null, A, "exited", null, null, null, null, null, null) }));
+        }
         public Task<EngineResourceResult<ContainerInspection>> InspectContainerAsync(string identity, CancellationToken cancellationToken = default)
             => Task.FromResult(EngineResourceResult<ContainerInspection>.Success(new(identity, null, null, A, null,
                 new("exited", false, false, false, false, 0, null, null, null, null), null, null, null, "{}")));
         public Task<EngineEventSubscriptionAttempt> SubscribeEventsAsync(EngineEventCursor? since = null, CancellationToken cancellationToken = default)
-        { EventToken = cancellationToken; return Task.FromResult(EngineEventSubscriptionAttempt.Subscribed(Events)); }
+        { Interlocked.Increment(ref EventCalls); EventToken = cancellationToken; return Task.FromResult(EngineEventSubscriptionAttempt.Subscribed(Events)); }
         public Task<ContainerLogSubscriptionAttempt> OpenLogsAsync(ContainerLogRequest request, CancellationToken cancellationToken = default)
         { LogToken = cancellationToken; Logs.Opened = true; return Task.FromResult(ContainerLogSubscriptionAttempt.Subscribed(Logs)); }
         public async Task<ContainerCommandResult> StartContainerAsync(string identity, CancellationToken cancellationToken = default)
@@ -450,15 +454,9 @@ internal static class ImageBrowsingChecks
             => throw new InvalidOperationException();
     }
 
-    private sealed class EventsSubscription : IEngineEventSubscription
+    private sealed class EventsSubscription : ImageObservation
     {
-        private readonly Channel<EngineEvent> channel = Channel.CreateBounded<EngineEvent>(1);
-        private readonly TaskCompletionSource<EngineEventFailure?> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public bool Disposed;
-        public ChannelReader<EngineEvent> Events => channel.Reader;
-        public Task<EngineEventFailure?> Completion => completion.Task;
-        public ValueTask DisposeAsync()
-        { Disposed = true; channel.Writer.TryComplete(); completion.TrySetResult(null); return ValueTask.CompletedTask; }
+        public bool Disposed => DisposeCount != 0;
     }
 
     private sealed class LogsSubscription : IContainerLogSubscription

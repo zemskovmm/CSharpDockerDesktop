@@ -319,6 +319,8 @@ public sealed partial class DesktopSession : IContainerBrowser
         public bool Refresh, EventRefresh, Inspect, InspectActive, LastReadWasList;
         public bool InitialSnapshotPending = true;
         public bool InitialObservationPending = true;
+        // Bounded bridge for image observations/reopening before its coordinator is created.
+        public bool ImageRefreshPending;
         public long ListRevision, DetailRevision;
     }
 }

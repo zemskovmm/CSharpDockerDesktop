@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Images observation coexistence with containers, commands and Logs", ImageBrowsingChecks.ImageObservationsCoexistWithCommandsAndLogs),
+    ("Application Images event-invalidated deadline and joined replacement cleanup", ImageBrowsingChecks.ImageInvalidatedDeadlineAndReplacementCleanup),
+    ("Application Images observation startup and snapshot boundaries", ImageBrowsingChecks.ImageSnapshotObservationBoundaries),
+    ("Application Images selected observations fence stale Inspect and disappearance", ImageBrowsingChecks.ImageSelectedObservationFences),
+    ("Application Images bounded duplicate bursts and list/detail fairness", ImageBrowsingChecks.ImageBurstCoalescingAndFairness),
+    ("Application Images observation failure, manual browsing and reopening", ImageBrowsingChecks.ImageObservationFailureAndReopening),
+    ("Application Images non-cooperative observation opening fallback and join", ImageBrowsingChecks.ImageObservationOpeningFallbackAndJoin),
+    ("Application Images exact reconnect overlap and joined generation replacement", ImageBrowsingChecks.ImageReconnectOverlapAndJoinedReplacement),
     ("Application Images MissingCapabilityAndFairness", ImageBrowsingChecks.MissingCapabilityAndFairness),
     ("Application Images NonCooperativeDeadlineAndSharedRecovery", ImageBrowsingChecks.NonCooperativeDeadlineAndSharedRecovery),
     ("Application Images SharedInvalidationAndJoinedShutdown", ImageBrowsingChecks.SharedInvalidationAndJoinedShutdown),

@@ -37,13 +37,14 @@ public sealed partial class DesktopSession
     {
         lock (gate)
         {
-            if (!CurrentEventsLocked(reads) || reads.Reader is null) return;
+            if (!CurrentEventsLocked(reads)) return;
             if (initial) reads.InitialObservationPending = false;
             if (initial) reads.Refresh = true;
             else reads.EventRefresh = true;
             // A reopened stream may have missed any selected resource's changes.
             InvalidateEventDetailLocked(reads, null);
             reads.Signal.Writer.TryWrite(0);
+            RequestImageEventSnapshotLocked(reads, initial);
         }
         NotifyContainerBrowsers();
     }
@@ -66,6 +67,13 @@ public sealed partial class DesktopSession
                 IEngineEventSubscription? subscription = null;
                 EngineEventFailure? failure;
                 using var opening = CancellationTokenSource.CreateLinkedTokenSource(token);
+                // The fallback snapshot must not depend on a cooperative subscription opener.
+                // Ownership still joins the eventual opening result before releasing the connection.
+                bool openingInitial = initial;
+                using var fallback = opening.Token.Register(() =>
+                {
+                    if (!token.IsCancellationRequested) RequestEventSnapshot(reads, openingInitial);
+                });
                 opening.CancelAfter(options.OperationTimeout);
                 try
                 {
@@ -148,11 +156,16 @@ public sealed partial class DesktopSession
         {
             if (!CurrentEventsLocked(reads)) return;
             RememberCursorLocked(reads.Connection.Metadata, observation.Timestamp);
-            if (!string.Equals(observation.Type, "container", StringComparison.Ordinal)) return;
-            ++reads.ObservationRevision;
-            reads.EventRefresh = true;
-            notify = InvalidateEventDetailLocked(reads, observation.ResourceId);
-            reads.Signal.Writer.TryWrite(0);
+            if (string.Equals(observation.Type, "image", StringComparison.Ordinal))
+                notify = ObserveImageEventLocked(reads, observation.ResourceId);
+            else if (string.Equals(observation.Type, "container", StringComparison.Ordinal))
+            {
+                ++reads.ObservationRevision;
+                reads.EventRefresh = true;
+                notify = InvalidateEventDetailLocked(reads, observation.ResourceId);
+                reads.Signal.Writer.TryWrite(0);
+            }
+            else return;
         }
         // List publication is batched; only the first invalidation clears exposed detail content.
         if (notify) NotifyContainerBrowsers();

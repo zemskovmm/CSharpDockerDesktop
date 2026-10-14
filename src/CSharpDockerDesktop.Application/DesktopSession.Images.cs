@@ -24,6 +24,7 @@ public sealed partial class DesktopSession : IImageBrowser
             if (reads.InspectActive)
                 reads.Inspect = imageSnapshot.SelectedImageId is not null
                     && imageSnapshot.InspectionState == ResourceReadState.Loading;
+            reads.ActiveCanceledByUser = true;
             reads.Active?.Cancel();
             imageSnapshot = imageSnapshot with { State = ResourceReadState.Loading, Failure = null };
             reads.Signal.Writer.TryWrite(0);
@@ -67,7 +68,11 @@ public sealed partial class DesktopSession : IImageBrowser
     {
         ++reads.DetailRevision;
         reads.Inspect = inspect;
-        if (reads.InspectActive) reads.Active?.Cancel();
+        if (reads.InspectActive)
+        {
+            reads.ActiveCanceledByUser = true;
+            reads.Active?.Cancel();
+        }
         imageSnapshot = imageSnapshot with { SelectedImageId = id, Inspection = null,
             InspectionState = inspect ? ResourceReadState.Loading : ResourceReadState.NotRequested, InspectionFailure = null };
         reads.Signal.Writer.TryWrite(0);
@@ -79,7 +84,7 @@ public sealed partial class DesktopSession : IImageBrowser
         lock (gate)
         {
             if (!CurrentEventsLocked(containers)) return null;
-            reads = new(containers);
+            reads = new(containers) { EventRefresh = containers.ImageRefreshPending };
             imageReads = reads;
             imageSnapshot = new(containerSnapshot.ConnectionGeneration,
                 reads.Reader is null ? ResourceReadState.Unavailable : ResourceReadState.Loading,
@@ -93,6 +98,41 @@ public sealed partial class DesktopSession : IImageBrowser
         }
         NotifyImagesChanged();
         return reads;
+    }
+
+    private void RequestImageEventSnapshotLocked(ContainerReads containers, bool initial)
+    {
+        if (!initial) containers.ImageRefreshPending = true;
+        if (imageReads is not { Reader: not null } reads || reads.Containers != containers) return;
+        if (!initial) reads.EventRefresh = true;
+        InvalidateImageEventDetailLocked(reads, null);
+        reads.Signal.Writer.TryWrite(0);
+    }
+
+    private bool ObserveImageEventLocked(ContainerReads containers, string? identity)
+    {
+        // Retain no event/actor metadata, including during the coordinator startup race.
+        containers.ImageRefreshPending = true;
+        if (imageReads is not { Reader: not null } reads || reads.Containers != containers) return false;
+        reads.EventRefresh = true;
+        bool changed = InvalidateImageEventDetailLocked(reads, identity);
+        reads.Signal.Writer.TryWrite(0);
+        return changed;
+    }
+
+    private bool InvalidateImageEventDetailLocked(ImageReads reads, string? identity)
+    {
+        if (imageSnapshot.SelectedImageId is not { } selected
+            || imageSnapshot.InspectionState == ResourceReadState.NotRequested
+            || (!string.IsNullOrEmpty(identity) && identity != selected)) return false;
+        // Fence successes and failures from non-cooperative older inspections. Do not repeatedly
+        // cancel I/O: finish that bounded request and give the authoritative replacement a turn.
+        ++reads.DetailRevision;
+        reads.Inspect = true;
+        bool changed = imageSnapshot.Inspection is not null || imageSnapshot.InspectionState != ResourceReadState.Loading;
+        if (changed) imageSnapshot = imageSnapshot with { Inspection = null,
+            InspectionState = ResourceReadState.Loading, InspectionFailure = null };
+        return changed;
     }
 
     private bool CurrentImagesLocked(ImageReads reads)
@@ -134,23 +174,40 @@ public sealed partial class DesktopSession : IImageBrowser
                     long revision;
                     string? id;
                     CancellationTokenSource request;
+                    bool batch;
                     lock (gate)
                     {
                         if (!CurrentImagesLocked(reads)) return;
-                        if (!reads.Refresh && !reads.Inspect) break;
+                        batch = !reads.Refresh && reads.EventRefresh && !(reads.Inspect && reads.LastReadWasList);
+                    }
+                    if (batch) await delay.DelayAsync(reconciliation.BatchInterval, reads.Lifetime.Token).ConfigureAwait(false);
+                    lock (gate)
+                    {
+                        if (!CurrentImagesLocked(reads)) return;
+                        if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         // Alternate when both are pending: repeated refreshes cannot monopolize the scheduler.
-                        list = reads.Refresh && !(reads.Inspect && reads.LastReadWasList);
-                        if (list) reads.Refresh = false; else reads.Inspect = false;
+                        list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
+                        if (list)
+                        {
+                            reads.Refresh = false;
+                            // Pre-snapshot observations survive the initial read; concurrent observations
+                            // set this flag again after subsequent reads consume it.
+                            if (!reads.InitialSnapshotPending) reads.EventRefresh = false;
+                            reads.InitialSnapshotPending = false;
+                        }
+                        else reads.Inspect = false;
                         reads.LastReadWasList = list;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         id = imageSnapshot.SelectedImageId;
                         reads.InspectActive = !list;
                         request = CancellationTokenSource.CreateLinkedTokenSource(reads.Lifetime.Token);
                         request.CancelAfter(options.OperationTimeout);
+                        reads.ActiveCanceledByUser = false;
                         reads.Active = request;
                     }
                     // A deadline invalidates both families immediately, even if the reader ignores cancellation.
-                    using var cancellation = request.Token.Register(() => ImageReadCanceled(reads, request, revision, list));
+                    using var cancellation = request.Token.Register(() => ImageReadCanceled(reads, request, list));
                     try
                     {
                         if (list)
@@ -164,7 +221,7 @@ public sealed partial class DesktopSession : IImageBrowser
                     finally
                     {
                         // A cooperative reader can finish before the deadline callback gets its turn.
-                        if (request.IsCancellationRequested) ImageReadCanceled(reads, request, revision, list);
+                        if (request.IsCancellationRequested) ImageReadCanceled(reads, request, list);
                         lock (gate) { reads.Active = null; reads.InspectActive = false; }
                         request.Dispose();
                     }
@@ -177,11 +234,12 @@ public sealed partial class DesktopSession : IImageBrowser
     private bool CurrentImageRequestLocked(ImageReads reads, long revision, bool list)
         => CurrentImagesLocked(reads) && revision == (list ? reads.ListRevision : reads.DetailRevision);
 
-    private void ImageReadCanceled(ImageReads reads, CancellationTokenSource request, long revision, bool list)
+    private void ImageReadCanceled(ImageReads reads, CancellationTokenSource request, bool list)
     {
         lock (gate)
         {
-            if (!request.IsCancellationRequested || !CurrentImageRequestLocked(reads, revision, list)) return;
+            if (!request.IsCancellationRequested || !CurrentImagesLocked(reads)
+                || !ReferenceEquals(reads.Active, request) || reads.ActiveCanceledByUser) return;
             ImageTransportLostLocked(reads, new(EngineResourceFailureKind.TransportLoss,
                 "The image request exceeded its deadline."), !list);
         }
@@ -217,10 +275,11 @@ public sealed partial class DesktopSession : IImageBrowser
         bool lost = false;
         lock (gate)
         {
-            if (request.IsCancellationRequested || !CurrentImageRequestLocked(reads, revision, false)
-                || imageSnapshot.SelectedImageId != id) return;
+            if (request.IsCancellationRequested || !CurrentImagesLocked(reads)) return;
+            // Obsolete content cannot publish, but current connection continuity evidence remains valid.
             if (result.Failure?.Kind == EngineResourceFailureKind.TransportLoss)
             { ImageTransportLostLocked(reads, result.Failure, true); lost = true; }
+            else if (!CurrentImageRequestLocked(reads, revision, false) || imageSnapshot.SelectedImageId != id) return;
             else if (result.Failure is { } failure)
             {
                 imageSnapshot = imageSnapshot with { InspectionState = ResourceReadState.Failed,
@@ -275,7 +334,9 @@ public sealed partial class DesktopSession : IImageBrowser
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public Task Workflow = Task.CompletedTask;
         public CancellationTokenSource? Active;
-        public bool Refresh = true, Inspect, InspectActive, LastReadWasList;
+        public bool ActiveCanceledByUser;
+        public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;
+        public bool InitialSnapshotPending = true;
         public long ListRevision, DetailRevision;
     }
 }
