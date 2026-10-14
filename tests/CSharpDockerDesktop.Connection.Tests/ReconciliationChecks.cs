@@ -288,20 +288,24 @@ internal static class ReconciliationChecks
         await using var session = Session(new(engine), clock);
         using var view = new ContainerBrowserView(session, ui.Post);
         view.Attach(); session.Start(); var events = await Load(session, engine, Row(A)); await ui.Settle(view);
-        view.Select(A); view.OpenSelected(); (await engine.NextInspection()).Succeed(Detail(A, "{\"private\":\"Inspect value\"}"));
+        ContainerInspection Diagnostics(bool oom, long restarts, string raw) => Detail(A, raw) with
+        { State = new("running", true, false, false, false, 0, null, null, null, new("healthy", 0), oom), RestartCount = restarts };
+        view.Select(A); view.OpenSelected(); (await engine.NextInspection()).Succeed(Diagnostics(true, 7, "{\"private\":\"Inspect value\"}"));
         await State(session, s => s.InspectionState == ResourceReadState.Ready); ui.Pump(); view.ShowInspect(true); await ui.Settle(view);
-        Check(view.DetailOpen && view.Inspect.Rows.Count > 0, "Existing Inspect presentation loaded actual authoritative detail");
+        Check(view.DetailOpen && view.Inspect.Rows.Count > 0 && view.Overview.Contains("OOMKilled: yes")
+            && view.Overview.Contains("Restart count: 7"), "Existing presentation loaded actual authoritative diagnostics and Inspect");
         await events.Emit(Event(A, "health_status: unhealthy")); await events.Barrier(); ui.Pump();
         Check(view.DetailOpen && view.Inspect.Rows.Count == 0 && view.Overview == "", "Automatic observation immediately clears obsolete Inspect content");
         var refresh = await EventList(engine, clock); refresh.Succeed(Row(A, "running"));
-        (await engine.NextInspection()).Succeed(Detail(A, "{\"updated\":true}"));
+        (await engine.NextInspection()).Succeed(Diagnostics(false, 0, "{\"updated\":true}"));
         await State(session, s => s.InspectionState == ResourceReadState.Ready); await ui.Settle(view);
-        Check(view.Rows.Single().State == "running" && view.Inspect.Rows.Any(row => row.Text.Contains("updated")),
+        Check(view.Rows.Single().State == "running" && view.Inspect.Rows.Any(row => row.Text.Contains("updated"))
+            && view.Overview.Contains("OOMKilled: no") && view.Overview.Contains("Restart count: 0"),
             "Automatic authoritative updates reach the existing presentation without user refresh");
         await events.Emit(Event(A, "destroy")); await events.Barrier();
         (await EventList(engine, clock)).Succeed();
         await State(session, s => s.SelectedContainerId is null); await ui.Settle(view);
-        Check(view.SelectedId is null && !view.DetailOpen && view.Inspect.Rows.Count == 0 && view.Rows.Count == 0,
+        Check(view.SelectedId is null && !view.DetailOpen && view.Inspect.Rows.Count == 0 && view.Rows.Count == 0 && view.Overview == "",
             "External deletion clears row selection, detail and Inspect presentation");
     }
 

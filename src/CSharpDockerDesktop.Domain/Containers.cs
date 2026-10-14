@@ -15,12 +15,13 @@ public sealed record ContainerNetwork(string Name, string? NetworkId, string? En
 public sealed record ContainerHealth(string? Status, long? FailingStreak);
 public sealed record ContainerRuntimeState(string? Status, bool? Running, bool? Paused,
     bool? Restarting, bool? Dead, long? ExitCode, string? Error, DateTimeOffset? StartedAt,
-    DateTimeOffset? FinishedAt, ContainerHealth? Health);
+    DateTimeOffset? FinishedAt, ContainerHealth? Health, bool? OOMKilled = null);
 
 /// <summary>RawJson is the actual UTF-8 inspect response, independently retained with unknown and sensitive fields.</summary>
 public sealed record ContainerInspection(string Id, string? Name, string? Image, string? ImageId,
     DateTimeOffset? Created, ContainerRuntimeState? State, IReadOnlyList<ContainerPort>? Ports,
-    IReadOnlyList<ContainerMount>? Mounts, IReadOnlyList<ContainerNetwork>? Networks, string RawJson);
+    IReadOnlyList<ContainerMount>? Mounts, IReadOnlyList<ContainerNetwork>? Networks, string RawJson,
+    long? RestartCount = null);
 
 public enum EngineResourceFailureKind
 {

@@ -91,6 +91,44 @@ internal static partial class ContainerPresentationChecks
         view.OpenSelected(); browser.Publish(browser.ContainerSnapshot with { Containers = [Row(B)], SelectedContainerId = null, Inspection = null }); await clock.Settle(view);
         Check(view.SelectedId is null && !view.DetailOpen && view.Overview == "" && browser.ClearCalls == 2, "Disappearance closes and cancels details");
     }
+    public static async Task DiagnosticsLifetime()
+    {
+        var clock = new Dispatcher();
+        var browser = new Browser { ContainerSnapshot = Ready(Row(A), Row(B)) };
+        using var view = new ContainerBrowserView(browser, clock.Post);
+        view.Attach(); await clock.Settle(view); view.Select(A); view.OpenSelected(); clock.Pump();
+        ContainerInspection Detail(bool? oom, long? restarts) => new(A, null, null, null, null,
+            new("exited", false, false, false, false, 137, "runtime failure", null, null, new("unhealthy", 1), oom),
+            null, null, null, "{\"Config\":{\"Env\":[\"SECRET=hidden\"]}}", restarts);
+        void Publish(ContainerInspection detail)
+        { browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Ready, Inspection = detail }); clock.Pump(); }
+        Publish(Detail(true, 7));
+        Check(view.Overview.Contains("OOMKilled: yes") && view.Overview.Contains("Restart count: 7")
+            && view.Overview.Contains("Exit code: 137") && view.Overview.Contains("Health: unhealthy")
+            && view.Overview.Contains("Runtime error: runtime failure") && !view.Overview.Contains("SECRET"),
+            "Overview must label actual diagnostics alongside existing evidence without exposing raw environment");
+        view.RefreshDetail();
+        browser.Publish(browser.ContainerSnapshot with { InspectionState = ResourceReadState.Loading, Inspection = null }); clock.Pump();
+        Check(view.Overview == "" && browser.InspectionRefreshCalls == 1, "Pending authoritative refresh clears previous diagnostics");
+        Publish(Detail(false, 0));
+        Check(view.Overview.Contains("OOMKilled: no") && view.Overview.Contains("Restart count: 0")
+            && !view.Overview.Contains("Restart count: 7"), "Refresh replaces OOM and restart evidence, including valid false/zero");
+        Publish(Detail(null, null));
+        Check(view.Overview.Contains("OOMKilled: unknown") && view.Overview.Contains("Restart count: unknown"),
+            "Unavailable diagnostics must not become false/zero");
+        Publish(Detail(true, 7)); view.Select(B); clock.Pump();
+        Check(view.Overview == "" && !view.DetailOpen, "Selection change clears diagnostics immediately");
+        view.Select(A); view.OpenSelected(); Publish(Detail(true, 7));
+        browser.Publish(browser.ContainerSnapshot with { Containers = [Row(B)] }); await clock.Settle(view);
+        Check(view.Overview == "" && !view.DetailOpen, "External absence clears obsolete diagnostics even with retained detail");
+        browser.Publish(Ready(Row(A))); await clock.Settle(view); view.Select(A); view.OpenSelected(); Publish(Detail(true, 7));
+        browser.Publish(browser.ContainerSnapshot with { ConnectionGeneration = 2 }); await clock.Settle(view);
+        Check(view.Overview == "" && view.SelectedId is null, "Replacement connection rejects previous diagnostics for the same ID");
+        browser.Publish(Ready(Row(A))); await clock.Settle(view); view.Select(A); view.OpenSelected(); Publish(Detail(true, 7));
+        browser.Publish(new(1, ResourceReadState.Unavailable, [])); await clock.Settle(view);
+        Check(view.Overview == "" && !view.DetailOpen, "Disconnect clears diagnostics");
+    }
+
     public static async Task InvalidationAndNavigation()
     {
         var clock = new Dispatcher();

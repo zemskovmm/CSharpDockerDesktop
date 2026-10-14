@@ -29,10 +29,12 @@ internal static class DockerContainerJson
         {
             ContainerHealth? health = Health(s);
             state = new(String(s, "Status"), Bool(s, "Running"), Bool(s, "Paused"), Bool(s, "Restarting"),
-                Bool(s, "Dead"), Number(s, "ExitCode"), String(s, "Error"), Timestamp(s, "StartedAt"), Timestamp(s, "FinishedAt"), health);
+                Bool(s, "Dead"), Number(s, "ExitCode"), String(s, "Error"), Timestamp(s, "StartedAt"), Timestamp(s, "FinishedAt"), health,
+                Bool(s, "OOMKilled"));
         }
         return new(Identity(c), String(c, "Name"), Object(c, "Config") is { } config ? String(config, "Image") : null,
-            String(c, "Image"), Timestamp(c, "Created"), state, InspectPorts(c), Mounts(c), Networks(c), Encoding.UTF8.GetString(body));
+            String(c, "Image"), Timestamp(c, "Created"), state, InspectPorts(c), Mounts(c), Networks(c), Encoding.UTF8.GetString(body),
+            Number(c, "RestartCount"));
     }
 
     private static string Identity(JsonElement c) => String(c, "Id") is { Length: > 0 } id ? id : throw Malformed("Container identity is missing or empty.");

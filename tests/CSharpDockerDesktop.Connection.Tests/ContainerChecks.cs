@@ -71,6 +71,45 @@ internal static class ContainerChecks
         Check(minimal.State is null && minimal.Created is null && minimal.Networks is null);
     }
 
+    internal static async Task Diagnostics()
+    {
+        // Exercise the typed subset through every negotiated version, independently of response examples.
+        for (int minor = 40; minor <= 56; minor++)
+        foreach (var (fields, oom, restarts) in new (string Fields, bool? Oom, long? Restarts)[]
+        {
+            ("\"State\":{\"OOMKilled\":true},\"RestartCount\":7", true, 7),
+            ("\"State\":{\"OOMKilled\":false},\"RestartCount\":0", false, 0),
+            ("\"State\":{\"OOMKilled\":null},\"RestartCount\":null", null, null),
+            ("\"State\":{}", null, null),
+            ("\"State\":null", null, null),
+            ("\"RestartCount\":9223372036854775807", null, long.MaxValue)
+        })
+        {
+            string raw = " {\n\"Id\":\"diagnostic\", " + fields
+                + ", \"FutureDiagnostic\":{\"private\":\"preserve \\u263a\"},\"Config\":{\"Env\":[\"SECRET=original\"]}\n}\n";
+            var paths = new List<string>();
+            var transport = Transport((r, _, _) => { paths.Add(r.RequestUri!.AbsolutePath); return Task.FromResult(Response(raw)); }, minor);
+            await using var connection = await Connect(transport);
+            var result = await Reader(connection).InspectContainerAsync("diagnostic");
+            Check(result.IsSuccess && result.Value!.State?.OOMKilled == oom && result.Value.RestartCount == restarts,
+                $"1.{minor} diagnostics must distinguish false/zero from unknown: {result.Failure}");
+            Check(result.Value!.RawJson == raw && paths.Single() == $"/v1.{minor}/containers/diagnostic/json",
+                "Diagnostics must preserve exact raw JSON and negotiated acquisition");
+        }
+        foreach (string field in new[] { "\"State\":{\"OOMKilled\":VALUE}", "\"RestartCount\":VALUE" })
+        foreach (string value in field.Contains("OOMKilled")
+            ? new[] { "\"true\"", "0", "1", "{}", "[]" }
+            : new[] { "\"7\"", "true", "false", "{}", "[]", "1.5", "9223372036854775808" })
+        {
+            string raw = "{\"Id\":\"diagnostic\"," + field.Replace("VALUE", value) + "}";
+            var transport = Transport((_, _, _) => Task.FromResult(Response(raw)));
+            await using var connection = await Connect(transport);
+            var failure = (await Reader(connection).InspectContainerAsync("diagnostic")).Failure;
+            Check(failure?.Kind == EngineResourceFailureKind.MalformedData && failure.HttpStatusCode == 200
+                && failure.DaemonMessage is null, "Invalid diagnostic types must fail without leaking body content");
+        }
+    }
+
     internal static async Task ErrorsAndIdentity()
     {
         var urls = new List<string>();
