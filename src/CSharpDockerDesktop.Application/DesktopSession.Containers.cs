@@ -17,6 +17,8 @@ public sealed partial class DesktopSession : IContainerBrowser
         lock (gate)
         {
             if (containerReads is not { Reader: not null } reads || disposed || reads.Lifetime.IsCancellationRequested) return;
+            InvalidateStatsLifecycleLocked(reads);
+            if (statsRequest is { } stats) RequestInspectionLocked(reads, stats.ContainerId, true);
             reads.ListRevision++;
             reads.Refresh = true;
             // Refresh takes priority, but reload a canceled current inspection after the new list.
@@ -37,6 +39,8 @@ public sealed partial class DesktopSession : IContainerBrowser
     {
         lock (gate)
         {
+            // Navigation remains an ownership boundary while recovery has no usable resource reader.
+            if (statsRequest is { } stats && stats.ContainerId != containerId) CloseStatsLocked();
             if (disposed || containerReads is not { Reader: not null } reads || reads.Lifetime.IsCancellationRequested) return;
             if (containerId is not null && !containerSnapshot.Containers.Any(row => row.Id == containerId))
                 containerId = null;
@@ -68,6 +72,11 @@ public sealed partial class DesktopSession : IContainerBrowser
 
     private void RequestInspectionLocked(ContainerReads reads, string? id, bool inspect)
     {
+        if (statsRequest is { } stats)
+        {
+            if (stats.ContainerId != id) CloseStatsLocked();
+            else InvalidateStatsLifecycleLocked(reads, id);
+        }
         if (containerSnapshot.SelectedContainerId != id && logsRequest is not null)
             CloseLogsLocked(ContainerLogsPhase.Closed);
         reads.DetailRevision++;
@@ -114,6 +123,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         InvalidateImagesLocked();
         InvalidateVolumesLocked();
         SuspendLogsLocked();
+        SuspendStatsLocked();
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ContainerSummary>(), Failure: inspectionFailure ? null : failure,
             InspectionFailure: inspectionFailure ? failure : null);
@@ -136,7 +146,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow, reads.PreparationWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow, reads.StatsWorkflow, reads.PreparationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -263,6 +273,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                 if (containerSnapshot.SelectedContainerId is { } selected && !rows.Any(row => row.Id == selected))
                     RequestInspectionLocked(reads, null, false);
             }
+            ReconcileStatsLocked(reads);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -293,6 +304,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             // leave the pending authoritative reread to publish; never resurrect stale Inspect.
             else if (!reads.Inspect) containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Ready,
                 Inspection = result.Value, InspectionFailure = null };
+            ReconcileStatsLocked(reads);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -317,6 +329,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         public Task EventsWorkflow = Task.CompletedTask;
         public Task OperationWorkflow = Task.CompletedTask;
         public Task LogsWorkflow = Task.CompletedTask;
+        public Task StatsWorkflow = Task.CompletedTask;
         public Task PreparationWorkflow = Task.CompletedTask;
         public OperationObservationRequest? OperationObservation;
         public bool OperationReadActive;

@@ -112,7 +112,10 @@ public sealed partial class DesktopSession
                     // potentially slow subscription disposal or invoking connection observers.
                     lock (gate)
                         if (CurrentEventsLocked(reads))
+                        {
                             InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ObservedChange);
+                            if (statsRequest is not null) InvalidateEventDetailLocked(reads, null);
+                        }
                     NotifyNetworkPreparationChanged();
                 }
                 finally
@@ -194,6 +197,7 @@ public sealed partial class DesktopSession
 
     private bool InvalidateEventDetailLocked(ContainerReads reads, string? identity)
     {
+        InvalidateStatsLifecycleLocked(reads, identity);
         if (containerSnapshot.SelectedContainerId is not { } selected
             || containerSnapshot.InspectionState == ResourceReadState.NotRequested
             || (!string.IsNullOrEmpty(identity) && identity != selected)) return false;

@@ -356,6 +356,7 @@ public sealed partial class DesktopSession : IContainerOperations
                         containerSnapshot.Containers.Where(c => c.Id != observation.Identity).ToArray()) };
                     if (containerSnapshot.SelectedContainerId == observation.Identity) RequestInspectionLocked(reads, null, false);
                 }
+                ReconcileStatsLocked(reads);
                 observation.Completion.TrySetResult(new(exists, inspection?.State, failure, stale, epoch));
             }
         }

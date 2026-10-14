@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Stats session admission cadence zeros and bounds", StatsSessionChecks.AdmissionCadenceZerosAndBounds),
+    ("Stats session replacements late open and joined close", StatsSessionChecks.ReplacementsLateOpenAndJoinedClose),
+    ("Stats session selection disconnect disposal and late failures", StatsSessionChecks.SelectionDisconnectDisposalAndLateFailures),
+    ("Stats session lifecycle authority and stale publications", StatsSessionChecks.LifecycleAuthorityAndStalePublications),
+    ("Stats session late opening lifecycle and inspection fences", StatsSessionChecks.LateOpeningLifecycleAndInspectionFences),
+    ("Stats session stalled empty completed and permanent failures", StatsSessionChecks.StalledEmptyCompletedAndPermanentFailures),
+    ("Stats session recovery context reset limits and close", StatsSessionChecks.RecoveryContextResetLimitsAndClose),
+    ("Stats session opening deadline retention and coexistence", StatsSessionChecks.OpeningDeadlineRetentionAndCoexistence),
     ("Stats calculation CPU and exact time", StatsCalculationChecks.CpuAndExactTime),
     ("Stats calculation memory and Windows", StatsCalculationChecks.MemoryAndWindows),
     ("Stats calculation baselines and bounded state", StatsCalculationChecks.BaselinesAndBoundedState),

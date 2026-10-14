@@ -48,7 +48,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
         IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
         ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null,
-        ContainerLogsOptions? logOptions = null, ImageOperationOptions? imageOperationOptions = null, VolumeOperationOptions? volumeOperationOptions = null, NetworkOperationOptions? networkOperationOptions = null)
+        ContainerLogsOptions? logOptions = null, ImageOperationOptions? imageOperationOptions = null, VolumeOperationOptions? volumeOperationOptions = null, NetworkOperationOptions? networkOperationOptions = null,
+        ContainerStatsOptions? statsOptions = null, TimeProvider? statsTimeProvider = null)
     {
         this.client = client;
         this.options = options ?? new();
@@ -66,6 +67,9 @@ public sealed partial class DesktopSession : IAsyncDisposable
         this.networkOperationOptions.Validate();
         this.logOptions = logOptions ?? new();
         this.logOptions.Validate();
+        this.statsOptions = statsOptions ?? new();
+        this.statsOptions.Validate();
+        statsTime = statsTimeProvider ?? TimeProvider.System;
         snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);
     }
 
@@ -82,14 +86,15 @@ public sealed partial class DesktopSession : IAsyncDisposable
         Task completion;
         lock (gate)
         {
-            if (disposed) return Task.WhenAll(workflow, logsWork, logNotifications);
+            if (disposed) return Task.WhenAll(workflow, logsWork, logNotifications, statsWork, statsNotifications);
             started = false;
+            CloseStatsLocked();
             CloseLogsLocked(ContainerLogsPhase.Closed);
             ++generation;
             InvalidateContainersLocked();
             workflowCancellation?.Cancel();
             snapshot = new(EngineConnectionState.NotConnected, snapshot.Endpoint);
-            completion = Task.WhenAll(workflow, logsWork);
+            completion = Task.WhenAll(workflow, logsWork, statsWork);
         }
         Changed?.Invoke(this, EventArgs.Empty);
         NotifyContainerBrowsers();
@@ -274,14 +279,16 @@ public sealed partial class DesktopSession : IAsyncDisposable
             if (!disposed)
             {
                 CloseLogsLocked(ContainerLogsPhase.Closed);
+                CloseStatsLocked();
                 disposed = true;
                 logNotificationLifetime.Cancel();
+                statsNotificationLifetime.Cancel();
                 ++generation;
                 InvalidateContainersLocked();
                 workflowCancellation?.Cancel();
                 changed = true;
             }
-            completion = Task.WhenAll(workflow, logsWork, logNotifications);
+            completion = Task.WhenAll(workflow, logsWork, logNotifications, statsWork, statsNotifications);
         }
         if (changed)
         {
@@ -294,7 +301,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private async Task FinishDesktopDisposalAsync(Task completion)
     {
         try { await completion.ConfigureAwait(false); }
-        finally { logNotificationLifetime.Dispose(); }
+        finally { logNotificationLifetime.Dispose(); statsNotificationLifetime.Dispose(); }
     }
 
     private sealed class SystemConnectionDelay : IConnectionDelay
