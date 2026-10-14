@@ -68,6 +68,8 @@ public sealed partial class DesktopSession : IContainerBrowser
 
     private void RequestInspectionLocked(ContainerReads reads, string? id, bool inspect)
     {
+        if (containerSnapshot.SelectedContainerId != id && logsRequest is not null)
+            CloseLogsLocked(ContainerLogsPhase.Closed);
         reads.DetailRevision++;
         reads.Inspect = inspect;
         if (reads.InspectActive && !reads.OperationReadActive) reads.Active?.Cancel();
@@ -104,6 +106,7 @@ public sealed partial class DesktopSession : IContainerBrowser
     private void InvalidateContainersLocked(EngineResourceFailure? failure = null, bool inspectionFailure = false)
     {
         var previous = containerReads;
+        SuspendLogsLocked();
         containerReads = null;
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ContainerSummary>(), Failure: inspectionFailure ? null : failure,
@@ -127,7 +130,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -250,6 +253,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             {
                 var rows = Array.AsReadOnly(result.Value!.DistinctBy(row => row.Id, StringComparer.Ordinal).ToArray());
                 containerSnapshot = containerSnapshot with { State = ResourceReadState.Ready, Containers = rows, Failure = null };
+                ReconcileLogsLocked(reads);
                 if (containerSnapshot.SelectedContainerId is { } selected && !rows.Any(row => row.Id == selected))
                     RequestInspectionLocked(reads, null, false);
             }
@@ -272,6 +276,8 @@ public sealed partial class DesktopSession : IContainerBrowser
                     Inspection = null, InspectionFailure = failure };
                 if (failure.Kind == EngineResourceFailureKind.NotFound)
                 {
+                    if (logsRequest?.ContainerId == identity) CloseLogsLocked(ContainerLogsPhase.Failed,
+                        new(ContainerLogFailureKind.NotFound, "The container is no longer available."));
                     reads.Inspect = false;
                     containerSnapshot = containerSnapshot with { SelectedContainerId = null,
                         Containers = Array.AsReadOnly(containerSnapshot.Containers.Where(row => row.Id != identity).ToArray()) };
@@ -304,6 +310,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         public Task Workflow = Task.CompletedTask;
         public Task EventsWorkflow = Task.CompletedTask;
         public Task OperationWorkflow = Task.CompletedTask;
+        public Task LogsWorkflow = Task.CompletedTask;
         public OperationObservationRequest? OperationObservation;
         public bool OperationReadActive;
         public long ObservationRevision;

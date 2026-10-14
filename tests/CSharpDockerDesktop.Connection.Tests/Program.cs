@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Logs fragmented assembly, bounded retention and notifications", LogSessionChecks.AssemblyBoundsAndNotifications),
+    ("Application Logs Clear, close, replacement and joined late openings", LogSessionChecks.ClearCloseAndLateReplacement),
+    ("Application Logs terminal failures, deletion, selection and finite EOF", LogSessionChecks.TerminalDeletionSelectionAndEof),
+    ("Application Logs precise recovery, replay multiplicity and authoritative evidence", LogSessionChecks.RecoveryPrecisionMultiplicityAndAuthority),
+    ("Application Logs joins asynchronous disposal and bounds unfinished eviction", LogSessionChecks.DisposalJoinAndUnfinishedEviction),
+    ("Application Logs incomplete replay evidence and cancellation during recovery", LogSessionChecks.RecoveryEvidenceAndCancellation),
+    ("Application Logs bounded recovery, Engine identity and operation coexistence", LogSessionChecks.RecoveryLimitsIdentityAndCoexistence),
     ("Logs negotiated API 1.40–1.56 contracts and fragmented frames/UTF-8", LogChecks.ContractsAndFragmentation),
     ("Logs authoritative TTY, raw preservation and exact timestamps", LogChecks.TtyAndPrecision),
     ("Logs bounded long output, malformed framing/text and partial EOF", LogChecks.LongOutputAndMalformed),

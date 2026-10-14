@@ -336,6 +336,7 @@ public sealed partial class DesktopSession : IContainerOperations
                             ? c with { State = state.Status ?? c.State, Health = state.Health ?? c.Health } : c).ToArray();
                     containerSnapshot = containerSnapshot with { State = ResourceReadState.Ready,
                         Containers = Array.AsReadOnly(rows), Failure = null };
+                    ReconcileLogsLocked(reads);
                     if (containerSnapshot.SelectedContainerId is { } selected && !rows.Any(c => c.Id == selected))
                         RequestInspectionLocked(reads, null, false);
                 }
@@ -349,6 +350,8 @@ public sealed partial class DesktopSession : IContainerOperations
                 }
                 if (!stale && exists == false)
                 {
+                    if (logsRequest?.ContainerId == observation.Identity) CloseLogsLocked(ContainerLogsPhase.Failed,
+                        new(ContainerLogFailureKind.NotFound, "The container is no longer available."));
                     containerSnapshot = containerSnapshot with { Containers = Array.AsReadOnly(
                         containerSnapshot.Containers.Where(c => c.Id != observation.Identity).ToArray()) };
                     if (containerSnapshot.SelectedContainerId == observation.Identity) RequestInspectionLocked(reads, null, false);

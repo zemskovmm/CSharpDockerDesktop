@@ -47,7 +47,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
 
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
         IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
-        ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null)
+        ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null,
+        ContainerLogsOptions? logOptions = null)
     {
         this.client = client;
         this.options = options ?? new();
@@ -57,6 +58,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
         this.reconciliation.Validate();
         this.operationOptions = operationOptions ?? new();
         this.operationOptions.Validate();
+        this.logOptions = logOptions ?? new();
+        this.logOptions.Validate();
         snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);
     }
 
@@ -73,13 +76,14 @@ public sealed partial class DesktopSession : IAsyncDisposable
         Task completion;
         lock (gate)
         {
-            if (disposed) return workflow;
+            if (disposed) return Task.WhenAll(workflow, logsWork, logNotifications);
             started = false;
+            CloseLogsLocked(ContainerLogsPhase.Closed);
             ++generation;
             InvalidateContainersLocked();
             workflowCancellation?.Cancel();
             snapshot = new(EngineConnectionState.NotConnected, snapshot.Endpoint);
-            completion = workflow;
+            completion = Task.WhenAll(workflow, logsWork);
         }
         Changed?.Invoke(this, EventArgs.Empty);
         ContainersChanged?.Invoke(this, EventArgs.Empty);
@@ -242,20 +246,28 @@ public sealed partial class DesktopSession : IAsyncDisposable
         {
             if (!disposed)
             {
+                CloseLogsLocked(ContainerLogsPhase.Closed);
                 disposed = true;
+                logNotificationLifetime.Cancel();
                 ++generation;
                 InvalidateContainersLocked();
                 workflowCancellation?.Cancel();
                 changed = true;
             }
-            completion = workflow;
+            completion = Task.WhenAll(workflow, logsWork, logNotifications);
         }
         if (changed)
         {
             ContainersChanged?.Invoke(this, EventArgs.Empty);
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
-        return new ValueTask(completion);
+        return new ValueTask(FinishDesktopDisposalAsync(completion));
+    }
+
+    private async Task FinishDesktopDisposalAsync(Task completion)
+    {
+        try { await completion.ConfigureAwait(false); }
+        finally { logNotificationLifetime.Dispose(); }
     }
 
     private sealed class SystemConnectionDelay : IConnectionDelay
