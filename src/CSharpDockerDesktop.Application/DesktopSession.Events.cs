@@ -45,7 +45,7 @@ public sealed partial class DesktopSession
             InvalidateEventDetailLocked(reads, null);
             reads.Signal.Writer.TryWrite(0);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
     }
 
     private async Task ObserveContainerEventsAsync(ContainerReads reads)
@@ -113,7 +113,7 @@ public sealed partial class DesktopSession
                             failure.Description, failure.HttpStatusCode, failure.DaemonMessage), false);
                     }
                     Changed?.Invoke(this, EventArgs.Empty);
-                    ContainersChanged?.Invoke(this, EventArgs.Empty);
+                    NotifyContainerBrowsers();
                     ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
                     return;
                 }
@@ -155,7 +155,7 @@ public sealed partial class DesktopSession
             reads.Signal.Writer.TryWrite(0);
         }
         // List publication is batched; only the first invalidation clears exposed detail content.
-        if (notify) ContainersChanged?.Invoke(this, EventArgs.Empty);
+        if (notify) NotifyContainerBrowsers();
     }
 
     private bool InvalidateEventDetailLocked(ContainerReads reads, string? identity)

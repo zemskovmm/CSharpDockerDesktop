@@ -48,7 +48,7 @@ public sealed partial class DesktopSession : IContainerOperations
             operationCompletion = completion;
             reads.OperationWorkflow = completion;
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         return completion;
     }
@@ -157,7 +157,7 @@ public sealed partial class DesktopSession : IContainerOperations
                         outcome.Failure!.Description, outcome.HttpStatusCode, outcome.DaemonMessage), false);
             }
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
-            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            NotifyContainerBrowsers();
             if (!lost && outcome.RequiresReconciliation) await ObserveContainerOperationAsync(reads, id, firstObservation).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (reads.Lifetime.IsCancellationRequested) { }
@@ -368,7 +368,7 @@ public sealed partial class DesktopSession : IContainerOperations
         finally
         {
             lock (gate) { reads.OperationReadActive = false; reads.Active = null; }
-            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            NotifyContainerBrowsers();
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
     }

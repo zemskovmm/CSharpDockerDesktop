@@ -30,6 +30,16 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Images MissingCapabilityAndFairness", ImageBrowsingChecks.MissingCapabilityAndFairness),
+    ("Application Images NonCooperativeDeadlineAndSharedRecovery", ImageBrowsingChecks.NonCooperativeDeadlineAndSharedRecovery),
+    ("Application Images SharedInvalidationAndJoinedShutdown", ImageBrowsingChecks.SharedInvalidationAndJoinedShutdown),
+    ("Application Images InitialEmptyAndReplacement", ImageBrowsingChecks.InitialEmptyAndReplacement),
+    ("Application Images PreservedFailuresAndDisappearance", ImageBrowsingChecks.PreservedFailuresAndDisappearance),
+    ("Application Images SelectionRacesAndClearing", ImageBrowsingChecks.SelectionRacesAndClearing),
+    ("Application Images BoundedRefreshAndDeadline", ImageBrowsingChecks.BoundedRefreshAndDeadline),
+    ("Application Images ReconnectInvalidationAndLateReads", ImageBrowsingChecks.ReconnectInvalidationAndLateReads),
+    ("Application Images ResourceDetectedLossAndRecovery", ImageBrowsingChecks.ResourceDetectedLossAndRecovery),
+    ("Application Images LivenessLossAndShutdown", ImageBrowsingChecks.LivenessLossAndShutdown),
     ("Images negotiated API 1.40–1.56 schema fixtures", ImageChecks.ContractFixtures),
     ("Images authoritative immutable projections and exact Inspect", ImageChecks.Projection),
     ("Images reference escaping, invalid inputs and classified daemon failures", ImageChecks.ErrorsAndIdentity),

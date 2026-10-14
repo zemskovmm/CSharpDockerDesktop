@@ -354,7 +354,7 @@ public sealed partial class DesktopSession : IContainerLogs
         }
         if (completion.Failure?.Kind is ContainerLogFailureKind.NotFound or ContainerLogFailureKind.TransportLoss or ContainerLogFailureKind.OpeningDeadline)
         {
-            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            NotifyContainerBrowsers();
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
     }

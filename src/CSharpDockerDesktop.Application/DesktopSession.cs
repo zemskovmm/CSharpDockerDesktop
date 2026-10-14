@@ -86,7 +86,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
             completion = Task.WhenAll(workflow, logsWork);
         }
         Changed?.Invoke(this, EventArgs.Empty);
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         return completion;
     }
@@ -116,7 +116,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
                 }
             });
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -135,6 +135,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
     {
         IEngineConnection? connection = null;
         ContainerReads? reads = null;
+        ImageReads? images = null;
         var endpoint = Snapshot.Endpoint;
         var lost = false;
         int retries = 0;
@@ -171,12 +172,16 @@ public sealed partial class DesktopSession : IAsyncDisposable
                     if (!Publish(currentGeneration, new(EngineConnectionState.Connected, endpoint, connection.Metadata))) return;
                     reads = BeginContainerReads(currentGeneration, connection, token);
                     if (reads is null) return;
+                    images = BeginImageReads(reads);
                     retries = 0;
                     lastFailure = await WatchConnectionAsync(connection, reads, token).ConfigureAwait(false);
                     lost = true;
                     var finishedReads = reads;
+                    var finishedImages = images;
                     reads = null;
-                    await EndContainerReadsAsync(finishedReads).ConfigureAwait(false);
+                    images = null;
+                    await Task.WhenAll(EndContainerReadsAsync(finishedReads),
+                        finishedImages is null ? Task.CompletedTask : EndImageReadsAsync(finishedImages)).ConfigureAwait(false);
                     await connection.DisposeAsync().ConfigureAwait(false);
                     connection = null;
                 }
@@ -195,7 +200,11 @@ public sealed partial class DesktopSession : IAsyncDisposable
         }
         finally
         {
-            try { if (reads is not null) await EndContainerReadsAsync(reads).ConfigureAwait(false); }
+            try
+            {
+                await Task.WhenAll(reads is null ? Task.CompletedTask : EndContainerReadsAsync(reads),
+                    images is null ? Task.CompletedTask : EndImageReadsAsync(images)).ConfigureAwait(false);
+            }
             finally { if (connection is not null) await connection.DisposeAsync().ConfigureAwait(false); }
         }
     }
@@ -258,7 +267,7 @@ public sealed partial class DesktopSession : IAsyncDisposable
         }
         if (changed)
         {
-            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            NotifyContainerBrowsers();
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         return new ValueTask(FinishDesktopDisposalAsync(completion));

@@ -30,7 +30,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             containerSnapshot = containerSnapshot with { State = ResourceReadState.Loading, Failure = null };
             reads.Signal.Writer.TryWrite(0);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
     }
 
     public void SelectContainer(string? containerId)
@@ -42,7 +42,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                 containerId = null;
             RequestInspectionLocked(reads, containerId, containerId is not null);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
     }
 
     public void RefreshContainerInspection()
@@ -53,7 +53,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                 || containerSnapshot.SelectedContainerId is not { } id) return;
             RequestInspectionLocked(reads, id, true);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
     }
 
     public void ClearContainerInspection()
@@ -63,7 +63,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             if (disposed || containerReads is not { Reader: not null } reads || reads.Lifetime.IsCancellationRequested) return;
             RequestInspectionLocked(reads, containerSnapshot.SelectedContainerId, false);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
     }
 
     private void RequestInspectionLocked(ContainerReads reads, string? id, bool inspect)
@@ -97,7 +97,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             reads.EventsWorkflow = Task.Run(() => ObserveContainerEventsAsync(reads));
             ResumeContainerOperationLocked(reads);
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         return reads;
     }
@@ -106,6 +106,7 @@ public sealed partial class DesktopSession : IContainerBrowser
     private void InvalidateContainersLocked(EngineResourceFailure? failure = null, bool inspectionFailure = false)
     {
         var previous = containerReads;
+        InvalidateImagesLocked();
         SuspendLogsLocked();
         containerReads = null;
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
@@ -126,7 +127,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         }
         if (changed)
         {
-            ContainersChanged?.Invoke(this, EventArgs.Empty);
+            NotifyContainerBrowsers();
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
@@ -225,7 +226,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                         }
                         if (notify)
                         {
-                            ContainersChanged?.Invoke(this, EventArgs.Empty);
+                            NotifyContainerBrowsers();
                             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
                         }
                     }
@@ -258,7 +259,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                     RequestInspectionLocked(reads, null, false);
             }
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -288,7 +289,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             else if (!reads.Inspect) containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Ready,
                 Inspection = result.Value, InspectionFailure = null };
         }
-        ContainersChanged?.Invoke(this, EventArgs.Empty);
+        NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
 

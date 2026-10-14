@@ -1,6 +1,6 @@
 # Read-only image acquisition
 
-The retained `DockerEngineConnection` supplies Application-owned `IImageReader` alongside the existing container, events, command and Logs capabilities. The owner controls connection disposal; acquiring an image reader transfers no ownership. Domain projections contain no Uno or transport dependencies. This change supplies protocol acquisition for subsequent Application snapshots and presentation; it does not introduce an image session, page, event reconciliation or deletion.
+The retained `DockerEngineConnection` supplies Application-owned `IImageReader` alongside the existing container, events, command and Logs capabilities. The owner controls connection disposal; acquiring an image reader transfers no ownership. Domain projections contain no Uno or transport dependencies. Protocol acquisition now feeds the [Application image browsing session](image-browsing.md); image presentation, automatic image-event reconciliation and deletion remain subsequent work.
 
 Listing uses `GET /v{negotiated}/images/json?all=true&digests=true`: intermediate images are included, available repository tags and digests are retained verbatim, and identity is the complete daemon ID. Inspect uses `GET /v{negotiated}/images/{escaped-reference}/json` with no platform/manifests/identity options. Metadata is therefore the daemon's default image inspection, not an inferred merge of every platform in a manifest index. No independent negotiation, registry access or mutation occurs.
 
