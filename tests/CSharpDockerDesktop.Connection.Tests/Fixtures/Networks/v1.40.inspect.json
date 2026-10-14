@@ -1,0 +1,44 @@
+  {
+  "Id": "7d86d31b1478e7cca9ebed7e73aa0fdeec46c5ca29497431d3007d2d9e15ed99",
+  "Name": "synthetic-network-1.40",
+  "Driver": "custom",
+  "Scope": "swarm",
+  "Internal": false,
+  "Labels": {
+    "private.synthetic": "retain-private"
+  },
+  "IPAM": {
+    "Driver": "custom-ipam",
+    "Config": [
+      {
+        "Subnet": "172.19.0.0/16",
+        "IPRange": "172.19.1.0/24",
+        "Gateway": "172.19.0.1",
+        "FutureDriverField": "opaque-driver-value"
+      }
+    ],
+    "Options": {
+      "secret": "retain-private"
+    }
+  },
+  "Containers": {
+    "19a4d5d687db25203351ed79d478946f861258f018fe384f229f2efa4b23513c": {
+      "Name": "synthetic-container",
+      "EndpointID": "628cadb8bcb92de107b2a1e516cbffe463e321f548feb37697cce00ad694f21a",
+      "MacAddress": "02:42:ac:13:00:02",
+      "IPv4Address": "172.19.0.2/16",
+      "IPv6Address": "",
+      "FutureEndpoint": {
+        "secret": "retain-private"
+      }
+    }
+  },
+  "Services": {
+    "private": {
+      "VIP": "172.19.0.3"
+    }
+  },
+  "Future": {
+    "number": 9007199254740993
+  }
+}

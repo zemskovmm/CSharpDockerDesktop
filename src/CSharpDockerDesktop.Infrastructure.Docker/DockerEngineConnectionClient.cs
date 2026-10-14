@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, IContainerLogSource
+internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, INetworkReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, IContainerLogSource
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -342,6 +342,22 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
                 "A valid bounded image ID, repository name, tag or digest reference is required.")));
         return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"images/{Uri.EscapeDataString(reference)}/json",
             DockerImageJson.Inspect, options, continuity, generation, lifetime.Token, cancellationToken, "image");
+    }
+    public Task<EngineResourceResult<IReadOnlyList<NetworkSummary>>> ListNetworksAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, "networks",
+            DockerNetworkJson.List, options, continuity, generation, lifetime.Token, cancellationToken, "network");
+    }
+    public Task<EngineResourceResult<NetworkInspection>> InspectNetworkAsync(string id, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!DockerNetworkId.IsValid(id))
+            return Task.FromResult(EngineResourceResult<NetworkInspection>.Failed(new(EngineResourceFailureKind.InvalidRequest,
+                "A complete bounded network ID without controls or invalid Unicode is required.")));
+        return DockerResourceReader.ReadAsync(http, Metadata.Api.Negotiated, $"networks/{Uri.EscapeDataString(id)}",
+            body => DockerNetworkJson.Inspect(body, id), options, continuity, generation, lifetime.Token, cancellationToken, "network");
     }
     public Task<EngineResourceResult<VolumeListing>> ListVolumesAsync(CancellationToken cancellationToken = default)
     {

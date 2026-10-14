@@ -21,6 +21,7 @@
     <None Update="Fixtures/Containers/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Images/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/VolumeDependencies/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/Networks/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Volumes/**" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
   </ItemGroup>

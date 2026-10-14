@@ -364,6 +364,8 @@ internal static class LogChecks
                     "/v1.56/images/json?all=true&digests=true" => "[{\"Id\":\"sha256:authoritative-image\",\"RepoTags\":[\"repo/name:tag\"],\"Size\":0}]",
                     "/v1.56/images/repo%2Fname%3Atag/json" => "{\"Id\":\"sha256:authoritative-image\",\"Config\":{\"Env\":[\"SYNTHETIC_SECRET=preserve\"]}}",
                     "/v1.56/images/repo%2Fname%3Atag?force=false&noprune=false" => "[{\"Untagged\":\"repo/name:tag\"}]",
+                    "/v1.56/networks" => "[{\"Id\":\"complete-network-id\",\"Name\":\"private network\",\"Internal\":false}]",
+                    "/v1.56/networks/complete-network-id" => "{\"Id\":\"complete-network-id\",\"IPAM\":{\"Driver\":\"custom\"},\"Containers\":{\"canonical\":{\"EndpointID\":\"complete-endpoint-id\",\"IPv4Address\":\"private-address\"}}}",
                     "/v1.56/volumes" => "{\"Volumes\":[{\"Name\":\"plugin/full?name\",\"Driver\":\"custom\"}],\"Warnings\":[\"private synthetic warning\"]}",
                     "/v1.56/volumes/plugin%2Ffull%3Fname" => "{\"Name\":\"plugin/full?name\",\"Status\":{\"token\":\"private synthetic secret\"}}",
                     _ => "{\"ID\":\"same-engine\"}"
@@ -398,6 +400,14 @@ internal static class LogChecks
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).Value![0].Id == "sha256:authoritative-image");
             Check((await ((IImageReader)owner).InspectImageAsync("repo/name:tag", deadline.Token)).Value!.Configuration!.Environment!.Single() == "SYNTHETIC_SECRET=preserve");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed image reads must leave live streams running");
+            var networkList = ((INetworkReader)owner).ListNetworksAsync(deadline.Token);
+            var networkDetail = ((INetworkReader)owner).InspectNetworkAsync("complete-network-id", deadline.Token);
+            await Task.WhenAll(networkList, networkDetail, ((IContainerReader)owner).ListContainersAsync(deadline.Token),
+                ((IImageReader)owner).ListImagesAsync(deadline.Token), ((IVolumeReader)owner).ListVolumesAsync(deadline.Token),
+                owner.CheckLivenessAsync(deadline.Token));
+            Check(networkList.Result.Value!.Single().Id == "complete-network-id"
+                && networkDetail.Result.Value!.Containers!["canonical"].EndpointId == "complete-endpoint-id");
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Borrowed network reads leave live streams running");
             var volumes = (await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).Value!;
             Check(volumes.Volumes![0].Name == "plugin/full?name" && volumes.HasWarnings);
             Check((await ((IVolumeReader)owner).InspectVolumeAsync(volumes.Volumes[0].Name, deadline.Token)).Value!.RawJson.Contains("private synthetic secret"));
@@ -418,6 +428,8 @@ internal static class LogChecks
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await logs.DisposeAsync(); await events.DisposeAsync();
+            Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
+            Check((await ((INetworkReader)owner).InspectNetworkAsync("complete-network-id", deadline.Token)).IsSuccess);
             Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).Value!.HasWarnings);
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);

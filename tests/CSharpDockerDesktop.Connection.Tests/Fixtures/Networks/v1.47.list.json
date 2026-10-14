@@ -1,0 +1,17 @@
+[
+  {
+    "Id": "7d86d31b1478e7cca9ebed7e73aa0fdeec46c5ca29497431d3007d2d9e15ed99",
+    "Name": "synthetic-network-1.47",
+    "Driver": "custom",
+    "Scope": "swarm",
+    "Internal": false,
+    "Labels": {
+      "private.synthetic": "retain-private"
+    },
+    "Containers": {
+      "untrusted-list-entry": {
+        "Name": "not-authoritative"
+      }
+    }
+  }
+]

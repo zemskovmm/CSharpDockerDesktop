@@ -1,0 +1,48 @@
+# Read-only network acquisition
+
+The retained negotiated `DockerEngineConnection` supplies the Application-owned `INetworkReader` alongside container/image/volume reads, dependency reads, commands, events, Logs and liveness. The capability is borrowed: the connection owner alone owns lifetime, transport and disposal. It creates no transport pool, handshake, retry, snapshot or event subscription. Domain projections have no Uno, HTTP or JSON dependency. Session snapshots, reconciliation, network presentation and deletion remain subsequent work.
+
+## Requests and identity
+
+List uses `GET /v{negotiated}/networks` without filters. Inspect uses `GET /v{negotiated}/networks/{escaped-id}` with the complete ID obtained from the daemon. The API also accepts names/prefixes, but this capability's contract requires the complete ID; an inspected response with a different ID is rejected as malformed evidence. Callers must not shorten IDs or substitute display names. Neither a fixed hexadecimal width nor an image-reference grammar is imposed: the official schema declares a string, and network/driver identities need not share the local bridge ID shape.
+
+The reader preserves the original ID without trimming, normalizing, truncating or unescaping it. Preflight and decoded network identities reject null/empty/whitespace-only strings, exact dot segments, control characters, invalid UTF-16 and lengths beyond the client safety bound of 4096 UTF-16 code units. Every accepted request ID is escaped as one path component with `Uri.EscapeDataString`, including slashes, backslashes, percent signs, Unicode and query/fragment punctuation. Attachment map keys use the same usability validation but are never turned into requests. Endpoint IDs are nullable string metadata; empty strings remain available empty values. These syntax checks cannot prove that a reference is a full daemon identity; exact response matching guards against accidental alias/prefix use.
+
+## Projections, unknown data and completeness
+
+`NetworkSummary` exposes the complete ID and available name, driver, scope, internal status and labels. Missing/null optional fields are unavailable; empty strings/maps and `false` remain available values. Scope and driver strings are open values. The listing is an array: `[]` is observed empty, whereas a null/object root is malformed. Summaries deliberately expose no Containers or IPAM projection, even if a daemon includes those fields in list responses.
+
+`NetworkInspection` additionally projects IPAM driver/options/configuration and inspected Containers. Configuration exposes available Subnet, IPRange, Gateway and AuxiliaryAddresses. Containers retain complete map keys with available Name, EndpointID, MacAddress, IPv4Address and IPv6Address. Missing/null IPAM, configuration, option maps, auxiliary maps and Containers remain unavailable; valid empty objects/arrays remain empty. Driver-specific address text is preserved without guessing or normalizing its meaning. Containers is an inspected observation, never a promise of cluster-wide completeness or permission to delete; node/scope visibility, driver behavior, concurrent changes and service attachments still need consideration by future dependency workflows. An empty inspected map describes this response only.
+
+Selected fields require their schema JSON types. Duplicate selected fields/map keys, missing/unusable network or attachment identities, incompatible types and invalid selected Unicode are malformed. Unknown additive fields are tolerated. Unknown configuration properties, legacy `AuxAddress` spellings, network driver options, peers, Services, Status and endpoint extensions remain in raw inspection; the reader does not invent default drivers, booleans, address values or auxiliary-map aliases.
+
+Decoded collections and dictionaries use read-only wrappers. `RawJson` independently retains the exact actual UTF-8 response, including leading/trailing whitespace, unknown properties, private driver values and numeric lexemes. It is never serialized back from projections. Invalid inspection UTF-8 is rejected instead of replaced. Network identities, labels, addresses, attachments, raw JSON and daemon messages are private data; this implementation adds no automatic logging or transmission.
+
+## Official Engine endpoint and schema evidence
+
+Every official Docker API YAML for the supported 1.40–1.56 range was retrieved and inspected on 2026-10-14. The [baseline API](https://docs.docker.com/reference/api/engine/version/v1.40/) and [current supported API](https://docs.docker.com/reference/api/engine/version/v1.56/) link their authoritative specifications. `Fixtures/Networks/schema-evidence.json` records all 17 source URLs and SHA-256 values, retrieval dates, network/IPAM/endpoint definitions, response schemas, parameters and status declarations.
+
+All versions describe the list representation as smaller than inspect and explicitly say attached containers are not propagated in API 1.28 and later. List declares 200/500; inspect declares 200/404/500 and a required string ID-or-name path parameter plus optional verbose and scope queries. This reader uses ordinary inspect without those optional queries and makes no swarm-wide attachment-completeness claim. Original errors use the existing message contract.
+
+Relevant schema changes within this range:
+
+- API 1.40 describes IPAM Config items as arbitrary string maps, while its description mentions `AuxAddress`. From 1.41, the named IPAMConfig definition explicitly exposes Subnet/IPRange/Gateway and an `AuxiliaryAddresses` string map. The older underspecified map is not treated as authority to reject unknown driver fields or to fabricate an auxiliary map.
+- API 1.41 adds ConfigFrom, ConfigOnly and Peers to the Network definition. They remain available in raw inspection.
+- API 1.47 adds EnableIPv4. This optional, unselected property remains available in raw inspection.
+- API 1.52 splits NetworkSummary and NetworkInspect from the shared Network base, moves Containers to NetworkInspect and renames its entry definition from NetworkContainer to EndpointResource. Selected entry fields remain strings. NetworkInspect also describes Services and, in newer definitions, Status; these remain raw evidence rather than being reduced to container completeness.
+
+Adjacent versioned fixtures are representative synthetic responses derived from those definitions/examples with deliberately synthetic private/additive fields. They are not captured daemon responses. Tests negotiate every version and check its exact request paths, projected configuration/attachments and unchanged raw inspection. The client API maximum remains 1.56.
+
+## Lifetimes, failures and verification limits
+
+Network reads reuse `DockerResourceReader`: asynchronous bounded header/body I/O, parsing off the calling thread, configured request deadline and success/error byte budgets, linked caller/connection cancellation, disposal of request/response/stream, and continuity fences before dispatch, after headers/body and after decoding. No borrowed read disposes its connection or live streams.
+
+Caller cancellation throws `OperationCanceledException`, including wrapped transport cancellation. HTTP 404 is NotFound; 304/409 Conflict; 401/403 AccessDenied; other 4xx InvalidRequest; other unsuccessful statuses DaemonFailure. Transport access denial is AccessDenied. Interrupted, expired, disposed or stale-generation reads are TransportLoss. Calls begun after owner disposal throw ObjectDisposedException. Malformed selected JSON or oversized successful bodies are MalformedData. Oversized error bodies retain HTTP classification without an unbounded/truncated daemon message. Original bounded JSON messages or plain error bodies remain separate from fixed safe descriptions.
+
+Focused harness coverage includes all supported API fixtures, absent/null/empty values, IPAM/attachment projections, unknown and driver-specific data, exact raw JSON, read-only collections, path escaping and preflight, mismatched inspect identities, malformed field types/duplicates/Unicode, HTTP and permission classifications, original daemon messages, known/unknown-length body bounds, exact byte boundaries, cancellation before dispatch/during headers/bodies, deadlines, repeated disposal and response cleanup. Non-cooperative headers/body and controlled decoder hooks verify late valid results cannot escape cancellation, disposal, deadline or generation fences.
+
+The existing simultaneous named-pipe fixture now also issues network list/inspect concurrently with container/image/volume reads and liveness while events and Logs remain active, then reads networks again after subscriptions close. Existing commands and dependency reads also remain usable. The same three handshakes serve ordinary requests, events and Logs: networks add none.
+
+These fixtures establish protocol behavior under controlled simulation, including real SocketsHttpHandler over synthetic named-pipe servers. They do not establish real Windows ACLs, Docker Desktop/WSL2 driver behavior, swarm attachment visibility, Windows delivery or workstation performance targets. Real Windows/Docker compatibility evidence remains outstanding. No project verification policy exists; verification follows the established executable harness and solution build.
+
+On 2026-10-14 the executable harness passed **266/266 groups on macOS 26.7.1**, including all seven network groups. The full Release solution build passed with **zero warnings and zero errors**. These are simulated acquisition/build results, with the real-daemon limits described above.
