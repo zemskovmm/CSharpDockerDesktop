@@ -1,6 +1,6 @@
 # Read-only network acquisition
 
-The retained negotiated `DockerEngineConnection` supplies the Application-owned `INetworkReader` alongside container/image/volume reads, dependency reads, commands, events, Logs and liveness. The capability is borrowed: the connection owner alone owns lifetime, transport and disposal. It creates no transport pool, handshake, retry, snapshot or event subscription. Domain projections have no Uno, HTTP or JSON dependency. Session snapshots, reconciliation, network presentation and deletion remain subsequent work.
+The retained negotiated `DockerEngineConnection` supplies the Application-owned `INetworkReader` alongside container/image/volume reads, dependency reads, commands, events, Logs and liveness. The capability is borrowed: the connection owner alone owns lifetime, transport and disposal. It creates no transport pool, handshake, retry, snapshot or event subscription. Domain projections have no Uno, HTTP or JSON dependency. [Application-owned network browsing](network-browsing.md) now supplies session snapshots and bounded read coordination. Network event reconciliation, presentation and deletion remain subsequent work.
 
 ## Requests and identity
 

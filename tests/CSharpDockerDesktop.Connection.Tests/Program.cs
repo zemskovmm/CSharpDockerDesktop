@@ -30,6 +30,21 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Networks ImmutableEvidenceAndExactIdentity", NetworkBrowsingChecks.ImmutableEvidenceAndExactIdentity),
+    ("Application Networks EmptyUnavailableAndDisappearance", NetworkBrowsingChecks.EmptyUnavailableAndDisappearance),
+    ("Application Networks CancellationCallbacksSeeInvalidatedState", NetworkBrowsingChecks.CancellationCallbacksSeeInvalidatedState),
+    ("Application Networks SuccessfulBrowsingCoexistsWithOwnedCapabilities", NetworkBrowsingChecks.SuccessfulBrowsingCoexistsWithOwnedCapabilities),
+    ("Application Networks ClassifiedFailuresAndReturnedIdentity", NetworkBrowsingChecks.ClassifiedFailuresAndReturnedIdentity),
+    ("Application Networks SelectionRefreshFencesAndFairness", NetworkBrowsingChecks.SelectionRefreshFencesAndFairness),
+    ("Application Networks ReconnectAndJoinedReplacement", NetworkBrowsingChecks.ReconnectAndJoinedReplacement),
+    ("Application Networks RefreshBurstFencesLateListFailures", NetworkBrowsingChecks.RefreshBurstFencesLateListFailures),
+    ("Application Networks DeadlinesIncludingSupersededNonCooperativeReads", NetworkBrowsingChecks.DeadlinesIncludingSupersededNonCooperativeReads),
+    ("Application Networks NetworkLossUsesSharedRecovery", NetworkBrowsingChecks.NetworkLossUsesSharedRecovery),
+    ("Application Networks RepeatedDisconnectAndDisposalJoin", NetworkBrowsingChecks.RepeatedDisconnectAndDisposalJoin),
+    ("Application Networks EverySharedOwnerInvalidatesNetworks", NetworkBrowsingChecks.EverySharedOwnerInvalidatesNetworks),
+    ("Application Networks NetworkDeadlineRecoveryAndCapabilityCoexistence", NetworkBrowsingChecks.NetworkDeadlineRecoveryAndCapabilityCoexistence),
+
+
     ("Volume deletion presentation LoadingCancellationAndExactCapture", VolumeOperationPresentationChecks.LoadingCancellationAndExactCapture),
     ("Volume deletion presentation CompleteRunningStoppedAndFullCopy", VolumeOperationPresentationChecks.CompleteRunningStoppedAndFullCopy),
     ("Volume deletion presentation IncompleteEmptyUnavailableAndFailed", VolumeOperationPresentationChecks.IncompleteEmptyUnavailableAndFailed),

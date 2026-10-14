@@ -109,6 +109,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         // Every borrowed family checks this shared identity. Fence all of them before
         // any cancellation callback can reenter while subordinate state is cleared.
         containerReads = null;
+        InvalidateNetworksLocked();
         InvalidatePreparationLocked(VolumePreparationFailureKind.ConnectionChanged, cancel: true);
         InvalidateImagesLocked();
         InvalidateVolumesLocked();

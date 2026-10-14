@@ -348,6 +348,7 @@ public sealed partial class DesktopSession : IImageBrowser
         ContainersChanged?.Invoke(this, EventArgs.Empty);
         NotifyImagesChanged();
         NotifyVolumesChanged();
+        NotifyNetworksChanged();
     }
 
     private sealed class ImageReads(ContainerReads containers)
