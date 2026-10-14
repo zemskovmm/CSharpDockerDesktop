@@ -9,7 +9,7 @@ internal sealed partial class FixtureBrowser : IVolumeBrowser
     public int VolumeCancellations;
     public int VolumeScenario;
     private static readonly IReadOnlyList<VolumeSummary> volumeRows = Enumerable.Range(0, 20000).Select(i => new VolumeSummary(
-        i == 0 ? "Volume-Exact-Name" : i == 1 ? "volume-exact-name" : $"volume-{i:D5}",
+        i == 0 ? "Volume-Exact-Name" : i == 1 ? "volume-exact-name" : i == 2 ? " Volume-Exact-é " : $"volume-{i:D5}",
         i % 3 == 0 ? null : "local", i % 5 == 0 ? "" : "local", i % 4 == 0 ? null : $"/fixture/volumes/{i}/_data",
         i % 6 == 0 ? null : i % 6 == 1 ? new Dictionary<string, string>() : new Dictionary<string, string> { ["fixture"] = "label-" + i, ["empty"] = "" })).ToArray();
     private VolumeBrowsingSnapshot volumeSnapshot = new(1, ResourceReadState.Ready, volumeRows,
@@ -88,10 +88,11 @@ internal sealed partial class FixtureBrowser : IVolumeBrowser
         VolumesChanged?.Invoke(this, EventArgs.Empty);
     }
     public void InvalidateSelectedVolume()
-    { if (VolumeSnapshot.SelectedVolumeName is { } name && VolumeSnapshot.InspectionState != ResourceReadState.NotRequested) RequestVolume(name); }
+    { InvalidateVolumePreparation(VolumePreparationFailureKind.ObservedChange); if (VolumeSnapshot.SelectedVolumeName is { } name && VolumeSnapshot.InspectionState != ResourceReadState.NotRequested) RequestVolume(name); }
     private void DisconnectVolumes()
     {
         lock (volumeGate) { CancelVolume(); volumeSnapshot = new(volumeSnapshot.ConnectionGeneration + 1, ResourceReadState.Unavailable, []); }
+        InvalidateVolumePreparation(VolumePreparationFailureKind.ConnectionChanged);
         VolumesChanged?.Invoke(this, EventArgs.Empty);
     }
     private void CancelVolume()

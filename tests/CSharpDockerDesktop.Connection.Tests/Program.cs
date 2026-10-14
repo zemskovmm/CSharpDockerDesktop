@@ -30,6 +30,22 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Volume deletion presentation LoadingCancellationAndExactCapture", VolumeOperationPresentationChecks.LoadingCancellationAndExactCapture),
+    ("Volume deletion presentation CompleteRunningStoppedAndFullCopy", VolumeOperationPresentationChecks.CompleteRunningStoppedAndFullCopy),
+    ("Volume deletion presentation IncompleteEmptyUnavailableAndFailed", VolumeOperationPresentationChecks.IncompleteEmptyUnavailableAndFailed),
+    ("Volume deletion presentation SingleSubmissionAndSessionOwnership", VolumeOperationPresentationChecks.SingleSubmissionAndSessionOwnership),
+    ("Volume deletion presentation SelectionChangesNeverRetarget", VolumeOperationPresentationChecks.SelectionChangesNeverRetarget),
+    ("Volume deletion presentation LiveInvalidationBeforeQueuedNotification", VolumeOperationPresentationChecks.LiveInvalidationBeforeQueuedNotification),
+    ("Volume deletion presentation ResourceGenerationAndDetailFences", VolumeOperationPresentationChecks.ResourceGenerationAndDetailFences),
+    ("Volume deletion presentation NavigationDuringSlowPreparationAndCleanupJoin", VolumeOperationPresentationChecks.NavigationDuringSlowPreparationAndCleanupJoin),
+    ("Volume deletion presentation CloseDetailReattachAndQueuedWorkFences", VolumeOperationPresentationChecks.CloseDetailReattachAndQueuedWorkFences),
+    ("Volume deletion presentation RetainedOperationAfterReopening", VolumeOperationPresentationChecks.RetainedOperationAfterReopening),
+    ("Volume deletion presentation ConflictRefreshNeverAuthorizesRetry", VolumeOperationPresentationChecks.ConflictRefreshNeverAuthorizesRetry),
+    ("Volume deletion presentation OriginalEvidenceHideReplacementAndStaleCopy", VolumeOperationPresentationChecks.OriginalEvidenceHideReplacementAndStaleCopy),
+    ("Volume deletion presentation ClassifiedRejectionInterruptionAndNameRecreation", VolumeOperationPresentationChecks.ClassifiedRejectionInterruptionAndNameRecreation),
+    ("Volume deletion presentation LargeDependenciesAndInspectCoexistence", VolumeOperationPresentationChecks.LargeDependenciesAndInspectCoexistence),
+    ("Volume deletion presentation OffThreadCoalescingAndExternalPendingAdmission", VolumeOperationPresentationChecks.OffThreadCoalescingAndExternalPendingAdmission),
+
     ("Application volume DeletionPreparationAdmissionAndReplay", VolumeBrowsingChecks.DeletionPreparationAdmissionAndReplay),
     ("Application volume DeletionStaleInvalidatedAndUnavailablePreparations", VolumeBrowsingChecks.DeletionStaleInvalidatedAndUnavailablePreparations),
     ("Application volume DeletionExactIncompleteEvidenceAndSelectionIndependence", VolumeBrowsingChecks.DeletionExactIncompleteEvidenceAndSelectionIndependence),

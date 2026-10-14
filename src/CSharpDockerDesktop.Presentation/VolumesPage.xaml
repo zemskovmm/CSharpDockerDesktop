@@ -3,14 +3,15 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:CSharpDockerDesktop.Presentation">
   <Grid Padding="24" RowSpacing="12">
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <TextBlock Text="Volumes" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.AutomationId="ResourcePageTitle" />
     <Grid Grid.Row="1" ColumnSpacing="12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <TextBox IsSpellCheckEnabled="False" x:Name="SearchBox" PlaceholderText="Search name, driver, scope, mountpoint or labels" TextChanged="OnSearch" AutomationProperties.Name="Search loaded volumes" AutomationProperties.AutomationId="VolumeSearch" />
-      <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh volumes" Click="OnRefresh" />
-      <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" Click="OnOpen" />
-      <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full name" Click="OnCopy" />
+      <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh volumes" />
+      <Button x:Name="OpenButton" Grid.Column="2" Content="Open Overview" />
+      <Button x:Name="CopyButton" Grid.Column="3" Content="Copy full name" />
+      <Button x:Name="DeleteButton" Grid.Column="4" Content="Delete…" AutomationProperties.AutomationId="VolumeDelete" />
     </Grid>
     <TextBlock x:Name="ListStatus" Grid.Row="2" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="VolumeListStatus" />
     <!-- A finite viewport with recycling; never wrap the resource list in another ScrollViewer. -->
@@ -31,19 +32,38 @@
     </ListView>
     <StackPanel Grid.Row="4" Spacing="6" MaxHeight="210">
       <TextBlock x:Name="WarningStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-      <Button x:Name="EvidenceButton" Content="Show daemon warnings and original messages (may be sensitive)" Click="OnEvidence" AutomationProperties.AutomationId="VolumeEvidence" />
+      <Button x:Name="EvidenceButton" Content="Show daemon warnings and original messages (may be sensitive)" AutomationProperties.AutomationId="VolumeEvidence" />
       <ScrollViewer x:Name="EvidencePanel" MaxHeight="140" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="EvidenceText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Original volume daemon evidence" /></ScrollViewer>
     </StackPanel>
-    <TextBlock Grid.Row="5" Text="Read-only Volumes · driver, scope, mountpoint and labels. Overview and raw Inspect may contain sensitive content. Copy/reveal is deliberate. F3 searches, F5 refreshes, Enter opens, Escape closes. Dependency lookup and Delete are pending." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
+    <Grid Grid.Row="5" RowSpacing="6" MaxHeight="270">
+      <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+      <ScrollViewer MaxHeight="90" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OperationStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="VolumeOperationStatus" /></ScrollViewer>
+      <TextBlock x:Name="AdmissionStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      <Button x:Name="OperationDetailsButton" Grid.Row="2" Content="Show original operation evidence and refreshed dependencies (may be sensitive)" />
+      <Grid x:Name="OperationDetailsPanel" Grid.Row="3" Visibility="Collapsed" MinHeight="120" MaxHeight="180" ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OperationDetailsText" TextWrapping="Wrap" IsTextSelectionEnabled="True" /></ScrollViewer>
+        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <ComboBox x:Name="OperationDependencySource" SelectionChanged="OnOperationDependencySource" SelectedIndex="1" AutomationProperties.Name="Choose retained dependency evidence"><ComboBoxItem Content="Original precheck (historical)" /><ComboBoxItem Content="Refreshed conflict evidence (historical)" /></ComboBox>
+          <Button x:Name="CopyDependencyButton" Grid.Row="1" Content="Copy selected dependency in full" />
+          <ListView x:Name="OperationDependencyList" Grid.Row="2" SelectionMode="Single" AutomationProperties.Name="Refreshed conflict dependencies, historical evidence only" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+            <ListView.ItemTemplate><DataTemplate x:DataType="local:VolumeDependencyRow"><TextBlock Text="{x:Bind Text}" TextWrapping="Wrap" /></DataTemplate></ListView.ItemTemplate>
+          </ListView>
+        </Grid>
+      </Grid>
+    </Grid>
+    <TextBlock Grid.Row="6" Text="Volumes · Overview and Inspect may contain sensitive content. Reveal/copy is deliberate. F3 searches, F5 refreshes, Enter opens, Delete begins a fresh dependency precheck, Escape closes." TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Padding="16" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <Button x:Name="CloseDetailButton" Content="Back to volumes" Click="OnCloseDetail" />
-          <Button x:Name="OverviewTab" Content="Overview" Click="OnOverviewTab" />
-          <Button x:Name="InspectTab" Content="Inspect" Click="OnInspectTab" AutomationProperties.Name="Show raw volume JSON Inspect" />
-          <Button x:Name="RefreshDetailButton" Content="Refresh details" Click="OnRefreshDetail" />
-          <Button Content="Copy full name" Click="OnCopy" />
+          <Button x:Name="CloseDetailButton" Content="Back to volumes" />
+          <Button x:Name="OverviewTab" Content="Overview" />
+          <Button x:Name="InspectTab" Content="Inspect" AutomationProperties.Name="Show raw volume JSON Inspect" />
+          <Button x:Name="RefreshDetailButton" Content="Refresh details" />
+          <Button x:Name="DetailCopyButton" Content="Copy full name" />
+          <Button x:Name="DetailDeleteButton" Content="Delete…" />
         </StackPanel>
         <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
         <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Volume Overview" /></ScrollViewer>
@@ -51,10 +71,10 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <TextBox IsSpellCheckEnabled="False" x:Name="InspectSearch" PlaceholderText="Search all JSON names and values" TextChanged="OnInspectSearch" AutomationProperties.Name="Search Inspect including collapsed content" />
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-            <Button x:Name="ExpandNodeButton" Content="Expand selected" Click="OnExpandNode" />
-            <Button x:Name="CollapseNodeButton" Content="Collapse selected" Click="OnCollapseNode" />
-            <Button x:Name="CopyPathButton" Content="Copy selected path" Click="OnCopyPath" />
-            <Button x:Name="CopyValueButton" Content="Copy selected JSON value" Click="OnCopyValue" />
+            <Button x:Name="ExpandNodeButton" Content="Expand selected" />
+            <Button x:Name="CollapseNodeButton" Content="Collapse selected" />
+            <Button x:Name="CopyPathButton" Content="Copy selected path" />
+            <Button x:Name="CopyValueButton" Content="Copy selected JSON value" />
           </StackPanel>
           <StackPanel Grid.Row="2" Spacing="4">
             <TextBlock Text='Path: $ is root; ["name",0] is an object property with zero-based duplicate occurrence; [0] is an array index. Names use JSON escaping. Copy value preserves exact JSON, including sensitive fields.' TextWrapping="Wrap" />

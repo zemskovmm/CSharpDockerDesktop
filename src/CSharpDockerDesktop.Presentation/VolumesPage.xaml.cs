@@ -15,14 +15,60 @@ public sealed partial class VolumesPage : Page
     private IReadOnlyList<VolumeRow>? displayedRows;
     private IReadOnlyList<JsonInspectRow>? displayedInspect;
     private bool rendering, restoreInspectFocus;
+    private ContentDialog? deletionDialog;
+    private VolumeDeletePresentation? dialogPresentation;
+    private VolumeDeleteConfirmation? dialogConfirmation;
+    private TextBlock? preparationStatus, preparationOriginals, preparationTarget;
+    private Button? preparationReveal;
+    private ListView? dependencyList;
+    private int pageEpoch;
+    private long? displayedOperationId;
     public VolumesPage()
     {
         InitializeComponent();
         VolumeList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnListKeyDown), true);
         InspectList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnInspectKeyDown), true);
         AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnPageKeyDown), true);
-        Loaded += (_, _) => { if (view is not null) { view.Changed -= OnViewChanged; view.Changed += OnViewChanged; view.Attach(); } };
+        Loaded += (_, _) => { BindButtonClicks(); if (view is not null) { view.Changed -= OnViewChanged; view.Changed += OnViewChanged; view.Attach(); } };
         Unloaded += (_, _) => Detach();
+    }
+    private void BindButtonClicks()
+    {
+        // Resolve the loaded controls and rebind idempotently across Uno page reattachment.
+        RefreshButton.Click -= OnRefresh;
+        RefreshButton.Click += OnRefresh;
+        OpenButton.Click -= OnOpen;
+        OpenButton.Click += OnOpen;
+        CopyButton.Click -= OnCopy;
+        CopyButton.Click += OnCopy;
+        DeleteButton.Click -= OnDelete;
+        DeleteButton.Click += OnDelete;
+        EvidenceButton.Click -= OnEvidence;
+        EvidenceButton.Click += OnEvidence;
+        OperationDetailsButton.Click -= OnOperationDetails;
+        OperationDetailsButton.Click += OnOperationDetails;
+        CopyDependencyButton.Click -= OnCopyRefreshedDependency;
+        CopyDependencyButton.Click += OnCopyRefreshedDependency;
+        CloseDetailButton.Click -= OnCloseDetail;
+        CloseDetailButton.Click += OnCloseDetail;
+        OverviewTab.Click -= OnOverviewTab;
+        OverviewTab.Click += OnOverviewTab;
+        InspectTab.Click -= OnInspectTab;
+        InspectTab.Click += OnInspectTab;
+        RefreshDetailButton.Click -= OnRefreshDetail;
+        RefreshDetailButton.Click += OnRefreshDetail;
+        DetailCopyButton.Click -= OnCopy;
+        DetailCopyButton.Click += OnCopy;
+        DetailDeleteButton.Click -= OnDelete;
+        DetailDeleteButton.Click += OnDelete;
+        ExpandNodeButton.Click -= OnExpandNode;
+        ExpandNodeButton.Click += OnExpandNode;
+        CollapseNodeButton.Click -= OnCollapseNode;
+        CollapseNodeButton.Click += OnCollapseNode;
+        CopyPathButton.Click -= OnCopyPath;
+        CopyPathButton.Click += OnCopyPath;
+        CopyValueButton.Click -= OnCopyValue;
+        CopyValueButton.Click += OnCopyValue;
     }
     protected override void OnNavigatedTo(NavigationEventArgs args)
     {
@@ -33,6 +79,13 @@ public sealed partial class VolumesPage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs args) { Detach(); base.OnNavigatedFrom(args); }
     public void Detach()
     {
+        ++pageEpoch;
+        deletionDialog?.Hide(); deletionDialog = null; dialogPresentation = null; dialogConfirmation = null;
+        if (dependencyList is not null) dependencyList.ItemsSource = null;
+        if (preparationStatus is not null) preparationStatus.Text = "";
+        if (preparationOriginals is not null) preparationOriginals.Text = "";
+        if (preparationTarget is not null) preparationTarget.Text = "";
+        dependencyList = null; preparationStatus = preparationOriginals = preparationTarget = null; preparationReveal = null;
         if (view is not null) view.Changed -= OnViewChanged;
         view?.Dispose(); restoreInspectFocus = false;
         InspectList.ItemsSource = null; displayedInspect = null; OverviewText.Text = "";
@@ -41,6 +94,9 @@ public sealed partial class VolumesPage : Page
         DetailPanel.Visibility = Visibility.Collapsed;
         EvidenceText.Text = WarningStatus.Text = "";
         EvidencePanel.Visibility = Visibility.Collapsed;
+        OperationDependencyList.ItemsSource = null; displayedOperationId = null;
+        OperationStatus.Text = AdmissionStatus.Text = OperationDetailsText.Text = "";
+        OperationDetailsPanel.Visibility = Visibility.Collapsed;
     }
     private void OnViewChanged(object? sender, EventArgs args) => Render();
     private void Render()
@@ -49,6 +105,17 @@ public sealed partial class VolumesPage : Page
         rendering = true;
         try
         {
+            RenderDeletion();
+            DeleteButton.IsEnabled = DetailDeleteButton.IsEnabled = view.CanDelete;
+            OperationStatus.Text = view.OperationMessage; AdmissionStatus.Text = view.AdmissionMessage;
+            OperationDetailsButton.Visibility = view.HasOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsButton.Content = view.ShowingOperationDetails ? "Hide original operation evidence and refreshed dependencies" : "Show original operation evidence and refreshed dependencies (may be sensitive)";
+            OperationDetailsPanel.Visibility = view.ShowingOperationDetails ? Visibility.Visible : Visibility.Collapsed;
+            OperationDetailsText.Text = view.PreparingOperationDetails ? "Preparing original operation evidence…" : view.OperationDetails;
+            if (displayedOperationId != view.Operation?.OperationId || view.Operation?.RefreshedDependencies is not null && OperationDependencyList.ItemsSource is null)
+            { displayedOperationId = view.Operation?.OperationId; OperationDependencySource.SelectedIndex = view.Operation?.RefreshedDependencies is null ? 0 : 1; }
+            OperationDependencyList.ItemsSource = view.ShowingOperationDetails
+                ? OperationDependencySource.SelectedIndex == 0 ? view.OperationPreparationDependencies : view.RefreshedDependencies : null;
             WarningStatus.Text = view.WarningMessage;
             EvidenceButton.IsEnabled = view.HasEvidence;
             EvidenceButton.Content = view.ShowingEvidence ? "Hide original daemon evidence" : "Show daemon warnings and original messages (may be sensitive)";
@@ -66,7 +133,7 @@ public sealed partial class VolumesPage : Page
             OpenButton.IsEnabled = CopyButton.IsEnabled = view.CanOpen;
             bool wasOpen = DetailPanel.Visibility == Visibility.Visible;
             DetailPanel.Visibility = view.DetailOpen ? Visibility.Visible : Visibility.Collapsed;
-            SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility
+            SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility = DeleteButton.Visibility
                 = VolumeList.Visibility = ListStatus.Visibility = view.DetailOpen ? Visibility.Collapsed : Visibility.Visible;
             DetailStatus.Text = view.DetailMessage; OverviewText.Text = view.ShowingInspect ? "" : view.Overview;
             OverviewPanel.Visibility = view.ShowingInspect ? Visibility.Collapsed : Visibility.Visible;
@@ -81,7 +148,7 @@ public sealed partial class VolumesPage : Page
                 InspectList.ItemsSource = null; InspectList.ItemsSource = view.Inspect.Rows; displayedInspect = view.Inspect.Rows;
             }
             InspectList.SelectedItem = view.Inspect.Selected;
-            if (restoreInspectFocus && !view.Inspect.Busy && view.Inspect.Selected is { } inspectAnchor)
+            if (deletionDialog is null && restoreInspectFocus && !view.Inspect.Busy && view.Inspect.Selected is { } inspectAnchor)
             {
                 InspectList.ScrollIntoView(inspectAnchor);
                 InspectList.Focus(FocusState.Programmatic); restoreInspectFocus = false;
@@ -114,9 +181,120 @@ public sealed partial class VolumesPage : Page
     }
     private void OnPageKeyDown(object sender, KeyRoutedEventArgs args)
     {
+        if (deletionDialog is not null) return;
+        if (args.Key == VirtualKey.Delete && view?.CanDelete == true && XamlRoot is { } root
+            && FocusManager.GetFocusedElement(root) is not TextBox)
+        { ShowDelete(); args.Handled = true; return; }
         if (args.Key == VirtualKey.Escape && view?.DetailOpen == true) { view.CloseDetail(); args.Handled = true; }
         else if (args.Key == VirtualKey.F3) { if (view?.ShowingInspect == true) InspectSearch.Focus(FocusState.Programmatic); else if (view?.DetailOpen != true) SearchBox.Focus(FocusState.Programmatic); args.Handled = true; }
         else if (args.Key == VirtualKey.F5) { if (view?.DetailOpen == true) view.RefreshDetail(); else view?.Refresh(); args.Handled = true; }
+    }
+    private void OnDelete(object sender, RoutedEventArgs args) => ShowDelete();
+    private void OnOperationDependencySource(object sender, SelectionChangedEventArgs args) { if (!rendering && view is not null) Render(); }
+    private void OnOperationDetails(object sender, RoutedEventArgs args) => view?.ShowOperationDetails(!view.ShowingOperationDetails);
+    private async void OnCopyRefreshedDependency(object sender, RoutedEventArgs args)
+    {
+        if (view is { } owner && OperationDependencyList.SelectedItem is VolumeDependencyRow row)
+            await owner.CopyDependencyAsync(row, true, CopyText);
+    }
+    private void RenderDeletion()
+    {
+        if (deletionDialog is not { } dialog || view is not { } owner) return;
+        if (!ReferenceEquals(dialogPresentation, owner.Deletion))
+        {
+            dialog.IsPrimaryButtonEnabled = false; dialogConfirmation = null;
+            if (dependencyList is not null) dependencyList.ItemsSource = null;
+            if (preparationStatus is not null) preparationStatus.Text = "";
+            if (preparationOriginals is not null) preparationOriginals.Text = "";
+            if (preparationTarget is not null) preparationTarget.Text = "";
+            dialog.Hide(); return;
+        }
+        dialogConfirmation = owner.DeleteConfirmation;
+        dialog.IsPrimaryButtonEnabled = dialogConfirmation is not null;
+        if (preparationStatus is not null) preparationStatus.Text = owner.PreparationMessage;
+        if (dependencyList is not null) dependencyList.ItemsSource = owner.PreparationDependencies;
+        if (preparationReveal is not null)
+        {
+            preparationReveal.Visibility = owner.HasPreparationDetails ? Visibility.Visible : Visibility.Collapsed;
+            preparationReveal.Content = owner.ShowingPreparationDetails ? "Hide original precheck failure" : "Show original precheck failure (may be sensitive)";
+        }
+        if (preparationOriginals is not null) preparationOriginals.Text = owner.PreparationDetails;
+    }
+    private static bool FocusCancel(DependencyObject current, ContentDialog dialog)
+    {
+        if (current is Button button && button.Content?.ToString() == dialog.CloseButtonText) return button.Focus(FocusState.Programmatic);
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(current); ++i)
+            if (FocusCancel(VisualTreeHelper.GetChild(current, i), dialog)) return true;
+        return false;
+    }
+    private async void ShowDelete()
+    {
+        var owner = view;
+        var focus = XamlRoot is { } root ? FocusManager.GetFocusedElement(root) as Control : null;
+        if (deletionDialog is not null || owner?.BeginDelete() is not { } presentation) return;
+        int lifetime = pageEpoch; restoreInspectFocus = false;
+        var content = new Grid { RowSpacing = 8, MaxHeight = 460 };
+        foreach (var height in new[] { GridLength.Auto, GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
+            content.RowDefinitions.Add(new() { Height = height });
+        var warning = new TextBlock { Text = VolumeBrowserView.DataLossWarning, FontWeight = Microsoft.UI.Text.FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
+        var target = new TextBlock { Text = $"Exact volume name: “{presentation.Target.Name}” ({presentation.Target.Name.Length} characters)\nConnection generation: {presentation.Target.ConnectionGeneration}\n\n{VolumeBrowserView.PrecheckExplanation}", TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+        var targetScroll = new ScrollViewer { MaxHeight = 135, Content = target, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var status = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(status, "VolumePreparationStatus");
+        var dependencies = new ListView { Height = 175, SelectionMode = ListViewSelectionMode.Single, ItemTemplate = OperationDependencyList.ItemTemplate, ItemsPanel = OperationDependencyList.ItemsPanel };
+        ScrollViewer.SetHorizontalScrollBarVisibility(dependencies, ScrollBarVisibility.Disabled);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(dependencies, "Found related containers and unverified candidates, including stopped containers");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(dependencies, "VolumePreparationDependencies");
+        var copy = new Button { Content = "Copy selected container identities and state in full" };
+        copy.Click += async (_, _) =>
+        {
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner) && dependencies.SelectedItem is VolumeDependencyRow row)
+                await owner.CopyDependencyAsync(row, false, CopyText);
+        };
+        var originals = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+        var reveal = new Button { Visibility = Visibility.Collapsed, Content = "Show original precheck failure (may be sensitive)" };
+        reveal.Click += (_, _) => { if (lifetime == pageEpoch && ReferenceEquals(view, owner)) owner.ShowPreparationDetails(!owner.ShowingPreparationDetails); };
+        var precheckTools = new StackPanel { Spacing = 4 };
+        precheckTools.Children.Add(copy); precheckTools.Children.Add(reveal);
+        precheckTools.Children.Add(new ScrollViewer { MaxHeight = 70, Content = originals, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+        content.Children.Add(warning); content.Children.Add(targetScroll); content.Children.Add(status); content.Children.Add(dependencies); content.Children.Add(precheckTools);
+        Grid.SetRow(targetScroll, 1); Grid.SetRow(status, 2); Grid.SetRow(dependencies, 3); Grid.SetRow(precheckTools, 4);
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot, Title = "Delete volume · fresh dependency precheck", Content = content,
+            PrimaryButtonText = "Delete volume", CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close,
+            IsPrimaryButtonEnabled = false, MaxWidth = 760
+        };
+        deletionDialog = dialog; dialogPresentation = presentation; dependencyList = dependencies; preparationStatus = status; preparationOriginals = originals; preparationTarget = target; preparationReveal = reveal;
+        dialog.Opened += (_, _) => FocusCancel(dialog, dialog);
+        // Fence at the beginning of close/cancel, before an async dialog animation
+        // or a queued primary-button callback can complete.
+        dialog.CloseButtonClick += (_, _) => owner.CancelDelete(presentation);
+        dialog.Closing += (_, _) => owner.CancelDelete(presentation);
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            var confirmation = dialogConfirmation;
+            if (lifetime != pageEpoch || !ReferenceEquals(view, owner) || confirmation is null || !ReferenceEquals(confirmation, owner.DeleteConfirmation))
+            { args.Cancel = true; RenderDeletion(); return; }
+            owner.ConfirmDelete(presentation, confirmation);
+        };
+        RenderDeletion();
+        try { await dialog.ShowAsync(); }
+        catch (Exception) { /* Never log private dialog/daemon content. */ }
+        finally
+        {
+            owner.CancelDelete(presentation);
+            dependencies.ItemsSource = null; target.Text = status.Text = originals.Text = "";
+            if (ReferenceEquals(deletionDialog, dialog))
+            { deletionDialog = null; dialogPresentation = null; dialogConfirmation = null; dependencyList = null; preparationStatus = preparationOriginals = preparationTarget = null; preparationReveal = null; }
+            if (lifetime == pageEpoch && ReferenceEquals(view, owner))
+            {
+                Render();
+                if (focus is { IsEnabled: true, Visibility: Visibility.Visible } && IsWithin(focus, this) && focus.Focus(FocusState.Programmatic)) { }
+                else if (owner.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
+                else FocusSelectedVolume();
+            }
+        }
     }
     private void OnEvidence(object sender, RoutedEventArgs args) => view?.ShowEvidence(!view.ShowingEvidence);
     private void OnOverviewTab(object sender, RoutedEventArgs args) { view?.ShowInspect(false); RefreshDetailButton.Focus(FocusState.Programmatic); }

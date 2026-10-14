@@ -4,8 +4,8 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Presentation;
 
-/// <summary>Read-only, UI-dispatched projection of Application-owned volume evidence.</summary>
-public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool> dispatch) : IDisposable
+/// <summary>UI-dispatched projection of Application-owned volume browsing and operation evidence.</summary>
+public sealed partial class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool> dispatch) : IDisposable
 {
     private bool active;
     private int epoch, notificationQueued;
@@ -89,6 +89,8 @@ public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool>
         if (active) return;
         active = true; Interlocked.Increment(ref epoch);
         browser.VolumesChanged += OnChanged; Inspect.Changed += OnInspectChanged;
+        if (preparationService is not null) preparationService.VolumeDeletionPreparationChanged += OnChanged;
+        if (operations is not null) operations.VolumeOperationChanged += OnChanged;
         Inspect.IsCurrentContent = raw => CurrentInspection(browser.VolumeSnapshot) && ReferenceEquals(Snapshot.Inspection?.RawJson, raw);
         ApplyLatest();
     }
@@ -98,6 +100,9 @@ public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool>
         bool clear = OwnsInspection(browser.VolumeSnapshot);
         active = false; Interlocked.Increment(ref epoch); Interlocked.Exchange(ref notificationQueued, 0);
         browser.VolumesChanged -= OnChanged; Inspect.Changed -= OnInspectChanged; Inspect.Dispose();
+        if (preparationService is not null) preparationService.VolumeDeletionPreparationChanged -= OnChanged;
+        if (operations is not null) operations.VolumeOperationChanged -= OnChanged;
+        CloseDeletion(); HideOperationDetails(); operation = null; submitting = false; AdmissionMessage = "";
         CancelFilter(); ClearOverview(); HideEvidence(); filteredSource = rowsSource = null;
         DetailOpen = ShowingInspect = false; SelectedName = null; rows = Array.Empty<VolumeRow>();
         Snapshot = new(0, ResourceReadState.Unavailable, []);
@@ -127,7 +132,7 @@ public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool>
         if (!CurrentEvidence(latest)) HideEvidence();
         Snapshot = latest;
         if (!DetailOpen) ShowingInspect = false;
-        SyncDetails(); Filter();
+        SyncDeletion(); SyncOperation(); SyncDetails(); Filter();
         if (clear) browser.ClearVolumeInspection();
     }
     private void SyncDetails()
@@ -167,6 +172,7 @@ public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool>
         var latest = browser.VolumeSnapshot;
         if (!CurrentGeneration(latest) || name is null || !latest.Volumes.Any(row => StringComparer.Ordinal.Equals(row.Name, name)) || StringComparer.Ordinal.Equals(SelectedName, name)) return;
         bool clear = OwnsInspection(latest);
+        CloseDeletion();
         DetailOpen = ShowingInspect = false; Inspect.Load(null); ClearOverview(); SelectedName = name;
         if (clear) browser.ClearVolumeInspection();
         Changed?.Invoke(this, EventArgs.Empty);
@@ -184,6 +190,7 @@ public sealed class VolumeBrowserView(IVolumeBrowser browser, Func<Action, bool>
     {
         if (!active || !DetailOpen) return;
         bool clear = OwnsInspection(browser.VolumeSnapshot);
+        CloseDeletion();
         DetailOpen = ShowingInspect = false; Inspect.Load(null); ClearOverview();
         if (clear) browser.ClearVolumeInspection(); ApplyLatest();
     }
