@@ -1,0 +1,1002 @@
+{
+  "reviewed": "2026-10-15",
+  "kind": "Selected official OpenAPI contracts; simulated response evidence, not captured daemon data",
+  "versions": [
+    {
+      "api": "1.40",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.40.yaml",
+      "sha256": "020a79876fecf4b67920df94e7e39f217d8ce64df627ebd5b094e18720009ca5",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.41",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.41.yaml",
+      "sha256": "150601c804f075e235f7ce9759909796b270d3ebe172067a638b16aea8254ca8",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.42",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.42.yaml",
+      "sha256": "00057be6237ed000a47293c562254c4ff84daad52ede46ff49da8f041bba1ab1",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.43",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.43.yaml",
+      "sha256": "2590d14413f25581b61a2feb992b63867da0d53a476a2e6f34be9b2682e71c52",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.44",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.44.yaml",
+      "sha256": "97340315af1e1a957cd8e163e887cba11aaaf9d58bc6705d9da180ad76e5569f",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.45",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.45.yaml",
+      "sha256": "9167829335db9a45fc6b8521e06561da2db6f2bfa9d3530587859689d3c86a65",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.46",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.46.yaml",
+      "sha256": "7823b4ddb0e47dd12d16fb41771cbb14d4c75c831739dfc15720763457067cec",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.47",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.47.yaml",
+      "sha256": "9108f0595ed0b53a833459ddf50f5c0da498e78b53604bfaad02df5618366629",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.48",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.48.yaml",
+      "sha256": "b2be218811d321284ef85ab4ca3b7336f5d5014f3f3943a3c6cdf04f1a07b072",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.49",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.49.yaml",
+      "sha256": "a746096eaa890df7655025fcf6e56b0fb5fdb16c564b4f4a148e6bc2b753c477",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.50",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.50.yaml",
+      "sha256": "f10dc49581090cc172ad36a0830ea451a0c4422b93491d9179263ffb0fce3645",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.51",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.51.yaml",
+      "sha256": "f51b797750a7f64334e529e3ecaf3a28d0c531c07b54edeed06007c18bb605eb",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.52",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.52.yaml",
+      "sha256": "9f5ec065ffe2578f4919801ee3160a2d16061ebde121510c0d1c3ac1d0499e42",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.53",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.53.yaml",
+      "sha256": "6e79a473bdd4f0ef5394b069aa3a065e92a7fa947e940e78fa0af2100384afbe",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.54",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.54.yaml",
+      "sha256": "a0cf45b9601f37d83240b1cef658f3b88c9674bcef508bf904feb48151b1c3ab",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.55",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.55.yaml",
+      "sha256": "96f48176e6b00ced89d2e5479b43565847856b0d9522111b57383bfe15815a0e",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    },
+    {
+      "api": "1.56",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.56.yaml",
+      "sha256": "00ccd7d2e6e0b7a943ac0067007d181d723b2513ef1f6af3b6b54145314a6fa7",
+      "path": "/networks/{id}",
+      "method": "DELETE",
+      "description": "Remove a network",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "Network ID or name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No error"
+        },
+        "403": {
+          "description": "operation not supported for pre-defined networks",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "404": {
+          "description": "no such network",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        },
+        "500": {
+          "description": "Server error",
+          "schema": {
+            "$ref": "#/definitions/ErrorResponse"
+          }
+        }
+      },
+      "errorResponse": {
+        "description": "Represents an error.",
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "description": "The error message.",
+            "type": "string",
+            "x-nullable": false
+          }
+        },
+        "example": {
+          "message": "Something went wrong."
+        }
+      }
+    }
+  ],
+  "supplementalSources": [
+    {
+      "source": "https://raw.githubusercontent.com/moby/moby/v19.03.0/vendor/github.com/docker/libnetwork/error.go",
+      "sha256": "ca1cb71d75a0f34eb4a663797b481471351ca20c5c882e7efc0d9ab443ffa04b",
+      "evidence": "ActiveEndpointsError uses network <name> id <id> has active endpoints and is Forbidden."
+    },
+    {
+      "source": "https://raw.githubusercontent.com/moby/moby/v28.0.0/libnetwork/error.go",
+      "sha256": "6351d8ee832b60053614aade3ff7c4205f58cffda23224dc93fb7dc82c15d941",
+      "evidence": "ActiveEndpointsError remains Forbidden with the same message form."
+    },
+    {
+      "source": "https://raw.githubusercontent.com/moby/moby/v28.0.0/daemon/network.go",
+      "sha256": "a0f793ae6b42114d6e74c5f0d49c83e497b941d6f7c4967a62e67a4493ebbacc",
+      "evidence": "DeleteNetwork rejects predefined networks as Forbidden; other removal errors are wrapped with error while removing network: ."
+    },
+    {
+      "source": "https://raw.githubusercontent.com/moby/moby/v28.0.0/api/server/httpstatus/status.go",
+      "sha256": "772ddfd9e76119b95a804be463216a34e51b56b2de814688892eeb53feb3364f",
+      "evidence": "Forbidden maps to HTTP 403; Conflict maps to HTTP 409."
+    },
+    {
+      "source": "https://raw.githubusercontent.com/moby/moby/v28.0.0/libnetwork/network.go",
+      "sha256": "8f93101fa2f077c160cc2ecc1e163c783011b6837c05dbead0c0c4f3dfdcbf27",
+      "evidence": "Deleting a configuration-only network with dependent networks returns Forbidden with configuration network <quoted-name> is in use; attached endpoints return ActiveEndpointsError."
+    }
+  ]
+}

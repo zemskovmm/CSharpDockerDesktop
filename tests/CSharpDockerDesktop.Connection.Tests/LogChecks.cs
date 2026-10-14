@@ -371,7 +371,7 @@ internal static class LogChecks
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
-                bool command = path.EndsWith("/start") || path == "/v1.56/volumes/plugin%2Ffull%3Fname?force=false"; if (command) payload = [];
+                bool command = (header.ToString().StartsWith("DELETE ") && path == "/v1.56/networks/complete-network-id") || path.EndsWith("/start") || path == "/v1.56/volumes/plugin%2Ffull%3Fname?force=false"; if (command) payload = [];
                 await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {(command ? "204 No Content" : "200 OK")}\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
                 await pipe.WriteAsync(payload, deadline.Token); await pipe.FlushAsync(deadline.Token);
             }
@@ -423,6 +423,10 @@ internal static class LogChecks
             var volumeRemoval = await ((IVolumeCommands)owner).DeleteVolumeAsync("plugin/full?name", deadline.Token);
             Check(volumeRemoval.Disposition == VolumeCommandDisposition.Acknowledged && volumeRemoval.RequiresReconciliation);
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Volume deletion leaves unrelated live streams running");
+            var networkRemoval = await ((INetworkCommands)owner).DeleteNetworkAsync("complete-network-id", deadline.Token);
+            Check(networkRemoval.Disposition == NetworkCommandDisposition.Acknowledged && networkRemoval.RequiresReconciliation);
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted, "Network deletion leaves unrelated live streams running");
+            Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
             Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).IsSuccess);
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);

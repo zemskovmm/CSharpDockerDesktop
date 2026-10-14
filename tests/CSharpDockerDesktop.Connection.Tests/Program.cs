@@ -57,6 +57,14 @@ var tests = new (string, Func<Task>)[]
     ("Application Networks NetworkDeadlineRecoveryAndCapabilityCoexistence", NetworkBrowsingChecks.NetworkDeadlineRecoveryAndCapabilityCoexistence),
 
 
+    ("Network deletion OfficialContracts", NetworkCommandChecks.OfficialContracts),
+    ("Network deletion IdentitiesAndFailures", NetworkCommandChecks.IdentitiesAndFailures),
+    ("Network deletion ErrorsAndBounds", NetworkCommandChecks.ErrorsAndBounds),
+    ("Network deletion LifetimesAndSharedAdmission", NetworkCommandChecks.LifetimesAndSharedAdmission),
+    ("Network deletion LateResponseFences", NetworkCommandChecks.LateResponseFences),
+    ("Network deletion NamedPipeNoReplay", NetworkCommandChecks.NamedPipeNoReplay),
+    ("Network deletion NamedPipeIssuedLifetimes", NetworkCommandChecks.NamedPipeIssuedLifetimes),
+
     ("Volume deletion presentation LoadingCancellationAndExactCapture", VolumeOperationPresentationChecks.LoadingCancellationAndExactCapture),
     ("Volume deletion presentation CompleteRunningStoppedAndFullCopy", VolumeOperationPresentationChecks.CompleteRunningStoppedAndFullCopy),
     ("Volume deletion presentation IncompleteEmptyUnavailableAndFailed", VolumeOperationPresentationChecks.IncompleteEmptyUnavailableAndFailed),
