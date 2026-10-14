@@ -18,14 +18,15 @@ public sealed partial class DesktopSession : IImageBrowser
         {
             if (imageReads is not { Reader: not null } reads || !CurrentImagesLocked(reads)) return;
             ++reads.ListRevision;
+            ++reads.ObservationRevision;
             reads.Refresh = true;
             // Fence detail results predating this refresh, including non-cooperative readers.
             ++reads.DetailRevision;
             if (reads.InspectActive)
                 reads.Inspect = imageSnapshot.SelectedImageId is not null
                     && imageSnapshot.InspectionState == ResourceReadState.Loading;
-            reads.ActiveCanceledByUser = true;
-            reads.Active?.Cancel();
+            if (!reads.OperationReadActive)
+            { reads.ActiveCanceledByUser = true; reads.Active?.Cancel(); }
             imageSnapshot = imageSnapshot with { State = ResourceReadState.Loading, Failure = null };
             reads.Signal.Writer.TryWrite(0);
         }
@@ -68,7 +69,7 @@ public sealed partial class DesktopSession : IImageBrowser
     {
         ++reads.DetailRevision;
         reads.Inspect = inspect;
-        if (reads.InspectActive)
+        if (reads.InspectActive && !reads.OperationReadActive)
         {
             reads.ActiveCanceledByUser = true;
             reads.Active?.Cancel();
@@ -94,6 +95,7 @@ public sealed partial class DesktopSession : IImageBrowser
             {
                 reads.Signal.Writer.TryWrite(0);
                 reads.Workflow = Task.Run(() => ReadImagesAsync(reads));
+                ResumeImageOperationLocked(reads);
             }
         }
         NotifyImagesChanged();
@@ -105,6 +107,7 @@ public sealed partial class DesktopSession : IImageBrowser
         if (!initial) containers.ImageRefreshPending = true;
         if (imageReads is not { Reader: not null } reads || reads.Containers != containers) return;
         if (!initial) reads.EventRefresh = true;
+        ++reads.ObservationRevision;
         InvalidateImageEventDetailLocked(reads, null);
         reads.Signal.Writer.TryWrite(0);
     }
@@ -115,6 +118,7 @@ public sealed partial class DesktopSession : IImageBrowser
         containers.ImageRefreshPending = true;
         if (imageReads is not { Reader: not null } reads || reads.Containers != containers) return false;
         reads.EventRefresh = true;
+        ++reads.ObservationRevision;
         bool changed = InvalidateImageEventDetailLocked(reads, identity);
         reads.Signal.Writer.TryWrite(0);
         return changed;
@@ -146,6 +150,7 @@ public sealed partial class DesktopSession : IImageBrowser
         imageReads = null;
         imageSnapshot = new(imageSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ImageSummary>(), Failure: inspection ? null : failure, InspectionFailure: inspection ? failure : null);
+        InvalidateImageOperationLocked();
         previous?.Lifetime.Cancel();
     }
 
@@ -157,7 +162,7 @@ public sealed partial class DesktopSession : IImageBrowser
             else reads.Lifetime.Cancel();
         }
         // Never release the borrowed connection while even a non-cooperative read is outstanding.
-        try { await reads.Workflow.ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.OperationWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -170,6 +175,21 @@ public sealed partial class DesktopSession : IImageBrowser
                 reads.Signal.Reader.TryRead(out _);
                 while (true)
                 {
+                    ImageObservationRequest? operationRead;
+                    lock (gate)
+                    {
+                        if (!CurrentImagesLocked(reads)) return;
+                        bool browsingPending = reads.Refresh || reads.EventRefresh || reads.Inspect;
+                        operationRead = reads.Containers.InitialObservationPending || reads.InitialSnapshotPending
+                            || reads.LastReadWasOperation && browsingPending ? null : reads.OperationObservation;
+                        if (operationRead is not null)
+                        { reads.OperationObservation = null; reads.LastReadWasOperation = true; }
+                    }
+                    if (operationRead is not null)
+                    {
+                        await ReadImageObservationAsync(reads, operationRead).ConfigureAwait(false);
+                        continue;
+                    }
                     bool list;
                     long revision;
                     string? id;
@@ -185,6 +205,7 @@ public sealed partial class DesktopSession : IImageBrowser
                     {
                         if (!CurrentImagesLocked(reads)) return;
                         if (reads.Containers.InitialObservationPending) break;
+                        if (!reads.InitialSnapshotPending && reads.OperationObservation is not null && !reads.LastReadWasOperation) continue;
                         if (!reads.Refresh && !reads.EventRefresh && !reads.Inspect) break;
                         // Alternate when both are pending: repeated refreshes cannot monopolize the scheduler.
                         list = (reads.Refresh || reads.EventRefresh) && !(reads.Inspect && reads.LastReadWasList);
@@ -198,6 +219,7 @@ public sealed partial class DesktopSession : IImageBrowser
                         }
                         else reads.Inspect = false;
                         reads.LastReadWasList = list;
+                        reads.LastReadWasOperation = false;
                         revision = list ? reads.ListRevision : reads.DetailRevision;
                         id = imageSnapshot.SelectedImageId;
                         reads.InspectActive = !list;
@@ -316,7 +338,8 @@ public sealed partial class DesktopSession : IImageBrowser
             if (ReferenceEquals(notifiedImageSnapshot, imageSnapshot)) return;
             notifiedImageSnapshot = imageSnapshot;
         }
-        ImagesChanged?.Invoke(this, EventArgs.Empty);
+        NotifyImageObservers(ImagesChanged);
+        NotifyImageOperationChanged();
     }
 
     private void NotifyContainerBrowsers()
@@ -333,6 +356,10 @@ public sealed partial class DesktopSession : IImageBrowser
         public Channel<byte> Signal { get; } = Channel.CreateBounded<byte>(new BoundedChannelOptions(1)
             { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
         public Task Workflow = Task.CompletedTask;
+        public Task OperationWorkflow = Task.CompletedTask;
+        public ImageObservationRequest? OperationObservation;
+        public bool OperationReadActive, LastReadWasOperation;
+        public long ObservationRevision;
         public CancellationTokenSource? Active;
         public bool ActiveCanceledByUser;
         public bool Refresh = true, EventRefresh, Inspect, InspectActive, LastReadWasList;

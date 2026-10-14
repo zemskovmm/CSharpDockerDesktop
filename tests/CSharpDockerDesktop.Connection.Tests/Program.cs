@@ -30,6 +30,19 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Application Image Delete DeadlineCancellationEvidence", ImageBrowsingChecks.ImageDeleteDeadlineCancellationEvidence),
+    ("Application Image Delete PreResponseReadFenceAndNotFoundInspect", ImageBrowsingChecks.ImageDeletePreResponseReadFenceAndNotFoundInspect),
+    ("Application Image Delete JoinedRetryAndCoexistence", ImageBrowsingChecks.ImageDeleteJoinedRetryAndCoexistence),
+    ("Application Image Delete AcknowledgedAndParents", ImageBrowsingChecks.ImageDeleteAcknowledgedAndParents),
+    ("Application Image Delete ConflictUntagAndEmpty", ImageBrowsingChecks.ImageDeleteConflictUntagAndEmpty),
+    ("Application Image Delete AdmissionBounds", ImageBrowsingChecks.ImageDeleteAdmissionBounds),
+    ("Application Image Delete DeselectionAndCallerCancellation", ImageBrowsingChecks.ImageDeleteDeselectionAndCallerCancellation),
+    ("Application Image Delete ReadAndEventFences", ImageBrowsingChecks.ImageDeleteReadAndEventFences),
+    ("Application Image Delete ResponseLossRecoveryAndEngineFence", ImageBrowsingChecks.ImageDeleteResponseLossRecoveryAndEngineFence),
+    ("Application Image Delete BoundedFailedObservations", ImageBrowsingChecks.ImageDeleteBoundedFailedObservations),
+    ("Application Image Delete DeadlinesAndLateShutdown", ImageBrowsingChecks.ImageDeleteDeadlinesAndLateShutdown),
+    ("Application Image Delete DisconnectJoins", ImageBrowsingChecks.ImageDeleteDisconnectJoins),
+
     ("Application Images observation coexistence with containers, commands and Logs", ImageBrowsingChecks.ImageObservationsCoexistWithCommandsAndLogs),
     ("Application Images event-invalidated deadline and joined replacement cleanup", ImageBrowsingChecks.ImageInvalidatedDeadlineAndReplacementCleanup),
     ("Application Images observation startup and snapshot boundaries", ImageBrowsingChecks.ImageSnapshotObservationBoundaries),

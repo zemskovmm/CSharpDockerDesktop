@@ -409,7 +409,7 @@ internal static partial class ImageBrowsingChecks
             => throw new InvalidOperationException("No selection is expected");
     }
 
-    private sealed class AllCapabilitiesConnection(string version, bool honorCancellation = true)
+    private class AllCapabilitiesConnection(string version, bool honorCancellation = true)
         : ControlledConnection(version, honorCancellation), IContainerReader, IEngineEventSource, IContainerLogSource, IContainerCommands
     {
         public const string ContainerId = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";

@@ -10,7 +10,7 @@ Each negotiated connection/reconnect starts an authoritative image list after th
 
 Replacement, disconnect and disposal fence publications before cancellation, then join all owned image and container/session work before disposing the retained connection. A reader that ignores cancellation must return before the owner can release that connection; deadlines still invalidate exposed state and signal recovery while that join is pending. The join is asynchronous and does not block UI interaction.
 
-The Application boundary remains read-only and adds no mutations or registry interaction. The desktop presentation described below consumes its snapshots; raw Inspect remains the exact Domain JSON, including sensitive and unknown values, for deliberate display/copy.
+The image browsing boundary remains read-only. Session-owned deletion is exposed separately through [IImageOperations](image-operations.md), without registry interaction. The desktop presentation described below consumes its snapshots; raw Inspect remains the exact Domain JSON, including sensitive and unknown values, for deliberate display/copy.
 
 ## Shared image observation
 
@@ -45,7 +45,7 @@ Overview is prepared on cancellable background work and presents the authoritati
 
 Image notifications can originate off-thread. The page coalesces bursts on the UI dispatcher and reads the latest snapshot when applying them. Page lifetime, connection generation, selected identity and current inspection/source guard all background Overview/filter/Inspect publications and copy admission. A selected-image event's loading snapshot clears exposed Inspect/Overview and disables content copying when applied; current-session guards reject stale copy or parse results even before its queued notification drains. Disappearance, external session-selection replacement and disconnect remove stale detail. Navigation/teardown detach image notifications, cancel page-owned work and clear raw Inspect, while the shared DesktopSession and other resource capabilities remain owned by the application shell. Closing details clears the Application-owned image inspection without disposing the shared session.
 
-Image deletion is still pending a separate mutation capability and coordination task. The page provides no force deletion, registry interaction, Pull/Push or hidden mutations.
+Image deletion now has a [session operation contract](image-operations.md); confirmation and delete controls remain subsequent Presentation work. The page provides no force deletion, registry interaction, Pull/Push or hidden mutations.
 
 ### Presentation verification
 
