@@ -30,7 +30,7 @@ public interface IConnectionDelay
 }
 
 /// <summary>Owns one connection and one serialized, cancelable connection/recovery workflow.</summary>
-public sealed class DesktopSession : IAsyncDisposable
+public sealed partial class DesktopSession : IAsyncDisposable
 {
     private readonly object gate = new();
     private readonly IEngineConnectionClient client;
@@ -66,6 +66,7 @@ public sealed class DesktopSession : IAsyncDisposable
             if (disposed || (onlyIfNotStarted && started)) return;
             started = true;
             var previous = workflow;
+            InvalidateContainersLocked();
             workflowCancellation?.Cancel();
             var cancellation = new CancellationTokenSource();
             workflowCancellation = cancellation;
@@ -83,6 +84,7 @@ public sealed class DesktopSession : IAsyncDisposable
                 }
             });
         }
+        ContainersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private bool Publish(long currentGeneration, ConnectionSnapshot value)
@@ -99,6 +101,7 @@ public sealed class DesktopSession : IAsyncDisposable
     private async Task RunAsync(long currentGeneration, CancellationToken token)
     {
         IEngineConnection? connection = null;
+        ContainerReads? reads = null;
         var endpoint = Snapshot.Endpoint;
         var lost = false;
         int retries = 0;
@@ -133,24 +136,14 @@ public sealed class DesktopSession : IAsyncDisposable
                 if (connection is not null)
                 {
                     if (!Publish(currentGeneration, new(EngineConnectionState.Connected, endpoint, connection.Metadata))) return;
+                    reads = BeginContainerReads(currentGeneration, connection, token);
+                    if (reads is null) return;
                     retries = 0;
-                    while (true)
-                    {
-                        await delay.DelayAsync(options.LivenessInterval, token).ConfigureAwait(false);
-                        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-                        deadline.CancelAfter(options.OperationTimeout);
-                        try
-                        {
-                            lastFailure = await connection.CheckLivenessAsync(deadline.Token).ConfigureAwait(false);
-                            if (deadline.IsCancellationRequested)
-                                lastFailure = new(EngineConnectionFailureKind.TransientTransportFailure, "The Engine readiness check exceeded its deadline.");
-                        }
-                        catch (OperationCanceledException) when (!token.IsCancellationRequested)
-                        { lastFailure = new(EngineConnectionFailureKind.TransientTransportFailure, "The Engine readiness check exceeded its deadline."); }
-                        token.ThrowIfCancellationRequested();
-                        if (lastFailure is not null) break;
-                    }
+                    lastFailure = await WatchConnectionAsync(connection, reads, token).ConfigureAwait(false);
                     lost = true;
+                    var finishedReads = reads;
+                    reads = null;
+                    await EndContainerReadsAsync(finishedReads).ConfigureAwait(false);
                     await connection.DisposeAsync().ConfigureAwait(false);
                     connection = null;
                 }
@@ -167,21 +160,69 @@ public sealed class DesktopSession : IAsyncDisposable
                 retries = cooldown ? 0 : retries + 1;
             }
         }
-        finally { if (connection is not null) await connection.DisposeAsync().ConfigureAwait(false); }
+        finally
+        {
+            try { if (reads is not null) await EndContainerReadsAsync(reads).ConfigureAwait(false); }
+            finally { if (connection is not null) await connection.DisposeAsync().ConfigureAwait(false); }
+        }
+    }
+
+    private async Task<EngineConnectionFailure> WatchConnectionAsync(IEngineConnection connection, ContainerReads reads,
+        CancellationToken token)
+    {
+        using var monitoring = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var liveness = CheckConnectionAsync(connection, monitoring.Token);
+        var completed = await Task.WhenAny(liveness, reads.TransportLoss.Task).ConfigureAwait(false);
+        if (completed == reads.TransportLoss.Task)
+        {
+            monitoring.Cancel();
+            try { await liveness.ConfigureAwait(false); }
+            catch (OperationCanceledException) when (monitoring.IsCancellationRequested) { }
+            token.ThrowIfCancellationRequested();
+            return await reads.TransportLoss.Task.ConfigureAwait(false);
+        }
+        return await liveness.ConfigureAwait(false);
+    }
+
+    private async Task<EngineConnectionFailure> CheckConnectionAsync(IEngineConnection connection, CancellationToken token)
+    {
+        while (true)
+        {
+            await delay.DelayAsync(options.LivenessInterval, token).ConfigureAwait(false);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+            deadline.CancelAfter(options.OperationTimeout);
+            EngineConnectionFailure? failure;
+            try
+            {
+                failure = await connection.CheckLivenessAsync(deadline.Token).ConfigureAwait(false);
+                if (deadline.IsCancellationRequested)
+                    failure = new(EngineConnectionFailureKind.TransientTransportFailure, "The Engine readiness check exceeded its deadline.");
+            }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            { failure = new(EngineConnectionFailureKind.TransientTransportFailure, "The Engine readiness check exceeded its deadline."); }
+            token.ThrowIfCancellationRequested();
+            if (failure is not null) return failure;
+        }
     }
 
     public ValueTask DisposeAsync()
     {
+        Task completion;
+        bool changed = false;
         lock (gate)
         {
             if (!disposed)
             {
                 disposed = true;
                 ++generation;
+                InvalidateContainersLocked();
                 workflowCancellation?.Cancel();
+                changed = true;
             }
-            return new ValueTask(workflow);
+            completion = workflow;
         }
+        if (changed) ContainersChanged?.Invoke(this, EventArgs.Empty);
+        return new ValueTask(completion);
     }
 
     private sealed class SystemConnectionDelay : IConnectionDelay

@@ -30,6 +30,13 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Browsing initial load, empty list, refresh replacement and raw inspect", ContainerBrowsingChecks.InitialEmptyAndReplacement),
+    ("Browsing classified failures and external disappearance", ContainerBrowsingChecks.PreservedFailuresAndDisappearance),
+    ("Browsing superseded selections and inspection clearing", ContainerBrowsingChecks.SelectionRacesAndClearing),
+    ("Browsing bounded refresh work and request deadline", ContainerBrowsingChecks.BoundedRefreshAndDeadline),
+    ("Browsing reconnect invalidation rejects late reads", ContainerBrowsingChecks.ReconnectInvalidationAndLateReads),
+    ("Browsing resource-detected loss requires fresh negotiation", ContainerBrowsingChecks.ResourceDetectedLossAndRecovery),
+    ("Browsing liveness loss and shutdown with reads in flight", ContainerBrowsingChecks.LivenessLossAndShutdown),
     ("Container contract fixtures across API 1.40–1.56", ContainerChecks.ContractFixtures),
     ("Container states, optional/additive fields and inspect preservation", ContainerChecks.Projection),
     ("Container encoded identities and classified daemon errors", ContainerChecks.ErrorsAndIdentity),

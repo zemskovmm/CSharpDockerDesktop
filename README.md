@@ -1,6 +1,6 @@
 # CSharpDockerDesktop
 
-A C#/.NET 10 Uno Skia Desktop client for an existing local Docker Engine. Windows x64 is the delivery baseline. The desktop opens without Docker or Administrator privileges and provides keyboard-accessible Containers, Images, Volumes, and Networks pages. At launch it asynchronously connects to the default local Windows pipe, displays actual Engine metadata, monitors readiness and recovers after unavailability or transport loss. Resource loading and operations are still pending implementation.
+A C#/.NET 10 Uno Skia Desktop client for an existing local Docker Engine. Windows x64 is the delivery baseline. The desktop opens without Docker or Administrator privileges and provides keyboard-accessible Containers, Images, Volumes, and Networks pages. At launch it asynchronously connects to the default local Windows pipe, displays actual Engine metadata, monitors readiness and recovers after unavailability or transport loss. Application coordinates container snapshots and inspection on that retained connection; resource screens and lifecycle operations remain pending.
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ Launch `artifacts/win-x64/CSharpDockerDesktop.Presentation.exe`. Distribute the 
 - **Domain**: endpoint identity, actual Engine metadata, negotiated API ranges, capabilities and distinguishable failures, independent of the UI framework.
 - **Infrastructure.Docker**: thin asynchronous Engine handshake and retained-transport liveness using HTTP over the local Windows named pipe; no Uno dependency.
 
-Application depends on Domain; Docker Infrastructure depends on Application/Domain; Presentation calls Application; its App composition root constructs the Infrastructure client. Healthy sessions check readiness on the retained transport rather than creating new handshakes. Recoverable failures use bounded retry bursts and a cooldown, continuing until recovery or shutdown. Manual retry cancels superseded work. The shell currently has no resource operations, snapshots, events, or streams.
+Application depends on Domain; Docker Infrastructure depends on Application/Domain; Presentation calls Application; its App composition root constructs the Infrastructure client. Healthy sessions check readiness on the retained transport rather than creating new handshakes. Recoverable failures use bounded retry bursts and a cooldown, continuing until recovery or shutdown. Manual retry cancels superseded work. The [Application container browser](docs/container-acquisition.md#application-browsing-state) maintains in-memory snapshots and selected inspection with bounded cancelable reads. The shell resource pages remain placeholders; events and streams are pending.
 
 ## Engine connection client
 
