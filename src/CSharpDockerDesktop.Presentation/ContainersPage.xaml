@@ -70,7 +70,7 @@
         </Style>
       </ListView.ItemContainerStyle>
     </ListView>
-    <TextBlock Grid.Row="6" Text="Lifecycle actions use current Engine observations. Logs, Terminal and Stats are pending."
+    <TextBlock Grid.Row="6" Text="Lifecycle actions use current Engine observations. Logs supports recent output, live follow and retained search. Terminal and Stats are pending."
                TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="2" Grid.RowSpan="3" Visibility="Collapsed" Padding="16"
             Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1"
@@ -81,6 +81,7 @@
           <Button x:Name="CloseDetailButton" Content="Back to containers" Click="OnCloseDetail" />
           <Button x:Name="OverviewTab" Content="Overview" Click="OnOverviewTab" />
           <Button x:Name="InspectTab" Content="Inspect" Click="OnInspectTab" AutomationProperties.Name="Show raw JSON Inspect" />
+          <Button x:Name="LogsTab" Content="Logs" Click="OnLogsTab" AutomationProperties.Name="Open container Logs" />
           <Button x:Name="RefreshDetailButton" Content="Refresh details" Click="OnRefreshDetail" />
           <Button Content="Copy full ID" Click="OnCopy" />
         </StackPanel>
@@ -88,6 +89,24 @@
         <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Container Overview" />
         </ScrollViewer>
+        <Grid x:Name="LogsPanel" Grid.Row="2" RowSpacing="6" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <TextBox x:Name="LogsSearch" PlaceholderText="Plain-text search across retained Logs" TextChanged="OnLogsSearch" AutomationProperties.Name="Search retained Logs" />
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <ComboBox x:Name="LogsFilter" SelectedIndex="0" SelectionChanged="OnLogsFilter" AutomationProperties.Name="Log stream filter"><ComboBoxItem Content="All streams" /><ComboBoxItem Content="stdout" /><ComboBoxItem Content="stderr" /></ComboBox>
+            <CheckBox x:Name="LogsAutoscroll" Content="Autoscroll" IsChecked="True" Checked="OnLogsAutoscroll" Unchecked="OnLogsAutoscroll" />
+            <CheckBox x:Name="LogsFollow" Content="Live follow on next open" IsChecked="True" />
+          </StackPanel>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8"><Button Content="Reopen Logs" Click="OnLogsReopen" /><Button Content="Clear local view" Click="OnLogsClear" /><Button Content="Older matches" Click="OnLogsOlder" /><Button Content="Newer matches" Click="OnLogsNewer" /></StackPanel>
+          <StackPanel Grid.Row="3" Spacing="2"><TextBlock x:Name="LogsStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" /><TextBlock x:Name="LogsRetention" TextWrapping="Wrap" /><TextBlock x:Name="LogsSearchStatus" TextWrapping="Wrap" /></StackPanel>
+          <StackPanel Grid.Row="4" Spacing="4"><Button x:Name="LogsDaemonButton" Content="Show original daemon content (may be sensitive)" Click="OnLogsDaemon" Visibility="Collapsed" /><ScrollViewer x:Name="LogsDaemonPanel" MaxHeight="80" Visibility="Collapsed"><TextBlock x:Name="LogsDaemonText" TextWrapping="Wrap" IsTextSelectionEnabled="True" /></ScrollViewer></StackPanel>
+          <!-- The finite viewport owns scrolling. Only a bounded page of original log strings is retained. -->
+          <ListView x:Name="LogsList" Grid.Row="5" SelectionMode="Single" AutomationProperties.Name="Container log rows" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+            <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Vertical" /></ItemsPanelTemplate></ListView.ItemsPanel>
+            <ListView.ItemTemplate><DataTemplate x:DataType="local:ContainerLogRow"><StackPanel Spacing="2"><TextBlock Text="{x:Bind Metadata}" /><TextBlock Text="{x:Bind Text}" FontFamily="Consolas" IsTextSelectionEnabled="True" /></StackPanel></DataTemplate></ListView.ItemTemplate>
+            <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style></ListView.ItemContainerStyle>
+          </ListView>
+        </Grid>
         <Grid x:Name="InspectPanel" Grid.Row="2" RowSpacing="8" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <TextBox x:Name="InspectSearch" PlaceholderText="Search all JSON names and values" TextChanged="OnInspectSearch" AutomationProperties.Name="Search Inspect including collapsed content" />

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 using Microsoft.UI.Xaml;
@@ -18,9 +19,12 @@ public sealed partial class ContainersPage : Page
     private ContainerDeleteConfirmation? dialogConfirmation;
     private int pageEpoch;
     private IReadOnlyList<JsonInspectRow>? displayedInspect;
+    private readonly ObservableCollection<ContainerLogRow> logRows = [];
+    public Task LogsCleanup { get; private set; } = Task.CompletedTask;
     public ContainersPage()
     {
         InitializeComponent();
+        LogsList.ItemsSource = logRows;
         // ListViewItem handles Enter for selection; also observe it to open the selected resource.
         ContainerList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnListKeyDown), true);
         InspectList.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnInspectKeyDown), true);
@@ -47,11 +51,15 @@ public sealed partial class ContainersPage : Page
         deletionDialog = null; dialogConfirmation = null;
         if (view is not null) view.Changed -= OnViewChanged;
         view?.Dispose();
+        if (view is not null) LogsCleanup = JoinLogsAsync(view.Logs.Cleanup);
+        logRows.Clear(); LogsDaemonText.Text = LogsSearch.Text = LogsStatus.Text = LogsRetention.Text = LogsSearchStatus.Text = "";
+        LogsDaemonPanel.Visibility = Visibility.Collapsed;
         OperationStatus.Text = AdmissionStatus.Text = OperationDetailsText.Text = "";
         OperationDetailsPanel.Visibility = Visibility.Collapsed;
         InspectList.ItemsSource = null; displayedInspect = null; OverviewText.Text = "";
         ContainerList.ItemsSource = null; displayedRows = null;
     }
+    private static async Task JoinLogsAsync(Task cleanup) { try { await cleanup; } catch (Exception) { /* Never report sensitive exception content. */ } }
     private void OnViewChanged(object? sender, EventArgs args) => Render();
     private void Render()
     {
@@ -92,11 +100,14 @@ public sealed partial class ContainersPage : Page
             SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility
                 = ContainerList.Visibility = ListStatus.Visibility = view.DetailOpen ? Visibility.Collapsed : Visibility.Visible;
             DetailStatus.Text = view.DetailMessage;
-            OverviewText.Text = view.ShowingInspect ? "" : view.Overview;
-            OverviewPanel.Visibility = view.ShowingInspect ? Visibility.Collapsed : Visibility.Visible;
+            OverviewText.Text = view.ShowingInspect || view.ShowingLogs ? "" : view.Overview;
+            OverviewPanel.Visibility = view.ShowingInspect || view.ShowingLogs ? Visibility.Collapsed : Visibility.Visible;
             InspectPanel.Visibility = view.ShowingInspect ? Visibility.Visible : Visibility.Collapsed;
-            OverviewTab.IsEnabled = view.ShowingInspect;
+            OverviewTab.IsEnabled = view.ShowingInspect || view.ShowingLogs;
             InspectTab.IsEnabled = !view.ShowingInspect;
+            LogsTab.IsEnabled = !view.ShowingLogs;
+            LogsPanel.Visibility = view.ShowingLogs ? Visibility.Visible : Visibility.Collapsed;
+            RenderLogs();
             if (InspectSearch.Text != view.Inspect.Query) InspectSearch.Text = view.Inspect.Query;
             InspectStatus.Text = view.Inspect.Message;
             if (!ReferenceEquals(displayedInspect, view.Inspect.Rows))
@@ -108,7 +119,7 @@ public sealed partial class ContainersPage : Page
             CopyPathButton.IsEnabled = CopyValueButton.IsEnabled = view.Inspect.CanCopy;
             ExpandNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: false };
             CollapseNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: true };
-            RefreshDetailButton.IsEnabled = view.CanOpen;
+            RefreshDetailButton.IsEnabled = view.CanOpen && !view.ShowingLogs;
             if (!wasOpen && view.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
             else if (wasOpen && !view.DetailOpen) ContainerList.Focus(FocusState.Programmatic);
             // Reset the virtualized viewport after a source replacement or reopening. The old scroll
@@ -156,6 +167,50 @@ public sealed partial class ContainersPage : Page
             }
         }
     }
+    private void RenderLogs()
+    {
+        var logs = view!.Logs;
+        LogsStatus.Text = logs.Message; LogsRetention.Text = logs.RetentionMessage; LogsSearchStatus.Text = logs.SearchMessage;
+        if (LogsSearch.Text != logs.Query) LogsSearch.Text = logs.Query;
+        LogsFilter.IsEnabled = logs.Snapshot.IsTty != true;
+        LogsFilter.SelectedIndex = logs.Stream == ContainerLogStream.Stdout ? 1 : logs.Stream == ContainerLogStream.Stderr ? 2 : 0;
+        LogsAutoscroll.IsChecked = logs.Autoscroll;
+        LogsDaemonButton.Visibility = logs.HasDaemonContent ? Visibility.Visible : Visibility.Collapsed;
+        LogsDaemonButton.Content = logs.ShowingDaemonContent ? "Hide original daemon content" : "Show original daemon content (may be sensitive)";
+        LogsDaemonPanel.Visibility = logs.ShowingDaemonContent ? Visibility.Visible : Visibility.Collapsed;
+        LogsDaemonText.Text = logs.DaemonContent;
+        // Preserve recycled rows and scroll offset on partial-text updates. On eviction/page changes,
+        // retain a visible identity when possible, otherwise move explicitly to the next retained row.
+        ContainerLogRow? anchor = null;
+        if (!logs.Autoscroll)
+            for (int i = 0; i < logRows.Count; ++i)
+                if (LogsList.ContainerFromIndex(i) is FrameworkElement item)
+                {
+                    var point = item.TransformToVisual(LogsList).TransformPoint(new Windows.Foundation.Point(0, 0));
+                    if (point.Y >= 0 && point.Y < LogsList.ActualHeight) { anchor = logRows[i]; break; }
+                }
+        bool changed = false;
+        for (int i = 0; i < logs.Rows.Count; ++i)
+        {
+            if (i >= logRows.Count) { logRows.Add(logs.Rows[i]); changed = true; }
+            else if (logRows[i] != logs.Rows[i]) { logRows[i] = logs.Rows[i]; changed = true; }
+        }
+        while (logRows.Count > logs.Rows.Count) { logRows.RemoveAt(logRows.Count - 1); changed = true; }
+        if (changed && logRows.Count > 0)
+        {
+            if (logs.Autoscroll) LogsList.ScrollIntoView(logRows[^1]);
+            else if (anchor is not null) LogsList.ScrollIntoView(logRows.FirstOrDefault(r => r.Entry.EntryId == anchor.Entry.EntryId) ?? logRows[0], ScrollIntoViewAlignment.Leading);
+        }
+    }
+    private void OnLogsTab(object sender, RoutedEventArgs args) { view?.ShowLogs(LogsFollow.IsChecked == true); LogsSearch.Focus(FocusState.Programmatic); }
+    private void OnLogsReopen(object sender, RoutedEventArgs args) => view?.ShowLogs(LogsFollow.IsChecked == true);
+    private void OnLogsSearch(object sender, TextChangedEventArgs args) { if (!rendering) view?.Logs.Search(LogsSearch.Text); }
+    private void OnLogsFilter(object sender, SelectionChangedEventArgs args) { if (!rendering) view?.Logs.Filter(LogsFilter.SelectedIndex == 1 ? ContainerLogStream.Stdout : LogsFilter.SelectedIndex == 2 ? ContainerLogStream.Stderr : null); }
+    private void OnLogsAutoscroll(object sender, RoutedEventArgs args) { if (!rendering) view?.Logs.SetAutoscroll(LogsAutoscroll.IsChecked == true); }
+    private void OnLogsClear(object sender, RoutedEventArgs args) => view?.Logs.Clear();
+    private void OnLogsOlder(object sender, RoutedEventArgs args) => view?.Logs.Older();
+    private void OnLogsNewer(object sender, RoutedEventArgs args) => view?.Logs.Newer();
+    private void OnLogsDaemon(object sender, RoutedEventArgs args) { if (view is not null) view.Logs.ShowDaemonContent(!view.Logs.ShowingDaemonContent); }
     private void OnOverviewTab(object sender, RoutedEventArgs args) { view?.ShowInspect(false); RefreshDetailButton.Focus(FocusState.Programmatic); }
     private void OnInspectTab(object sender, RoutedEventArgs args) { view?.ShowInspect(true); InspectSearch.Focus(FocusState.Programmatic); }
     private void OnInspectSearch(object sender, TextChangedEventArgs args) { if (!rendering) view?.Inspect.Search(InspectSearch.Text); }

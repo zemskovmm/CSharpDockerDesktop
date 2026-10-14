@@ -30,6 +30,10 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Presentation Logs bounded windows, search and sustained load", LogPresentationChecks.WindowsAndLoad),
+    ("Presentation Logs mutable entries, revision races, Clear and TTY", LogPresentationChecks.RacesAndClear),
+    ("Presentation Logs asynchronous close ownership and navigation", LogPresentationChecks.OwnershipAndNavigation),
+    ("Presentation Logs browser tabs, selection and lifetime", LogPresentationChecks.BrowserLifetime),
     ("Application Logs fragmented assembly, bounded retention and notifications", LogSessionChecks.AssemblyBoundsAndNotifications),
     ("Application Logs Clear, close, replacement and joined late openings", LogSessionChecks.ClearCloseAndLateReplacement),
     ("Application Logs terminal failures, deletion, selection and finite EOF", LogSessionChecks.TerminalDeletionSelectionAndEof),
