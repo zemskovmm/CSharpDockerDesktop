@@ -54,3 +54,5 @@ dotnet run --project tests/CSharpDockerDesktop.Connection.Tests
 ```
 
 This executable suite returns a nonzero exit code on any failure. Its controlled named-pipe HTTP server exercises real `SocketsHttpHandler` framing and transport ownership on supported .NET hosts. Real Windows Docker/ACL smoke evidence is still required; a passing Mac fixture does not establish Windows compatibility.
+
+The [terminal surface feasibility research](docs/terminal-surface-research.md) compares host and license options and includes a separate runnable Uno prototype. Its macOS fixture evidence and Windows/privacy gaps are recorded explicitly; no production terminal component has been selected or integrated.
