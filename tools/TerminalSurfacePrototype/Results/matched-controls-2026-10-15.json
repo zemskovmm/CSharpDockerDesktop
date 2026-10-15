@@ -1,0 +1,2334 @@
+{
+  "scope": "Fixed synthetic actual Uno macOS development runs. One persistent WKWebView and opaque frame per variant; no xterm during empty measurement. No object-level cause, lifetime memory bound, production/Windows/privacy/Engine conformance.",
+  "clocks": "Checkpoint elapsedSeconds starts at browser readiness; RSS and captureSeconds start at process launch. Native captures occur sequentially during held states; nearest RSS is observational, not simultaneous.",
+  "conditions": {
+    "platform": "macOS-26.7.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "samplingSeconds": 1,
+    "wallClock": "2026-10-15T05:55:22+0200",
+    "binarySha256": "5c7c1dcd3dc81f4089349a1a4a8208f65be7d424b2aa4c59d0ad10bf84423631",
+    "assemblySha256": "a59a3151bda436dbb8ce846d55eb54ebca479aa55df6553e440cdce4c9346c64",
+    "attribution": "New WebKit PIDs since per-workload baseline; launchd parentage prevents definitive ownership. No unrelated browser launch intentionally performed.",
+    "forcedCollection": false,
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.7.1\nBuildVersion:\t\t25G241\n",
+    "hardware": "hw.model: Mac17,9\nhw.memsize: 51539607552\nmachdep.cpu.brand_string: Apple M5 Pro\n"
+  },
+  "inputSha256": {
+    "RetentionChecks.cs": "3eb104bf855ab0cd6ac4559a5931a653476062991b05e88419e850127c7697f5",
+    "Web/surface.js": "8b09bf75915d289f820f39fe9baaff31c244a914feaf499d78fece99bfd8e23f",
+    "Web/bridge.js": "1ec4bbe90fba2e0f926f271e6401038a9d3a6bd81ef5bd0723b97b72f2af2cf6",
+    "run-retention-checks.py": "88ac91055ec34ab1d4b6786b26bfefa0a2cdfd65a2cb670c05af29387e13f2a7"
+  },
+  "rendererSha256": "019495f1709e55b6ccfed75ba045483bc3ea60714f2aa7652be1fc268f1116f5",
+  "nativeCategoryColumns": [
+    "dirty",
+    "clean",
+    "reclaimable",
+    "regions"
+  ],
+  "nativeColumns": [
+    "pid",
+    "nearestRssSeconds",
+    "nearestRssMiB",
+    "vmmapCaptureSeconds",
+    "footprintCaptureSeconds",
+    "physicalFootprint",
+    "peakPhysicalFootprint"
+  ],
+  "nativeCaptureExitCodes": "All vmmap/footprint captures required exit code 0; otherwise summarization fails.",
+  "workloads": {
+    "aggregate-empty-cycles": {
+      "pass": true,
+      "sampleCount": 165,
+      "rssIntervalSeconds": [
+        1.03,
+        3.59
+      ],
+      "processRssRangesAfterFiveSeconds": [
+        {
+          "pid": 6543,
+          "role": "app",
+          "minRssMiB": 232.922,
+          "maxRssMiB": 261.047
+        },
+        {
+          "pid": 6546,
+          "role": "com.apple.WebKit.GPU",
+          "minRssMiB": 25.609,
+          "maxRssMiB": 31.859
+        },
+        {
+          "pid": 6547,
+          "role": "com.apple.WebKit.Networking",
+          "minRssMiB": 13.031,
+          "maxRssMiB": 13.094
+        },
+        {
+          "pid": 6548,
+          "role": "com.apple.WebKit.WebContent",
+          "minRssMiB": 37.469,
+          "maxRssMiB": 63.062
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "aggregate-empty-baseline",
+          "elapsedSeconds": 0.01,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -1,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 0,
+            "closes": 1,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              1.07,
+              233.172,
+              1.08,
+              1.82,
+              "316.8M",
+              "316.8M"
+            ],
+            [
+              6546,
+              1.07,
+              25.641,
+              1.86,
+              2.44,
+              "13.7M",
+              "87.0M"
+            ],
+            [
+              6547,
+              1.07,
+              13.047,
+              2.47,
+              2.99,
+              "4945K",
+              "5137K"
+            ],
+            [
+              6548,
+              4.63,
+              37.641,
+              3.01,
+              3.57,
+              "24.5M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "9712 KB",
+              "0 B",
+              "5088 KB",
+              "6"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1280 KB",
+              "0 B",
+              "1456 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "25 MB",
+              "2448 KB",
+              "15 MB",
+              "5894"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-populated",
+          "elapsedSeconds": 10.68,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 1,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 2,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              11.91,
+              233.656,
+              11.91,
+              12.6,
+              "185.3M",
+              "316.8M"
+            ],
+            [
+              6546,
+              11.91,
+              25.625,
+              12.64,
+              13.23,
+              "9889K",
+              "87.0M"
+            ],
+            [
+              6547,
+              11.91,
+              13.047,
+              13.26,
+              13.78,
+              "4849K",
+              "5137K"
+            ],
+            [
+              6548,
+              15.43,
+              37.547,
+              13.8,
+              14.37,
+              "24.1M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "9344 KB",
+              "0 B",
+              "5456 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5889"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-close",
+          "elapsedSeconds": 18.69,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              19.58,
+              234.078,
+              19.58,
+              20.27,
+              "185.7M",
+              "316.8M"
+            ],
+            [
+              6546,
+              19.58,
+              25.609,
+              20.31,
+              20.89,
+              "9873K",
+              "87.0M"
+            ],
+            [
+              6547,
+              19.58,
+              13.031,
+              20.91,
+              21.43,
+              "4833K",
+              "5137K"
+            ],
+            [
+              6548,
+              23.07,
+              37.531,
+              21.45,
+              22.01,
+              "23.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "9040 KB",
+              "0 B",
+              "5776 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5885"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-idle",
+          "elapsedSeconds": 34.69,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              35.54,
+              234.359,
+              35.54,
+              36.23,
+              "186.0M",
+              "316.8M"
+            ],
+            [
+              6546,
+              35.54,
+              25.609,
+              36.27,
+              36.85,
+              "9873K",
+              "87.0M"
+            ],
+            [
+              6547,
+              35.54,
+              13.031,
+              36.88,
+              37.39,
+              "4833K",
+              "5137K"
+            ],
+            [
+              6548,
+              39.03,
+              37.5,
+              37.42,
+              37.97,
+              "23.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "9056 KB",
+              "0 B",
+              "5776 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5876"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-populated",
+          "elapsedSeconds": 151.82,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 12,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 24,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 11,
+            "inactiveWrites": 11,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              153.3,
+              248.391,
+              153.3,
+              153.99,
+              "170.9M",
+              "316.8M"
+            ],
+            [
+              6546,
+              153.3,
+              25.609,
+              154.03,
+              154.6,
+              "9873K",
+              "87.0M"
+            ],
+            [
+              6547,
+              153.3,
+              13.047,
+              154.63,
+              155.14,
+              "4769K",
+              "5137K"
+            ],
+            [
+              6548,
+              156.79,
+              37.75,
+              155.17,
+              155.72,
+              "23.8M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "8944 KB",
+              "0 B",
+              "5984 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5889"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-close",
+          "elapsedSeconds": 159.82,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              160.95,
+              248.531,
+              160.95,
+              161.67,
+              "171.0M",
+              "316.8M"
+            ],
+            [
+              6546,
+              160.95,
+              25.609,
+              161.71,
+              162.3,
+              "9873K",
+              "87.0M"
+            ],
+            [
+              6547,
+              160.95,
+              13.047,
+              162.33,
+              162.85,
+              "4769K",
+              "5137K"
+            ],
+            [
+              6548,
+              164.54,
+              37.672,
+              162.88,
+              163.48,
+              "23.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "8944 KB",
+              "0 B",
+              "5984 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5876"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-idle",
+          "elapsedSeconds": 175.83,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              6543,
+              177.01,
+              248.578,
+              177.01,
+              177.7,
+              "171.0M",
+              "316.8M"
+            ],
+            [
+              6546,
+              177.01,
+              25.609,
+              177.74,
+              178.33,
+              "9873K",
+              "87.0M"
+            ],
+            [
+              6547,
+              177.01,
+              13.047,
+              178.35,
+              178.87,
+              "4769K",
+              "5137K"
+            ],
+            [
+              6548,
+              180.52,
+              37.672,
+              178.89,
+              179.46,
+              "23.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "WebKit malloc": [
+              "8944 KB",
+              "0 B",
+              "5984 KB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "313"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "24 MB",
+              "2448 KB",
+              "16 MB",
+              "5876"
+            ]
+          }
+        }
+      ],
+      "postMeasurementAssertions": [
+        "control-replaced-terminal",
+        "lifecycle-complete",
+        "aggregate-reopened-compatible"
+      ]
+    },
+    "aggregate-idle-cycles": {
+      "pass": true,
+      "sampleCount": 165,
+      "rssIntervalSeconds": [
+        1.03,
+        3.53
+      ],
+      "processRssRangesAfterFiveSeconds": [
+        {
+          "pid": 7373,
+          "role": "app",
+          "minRssMiB": 232.297,
+          "maxRssMiB": 251.703
+        },
+        {
+          "pid": 7377,
+          "role": "com.apple.WebKit.GPU",
+          "minRssMiB": 25.594,
+          "maxRssMiB": 32.125
+        },
+        {
+          "pid": 7378,
+          "role": "com.apple.WebKit.Networking",
+          "minRssMiB": 13.062,
+          "maxRssMiB": 13.156
+        },
+        {
+          "pid": 7379,
+          "role": "com.apple.WebKit.WebContent",
+          "minRssMiB": 37.734,
+          "maxRssMiB": 65.094
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "aggregate-empty-baseline",
+          "elapsedSeconds": 0.01,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -1,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 0,
+            "closes": 1,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              1.07,
+              232.547,
+              1.08,
+              1.78,
+              "316.4M",
+              "316.5M"
+            ],
+            [
+              7377,
+              1.07,
+              25.609,
+              1.81,
+              2.4,
+              "13.8M",
+              "87.1M"
+            ],
+            [
+              7378,
+              1.07,
+              13.109,
+              2.42,
+              2.94,
+              "4945K",
+              "5169K"
+            ],
+            [
+              7379,
+              4.6,
+              37.828,
+              2.97,
+              3.53,
+              "24.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "9824 KB",
+              "0 B",
+              "5120 KB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1296 KB",
+              "0 B",
+              "1440 KB",
+              "301"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "25 MB",
+              "2448 KB",
+              "15 MB",
+              "5885"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-populated",
+          "elapsedSeconds": 10.69,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 1,
+            "received": 0,
+            "terminalPresent": true,
+            "starts": 1,
+            "closes": 2,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 0,
+            "renders": 1,
+            "acceptedWrites": 0,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 1,
+            "domNodes": 78,
+            "normalLines": 24,
+            "alternateLines": 0,
+            "widthCacheEntries": 0,
+            "widthCacheEvictions": 0,
+            "a11yAggregateUnits": 0,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              11.87,
+              239.766,
+              11.88,
+              12.56,
+              "185.8M",
+              "316.5M"
+            ],
+            [
+              7377,
+              11.87,
+              27.891,
+              12.6,
+              13.18,
+              "14.2M",
+              "91.6M"
+            ],
+            [
+              7378,
+              11.87,
+              13.078,
+              13.21,
+              13.72,
+              "4849K",
+              "5169K"
+            ],
+            [
+              7379,
+              15.37,
+              44.75,
+              13.75,
+              14.31,
+              "27.5M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "11 MB",
+              "0 B",
+              "7792 KB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "528 KB",
+              "0 B",
+              "16 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "27 MB",
+              "3200 KB",
+              "18 MB",
+              "5913"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-close",
+          "elapsedSeconds": 18.7,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 1,
+            "renders": 1,
+            "acceptedWrites": 0,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 0,
+            "retiredRootsAlive": 4,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              19.53,
+              240.391,
+              19.53,
+              20.22,
+              "186.4M",
+              "316.5M"
+            ],
+            [
+              7377,
+              19.53,
+              27.891,
+              20.26,
+              20.86,
+              "82.9M",
+              "91.6M"
+            ],
+            [
+              7378,
+              19.53,
+              13.062,
+              20.88,
+              21.4,
+              "4833K",
+              "5169K"
+            ],
+            [
+              7379,
+              23.05,
+              44.703,
+              21.43,
+              21.98,
+              "27.1M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "11 MB",
+              "0 B",
+              "7984 KB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "528 KB",
+              "0 B",
+              "16 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "27 MB",
+              "3200 KB",
+              "18 MB",
+              "5909"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-idle",
+          "elapsedSeconds": 34.7,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 1,
+            "renders": 1,
+            "acceptedWrites": 0,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 1,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              35.51,
+              240.641,
+              35.52,
+              36.2,
+              "186.5M",
+              "316.5M"
+            ],
+            [
+              7377,
+              35.51,
+              27.844,
+              36.24,
+              36.83,
+              "10.1M",
+              "91.6M"
+            ],
+            [
+              7378,
+              35.51,
+              13.062,
+              36.85,
+              37.37,
+              "4833K",
+              "5169K"
+            ],
+            [
+              7379,
+              39.02,
+              44.594,
+              37.39,
+              37.95,
+              "26.3M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "11 MB",
+              "0 B",
+              "8704 KB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "448 KB",
+              "0 B",
+              "96 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "26 MB",
+              "3200 KB",
+              "19 MB",
+              "5901"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-populated",
+          "elapsedSeconds": 151.92,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 12,
+            "received": 0,
+            "terminalPresent": true,
+            "starts": 12,
+            "closes": 24,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 11,
+            "renders": 12,
+            "acceptedWrites": 0,
+            "staleWrites": 11,
+            "inactiveWrites": 11,
+            "finalized": 11,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 1,
+            "domNodes": 78,
+            "normalLines": 24,
+            "alternateLines": 0,
+            "widthCacheEntries": 0,
+            "widthCacheEvictions": 0,
+            "a11yAggregateUnits": 0,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              153.31,
+              245.625,
+              153.31,
+              154.01,
+              "191.3M",
+              "316.5M"
+            ],
+            [
+              7377,
+              153.31,
+              28.172,
+              154.05,
+              154.63,
+              "12.1M",
+              "91.6M"
+            ],
+            [
+              7378,
+              153.31,
+              13.062,
+              154.66,
+              155.18,
+              "4785K",
+              "5169K"
+            ],
+            [
+              7379,
+              156.82,
+              50.312,
+              155.2,
+              155.76,
+              "28.7M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "12 MB",
+              "0 B",
+              "12 MB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "448 KB",
+              "0 B",
+              "160 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "29 MB",
+              "3200 KB",
+              "22 MB",
+              "5912"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-close",
+          "elapsedSeconds": 159.93,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 12,
+            "renders": 12,
+            "acceptedWrites": 0,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 11,
+            "retiredRootsAlive": 4,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              160.98,
+              245.734,
+              160.98,
+              161.67,
+              "191.4M",
+              "316.5M"
+            ],
+            [
+              7377,
+              160.98,
+              28.156,
+              161.71,
+              162.29,
+              "82.8M",
+              "91.6M"
+            ],
+            [
+              7378,
+              160.98,
+              13.062,
+              162.31,
+              162.83,
+              "4785K",
+              "5169K"
+            ],
+            [
+              7379,
+              164.48,
+              50.281,
+              162.86,
+              163.42,
+              "28.5M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "12 MB",
+              "0 B",
+              "12 MB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "448 KB",
+              "0 B",
+              "160 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "28 MB",
+              "3200 KB",
+              "22 MB",
+              "5905"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-idle",
+          "elapsedSeconds": 175.93,
+          "deliveredBytes": 0,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 12,
+            "renders": 12,
+            "acceptedWrites": 0,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 12,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7373,
+              176.95,
+              245.781,
+              176.95,
+              177.64,
+              "191.5M",
+              "316.5M"
+            ],
+            [
+              7377,
+              176.95,
+              28.141,
+              177.68,
+              178.26,
+              "10.1M",
+              "91.6M"
+            ],
+            [
+              7378,
+              176.95,
+              13.062,
+              178.29,
+              178.8,
+              "4785K",
+              "5169K"
+            ],
+            [
+              7379,
+              180.44,
+              50.188,
+              178.83,
+              179.38,
+              "28.4M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "12 MB",
+              "0 B",
+              "12 MB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1408 KB",
+              "0 B",
+              "1504 KB",
+              "321"
+            ],
+            "JS VM Gigacage": [
+              "448 KB",
+              "0 B",
+              "160 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "28 MB",
+              "3200 KB",
+              "22 MB",
+              "5890"
+            ]
+          }
+        }
+      ],
+      "postMeasurementAssertions": [
+        "control-replaced-terminal",
+        "lifecycle-complete",
+        "aggregate-reopened-compatible"
+      ]
+    },
+    "aggregate-cycles": {
+      "pass": true,
+      "sampleCount": 165,
+      "rssIntervalSeconds": [
+        1.03,
+        3.58
+      ],
+      "processRssRangesAfterFiveSeconds": [
+        {
+          "pid": 7873,
+          "role": "app",
+          "minRssMiB": 232.922,
+          "maxRssMiB": 254.547
+        },
+        {
+          "pid": 7876,
+          "role": "com.apple.WebKit.GPU",
+          "minRssMiB": 25.828,
+          "maxRssMiB": 45.219
+        },
+        {
+          "pid": 7877,
+          "role": "com.apple.WebKit.Networking",
+          "minRssMiB": 13.062,
+          "maxRssMiB": 13.156
+        },
+        {
+          "pid": 7878,
+          "role": "com.apple.WebKit.WebContent",
+          "minRssMiB": 37.75,
+          "maxRssMiB": 201.438
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "aggregate-empty-baseline",
+          "elapsedSeconds": 0.01,
+          "deliveredBytes": 0,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -1,
+            "received": 0,
+            "terminalPresent": false,
+            "starts": 0,
+            "closes": 1,
+            "constructed": 0,
+            "opened": 0,
+            "disposed": 0,
+            "renders": 0,
+            "acceptedWrites": 0,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              1.07,
+              233.172,
+              1.08,
+              1.76,
+              "316.9M",
+              "316.9M"
+            ],
+            [
+              7876,
+              1.07,
+              25.875,
+              1.79,
+              2.38,
+              "89.4M",
+              "89.7M"
+            ],
+            [
+              7877,
+              1.07,
+              13.062,
+              2.4,
+              2.92,
+              "4913K",
+              "5121K"
+            ],
+            [
+              7878,
+              4.56,
+              37.844,
+              2.95,
+              3.5,
+              "24.6M",
+              "38.2M"
+            ]
+          ],
+          "webContentCategories": {
+            "WebKit malloc": [
+              "9760 KB",
+              "0 B",
+              "5216 KB",
+              "5"
+            ],
+            "Owned physical footprint (unmapped) (graphics)": [
+              "9568 KB",
+              "0 B",
+              "9216 KB",
+              "9"
+            ],
+            "MALLOC_SMALL": [
+              "1264 KB",
+              "0 B",
+              "1472 KB",
+              "288"
+            ],
+            "JS VM Gigacage": [
+              "272 KB",
+              "0 B",
+              "0 B",
+              "545"
+            ],
+            "TOTAL": [
+              "25 MB",
+              "2448 KB",
+              "16 MB",
+              "5868"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-populated",
+          "elapsedSeconds": 10.74,
+          "deliveredBytes": 33725,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 1,
+            "received": 33725,
+            "terminalPresent": true,
+            "starts": 1,
+            "closes": 2,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 0,
+            "renders": 31,
+            "acceptedWrites": 25,
+            "staleWrites": 0,
+            "inactiveWrites": 0,
+            "finalized": 0,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 1,
+            "domNodes": 216,
+            "normalLines": 224,
+            "alternateLines": 24,
+            "widthCacheEntries": 512,
+            "widthCacheEvictions": 1048,
+            "a11yAggregateUnits": 882,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              11.83,
+              242.469,
+              11.84,
+              12.51,
+              "187.9M",
+              "316.9M"
+            ],
+            [
+              7876,
+              11.83,
+              42.188,
+              12.55,
+              13.15,
+              "28.5M",
+              "112.0M"
+            ],
+            [
+              7877,
+              11.83,
+              13.078,
+              13.18,
+              13.69,
+              "4817K",
+              "5121K"
+            ],
+            [
+              7878,
+              15.35,
+              95.672,
+              13.72,
+              14.29,
+              "84.9M",
+              "309.3M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "40 MB",
+              "0 B",
+              "231 MB",
+              "56"
+            ],
+            "WebKit malloc": [
+              "34 MB",
+              "0 B",
+              "23 MB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "2208 KB",
+              "0 B",
+              "3008 KB",
+              "408"
+            ],
+            "JS VM Gigacage": [
+              "768 KB",
+              "0 B",
+              "320 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "85 MB",
+              "10 MB",
+              "258 MB",
+              "6100"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-close",
+          "elapsedSeconds": 18.75,
+          "deliveredBytes": 33725,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 33725,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 1,
+            "renders": 31,
+            "acceptedWrites": 25,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 0,
+            "retiredRootsAlive": 4,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              19.51,
+              242.656,
+              19.51,
+              20.2,
+              "188.1M",
+              "316.9M"
+            ],
+            [
+              7876,
+              19.51,
+              41.75,
+              20.24,
+              20.84,
+              "100.0M",
+              "112.0M"
+            ],
+            [
+              7877,
+              19.51,
+              13.062,
+              20.87,
+              21.38,
+              "4801K",
+              "5121K"
+            ],
+            [
+              7878,
+              23.04,
+              95.062,
+              21.41,
+              21.98,
+              "83.4M",
+              "309.3M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "40 MB",
+              "0 B",
+              "231 MB",
+              "56"
+            ],
+            "WebKit malloc": [
+              "33 MB",
+              "0 B",
+              "24 MB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "2208 KB",
+              "0 B",
+              "3008 KB",
+              "408"
+            ],
+            "JS VM Gigacage": [
+              "768 KB",
+              "0 B",
+              "320 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "83 MB",
+              "10 MB",
+              "259 MB",
+              "6051"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-01-post-idle",
+          "elapsedSeconds": 34.75,
+          "deliveredBytes": 33725,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -2,
+            "received": 33725,
+            "terminalPresent": false,
+            "starts": 1,
+            "closes": 3,
+            "constructed": 1,
+            "opened": 1,
+            "disposed": 1,
+            "renders": 31,
+            "acceptedWrites": 25,
+            "staleWrites": 1,
+            "inactiveWrites": 1,
+            "finalized": 1,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              35.52,
+              242.859,
+              35.52,
+              36.2,
+              "188.2M",
+              "316.9M"
+            ],
+            [
+              7876,
+              35.52,
+              41.75,
+              36.24,
+              36.84,
+              "16.1M",
+              "112.0M"
+            ],
+            [
+              7877,
+              35.52,
+              13.062,
+              36.86,
+              37.39,
+              "4801K",
+              "5121K"
+            ],
+            [
+              7878,
+              39.04,
+              94.922,
+              37.41,
+              37.98,
+              "81.2M",
+              "309.3M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "40 MB",
+              "0 B",
+              "231 MB",
+              "56"
+            ],
+            "WebKit malloc": [
+              "31 MB",
+              "0 B",
+              "26 MB",
+              "6"
+            ],
+            "MALLOC_SMALL": [
+              "2176 KB",
+              "0 B",
+              "3040 KB",
+              "408"
+            ],
+            "JS VM Gigacage": [
+              "464 KB",
+              "0 B",
+              "624 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "81 MB",
+              "10 MB",
+              "261 MB",
+              "6042"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-populated",
+          "elapsedSeconds": 152.43,
+          "deliveredBytes": 33725,
+          "pendingChunks": 0,
+          "producerJoined": true,
+          "pumpJoined": false,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": 12,
+            "received": 33725,
+            "terminalPresent": true,
+            "starts": 12,
+            "closes": 24,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 11,
+            "renders": 377,
+            "acceptedWrites": 300,
+            "staleWrites": 11,
+            "inactiveWrites": 11,
+            "finalized": 11,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 1,
+            "domNodes": 216,
+            "normalLines": 224,
+            "alternateLines": 24,
+            "widthCacheEntries": 512,
+            "widthCacheEvictions": 1048,
+            "a11yAggregateUnits": 882,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              153.32,
+              252.656,
+              153.32,
+              154.02,
+              "197.7M",
+              "316.9M"
+            ],
+            [
+              7876,
+              153.32,
+              44.953,
+              154.06,
+              154.66,
+              "29.0M",
+              "117.1M"
+            ],
+            [
+              7877,
+              153.32,
+              13.078,
+              154.69,
+              155.21,
+              "4769K",
+              "5121K"
+            ],
+            [
+              7878,
+              156.9,
+              199.922,
+              155.24,
+              155.83,
+              "472.0M",
+              "685.4M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "371 MB",
+              "0 B",
+              "205 MB",
+              "64"
+            ],
+            "WebKit malloc": [
+              "90 MB",
+              "0 B",
+              "70 MB",
+              "10"
+            ],
+            "MALLOC_SMALL": [
+              "2192 KB",
+              "0 B",
+              "3088 KB",
+              "414"
+            ],
+            "JS VM Gigacage": [
+              "464 KB",
+              "0 B",
+              "672 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "472 MB",
+              "10 MB",
+              "278 MB",
+              "6113"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-close",
+          "elapsedSeconds": 160.44,
+          "deliveredBytes": 33725,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 33725,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 12,
+            "renders": 377,
+            "acceptedWrites": 300,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 12,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              162.09,
+              252.594,
+              162.1,
+              162.8,
+              "197.6M",
+              "316.9M"
+            ],
+            [
+              7876,
+              162.09,
+              44.516,
+              162.83,
+              163.44,
+              "25.0M",
+              "117.1M"
+            ],
+            [
+              7877,
+              162.09,
+              13.094,
+              163.46,
+              163.99,
+              "4785K",
+              "5121K"
+            ],
+            [
+              7878,
+              165.67,
+              199.422,
+              164.02,
+              164.61,
+              "471.5M",
+              "685.4M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "371 MB",
+              "0 B",
+              "205 MB",
+              "64"
+            ],
+            "WebKit malloc": [
+              "90 MB",
+              "0 B",
+              "70 MB",
+              "10"
+            ],
+            "MALLOC_SMALL": [
+              "2192 KB",
+              "0 B",
+              "3088 KB",
+              "414"
+            ],
+            "JS VM Gigacage": [
+              "464 KB",
+              "0 B",
+              "672 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "471 MB",
+              "10 MB",
+              "278 MB",
+              "6081"
+            ]
+          }
+        },
+        {
+          "stage": "cycle-12-post-idle",
+          "elapsedSeconds": 176.44,
+          "deliveredBytes": 33725,
+          "pendingChunks": 4,
+          "producerJoined": true,
+          "pumpJoined": true,
+          "nativeAckPending": false,
+          "inputQueueEntries": 0,
+          "stats": {
+            "generation": -13,
+            "received": 33725,
+            "terminalPresent": false,
+            "starts": 12,
+            "closes": 25,
+            "constructed": 12,
+            "opened": 12,
+            "disposed": 12,
+            "renders": 377,
+            "acceptedWrites": 300,
+            "staleWrites": 12,
+            "inactiveWrites": 12,
+            "finalized": 12,
+            "retiredRootsAlive": 0,
+            "attachedTerminalNodes": 0,
+            "domNodes": 9,
+            "frameCount": 1,
+            "frameWidth": 1024,
+            "frameHeight": 566,
+            "opaqueSandbox": true
+          },
+          "native": [
+            [
+              7873,
+              177.1,
+              252.594,
+              177.11,
+              177.8,
+              "197.6M",
+              "316.9M"
+            ],
+            [
+              7876,
+              177.1,
+              44.5,
+              177.83,
+              178.43,
+              "16.4M",
+              "117.1M"
+            ],
+            [
+              7877,
+              177.1,
+              13.078,
+              178.46,
+              178.99,
+              "4769K",
+              "5121K"
+            ],
+            [
+              7878,
+              180.66,
+              199.203,
+              179.01,
+              179.6,
+              "471.3M",
+              "685.4M"
+            ]
+          ],
+          "webContentCategories": {
+            "Owned physical footprint (unmapped) (graphics)": [
+              "371 MB",
+              "0 B",
+              "205 MB",
+              "64"
+            ],
+            "WebKit malloc": [
+              "90 MB",
+              "0 B",
+              "70 MB",
+              "10"
+            ],
+            "MALLOC_SMALL": [
+              "2192 KB",
+              "0 B",
+              "3088 KB",
+              "414"
+            ],
+            "JS VM Gigacage": [
+              "464 KB",
+              "0 B",
+              "672 KB",
+              "545"
+            ],
+            "TOTAL": [
+              "471 MB",
+              "10 MB",
+              "278 MB",
+              "6064"
+            ]
+          }
+        }
+      ],
+      "postMeasurementAssertions": [
+        "control-replaced-terminal",
+        "lifecycle-complete",
+        "aggregate-reopened-compatible"
+      ]
+    }
+  },
+  "regressions": {
+    "a11y-boundaries": true,
+    "combined": true,
+    "cutoff": true,
+    "links": true,
+    "normal": true,
+    "width-cache": true
+  }
+}

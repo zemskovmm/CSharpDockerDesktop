@@ -21,9 +21,15 @@
     let value;
     try { value = JSON.parse(event.data); } catch { return; }
     if (value.kind === 'policy') note(value.directive);
-    if (value.stats) cachedStats = value.stats;
+    if (value.stats) {
+      const rect = frame.getBoundingClientRect();
+      value.stats.frameCount = document.querySelectorAll('iframe').length;
+      value.stats.frameWidth = rect.width; value.stats.frameHeight = rect.height;
+      value.stats.opaqueSandbox = frame.getAttribute('sandbox') === 'allow-scripts';
+      cachedStats = value.stats;
+    }
     if (['ready','ack','failure','input','capacity','copy','fetch','sandboxPopup','stats'].includes(value.kind))
-      nativePost(event.data);
+      nativePost(value.stats ? JSON.stringify(value) : event.data);
   });
   window.surface = { stats:() => ({...cachedStats, violations}), requestStats:(request = 0) => send('stats', [request]) };
   function send(method, args) { frame.contentWindow.postMessage({method, args}, '*'); }

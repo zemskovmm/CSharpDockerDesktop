@@ -8,7 +8,7 @@ import hashlib
 import subprocess
 import time
 
-WORKLOADS = ("aggregate-sustained", "aggregate-cycles", "combined", "lifecycle", "cutoff", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries")
+WORKLOADS = ("aggregate-sustained", "aggregate-empty-cycles", "aggregate-idle-cycles", "aggregate-cycles", "combined", "lifecycle", "cutoff", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries")
 
 
 def webkit_processes():
@@ -86,7 +86,7 @@ def main():
                             if not line.startswith("RETENTION "):
                                 continue
                             stage = json.loads(line[10:])["stage"]
-                            if stage in ("aggregate-empty-baseline", "cycle-01-populated", "cycle-01-post-close", "cycle-01-post-idle", "cycle-12-populated", "cycle-12-post-idle") and stage not in seen_stages:
+                            if stage in ("aggregate-empty-baseline", "cycle-01-populated", "cycle-01-post-close", "cycle-01-post-idle", "cycle-12-populated", "cycle-12-post-close", "cycle-12-post-idle") and stage not in seen_stages:
                                 seen_stages.add(stage)
                                 memory_tools(args.output, workload + "-" + stage, [process.pid] + [value["pid"] for value in candidates], json.loads(line[10:])["elapsedSeconds"], started)
                     deadline = 840 if workload == "aggregate-sustained" else 660

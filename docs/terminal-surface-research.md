@@ -164,6 +164,145 @@ With the final asset, native `combined`, `combining`, `a11y-boundaries`, `a11y`,
 
 These short finite diagnostics, metadata logs and one-second RSS samples are under ignored `artifacts/terminal-surface/width-cache-final-v3`. WebKit helper PIDs are newly observed candidates, not definitive attribution if another browser starts concurrently. No forced collection or memory plateau acceptance is used. The ordinary **1 MiB cumulative cutoff** and finite **64 MiB diagnostic ceiling** remain. This focused experiment ends here; further overall-memory work requires its own workload/host baseline and browser/native retained-memory evidence. Windows rendering/input, WebView2 privacy/crash/network behavior, real Engine duplex sessions and production component selection remain unresolved.
 
+## Matched lifecycle controls, 2026-10-15
+
+**Result: the large repeated-session WebContent footprint rise reproduced only
+with the populated workload in this comparison.** The empty bridge/session
+control stayed near 24M; idle xterm construction/disposal ended near 28M; the
+populated reference rose from 81.2M at first idle to 471.3M at final idle.
+These are three short synthetic runs on the same macOS host, not an object-level
+leak diagnosis, a lifetime bound or a component decision. The patched renderer,
+ordinary **1 MiB cutoff**, finite **64 MiB diagnostic ceiling**, sandbox/CSP,
+navigation protections, enabled accessibility and privacy restrictions are
+unchanged. No forced collection, memory-pressure trigger, reset of a healthy
+measured session, heap dump, sensitive reporting or developer tools were enabled.
+
+### Matching and lifecycle evidence
+
+The prototype README now reproduces `aggregate-empty-cycles`,
+`aggregate-idle-cycles` and `aggregate-cycles` sequentially in **three fresh actual
+Release Uno macOS development applications**. Each retains one WKWebView and
+one opaque `allow-scripts` iframe for all twelve sessions, at **1024×566 CSS
+pixels**, with fixed **80×24** terminal geometry. The empty control still loads
+and parses the same xterm library/CSS; its session starts skip xterm construction
+and opening. This is a bridge/session lifecycle within the existing persistent
+frame, **not repeated iframe/WebView creation, navigation or library unloading**.
+Those other lifetimes are outside this comparison; no unrelated browser was
+substituted. Idle xterm uses the same options, focus and accessibility but
+receives no terminal output. The populated reference retains its 24 paced ticks,
+normal/alternate population and cache churn.
+
+All measured baselines now precede **any xterm construction**; the historical
+aggregate baseline below warmed up with a compatibility fixture first. Controls
+wait the matching **24×60 ms** output window and **1,200 ms** render-settle
+period; actual populated delivery adds its small parse/bridge overhead. The
+shared `populated` checkpoint name is the active-state comparison point, even
+for empty/idle controls. All variants block the same finite producer on four
+native channel slots with browser delivery held, then revoke/cancel/join it and
+the pump. That producer sends no bytes to the control surfaces. First/final
+populated and idle checkpoints dwell eight seconds for capture. First/final
+closed checkpoints have an eight-second capture dwell plus the ordinary
+eight-second idle; other cycles idle eight seconds. These small cadence changes
+apply equally to the new reference and both controls; absolute historical/new
+baseline values are not asserted as identical.
+
+During measurement the empty control records **12 starts, zero constructed /
+opened / disposed terminals, zero render events and zero accepted writes**.
+Idle records **12 constructed / opened / disposed, 12 render events and zero
+accepted writes**. Populated records **12 constructed / opened / disposed,
+377 observed render events, 300 accepted writes**, and **33,725 received bytes
+per cycle**, with the same 224 normal/24 alternate lines and bounded logical
+holdings. Render-event totals are observations, not fixed expectations. Every
+close removes all terminal nodes, joins both tasks and leaves no acknowledgment
+or input item pending. Each variant rejects **12 old-generation writes and 12
+current-closed-generation writes** without changing received bytes. Idle and
+populated final checkpoints observe **0 selected retired roots / 12 wrapper
+finalizations**, without a collection-deadline assertion. After measurement,
+all variants additionally replace an idle terminal with the empty control,
+prove no prior terminal survives, reopen compatibility output, reject a stale
+failure and run clipboard/control-byte/resize/backpressure/replacement and fixed
+popup/fetch/navigation/custom-protocol probes. These later checks intentionally
+construct terminals even in the empty-control application.
+
+### Native comparison and limits
+
+Host/runtime/Uno/WebKit conditions match the aggregate research above. Each
+matched runner passed in **about 189 seconds**. App/helper PIDs were respectively
+**6543/6546/6547/6548**, **7373/7377/7378/7379** and
+**7873/7876/7877/7878** (helper order GPU, Networking, WebContent).
+Each sequence kept one candidate per helper role. PIDs are newly observed since
+launch, not definitive ownership: existing desktop/browser processes remain and
+launchd parentage cannot exclude a concurrent unrelated WebKit launch.
+
+| Corresponding checkpoint | Empty WebContent footprint | Idle xterm footprint | Populated footprint |
+| --- | ---: | ---: | ---: |
+| Never-constructed baseline | 24.5M | 24.7M | 24.6M |
+| First active (`populated`) | 24.1M | 27.5M | 84.9M |
+| First closed | 23.7M | 27.1M | 83.4M |
+| First idle | 23.7M | 26.3M | 81.2M |
+| Final active (`populated`) | 23.8M | 28.7M | 472.0M |
+| Final closed | 23.7M | 28.5M | 471.5M |
+| Final idle | 23.7M | 28.4M | 471.3M |
+
+These are `vmmap` physical-footprint strings in its reported units. App and
+candidate-helper RSS are captured separately at every corresponding checkpoint
+in the [metadata summary](../tools/TerminalSurfacePrototype/Results/matched-controls-2026-10-15.json).
+For orientation, first→final idle RSS in **MiB** was:
+
+| Variant | App | WebContent | GPU | Networking |
+| --- | ---: | ---: | ---: | ---: |
+| Empty | 234.4→248.6 | 37.5→37.7 | 25.6→25.6 | 13.0→13.0 |
+| Idle xterm | 240.6→245.8 | 44.6→50.2 | 27.8→28.1 | 13.1→13.1 |
+| Populated | 242.9→252.6 | 94.9→199.2 | 41.8→44.5 | 13.1→13.1 |
+
+The app also rises in controls; that separate process behavior is not assigned
+to the WebContent graphics category. Native category reports were captured for
+the app and every candidate helper at all seven stages. At first/final idle,
+WebContent dirty owned-unmapped graphics was **9568 KB/9568 KB** for both
+controls, versus **40 MB/371 MB** populated. Dirty WebKit malloc was
+**9056 KB/8944 KB** empty, **11 MB/12 MB** idle, and **31 MB/90 MB** populated.
+The populated final report also classified **205 MB graphics / 70 MB WebKit
+malloc** as reclaimable; peak physical footprint was **685.4M**. Category names
+and reclaimable classifications do not identify ownership paths or reclamation
+deadlines. RSS, physical footprint and reclaimable values are different metrics;
+they are not independent allocations to add together.
+
+Each run has **165 RSS samples**, nominally one second apart, with actual
+intervals **1.03–3.59 seconds** across the three runs. Sequential native tooling
+causes the longer gaps. The summary retains per-stage native-clock requests,
+outer-clock capture start times, closest RSS sample times, all app/helper
+footprints, selected WebContent category columns, hashes and assertion outcomes.
+Raw metadata/captures remain under ignored
+`artifacts/terminal-surface/matched-controls-2026-10-15`; `summarize-controls.py`
+reproduces the committed metadata-only projection. Capture stages are held but
+are not simultaneous, and diagnostic inspection/tooling allocates memory.
+
+The controls **weaken** a dominant explanation based solely on repeated
+bridge/session calls, native channel cancellation, or blank xterm
+construction/disposal under this cadence. They **support** an association with
+paths exercised by the populated workload: parsing, rendered glyph/layout work,
+accessibility, and their browser/native allocations remain coupled. They do not
+distinguish those paths or rule out interactions with Uno/WebKit and process
+caches. Small idle growth and one short empty plateau establish no lifetime
+bound. Selected JS root collection still cannot account for every detached
+object or native allocation. The next evidence boundary is a retained-object or
+native allocation-ownership graph for the output-exercised path, obtained with
+supported, privacy-preserving synthetic instrumentation; category totals alone
+cannot cross it. No speculative renderer repair is made here. Windows
+WebView2/privacy/input, real screen-reader use, real Engine duplex sessions and
+production resource/readiness acceptance remain unresolved.
+
+Focused verification for this change: the three matched native runs and their
+control/cancellation/stale-generation/security assertions pass. Native `combined`,
+`a11y-boundaries`, `cutoff`, `links`, `width-cache` and `normal` regressions also
+pass with the final bundle, covering both-screen edits/reflow, allocation failure
+and delayed callbacks, the ordinary 1 MiB cutoff, inert OSC links, bounded cache
+churn and 14,100,000-byte diagnostic output. Raw fixture checks pass. Release
+prototype build/macOS self-contained publish and production solution build pass
+with zero warnings/errors; JS/Python/shell syntax and whitespace checks pass.
+The prior 398-group suite remains historical evidence, not a rerun for this
+harness-only change. The unchanged renderer asset remains `019495f1709e55b6ccfed75ba045483bc3ea60714f2aa7652be1fc268f1116f5`.
+
 ## Aggregate retention baseline after the three patches, 2026-10-15
 
 **Assessment: the selected active payload holdings now have a reproducible aggregate model and selected disposed JS roots were naturally collected, but repeated sessions still showed increasing WebContent RSS and a much larger native graphics footprint. Whole-browser bounded memory and native reclamation remain unestablished. Keep the ordinary 1 MiB cutoff.** This baseline uses the existing three source patches without adding a renderer mitigation or a production policy. It does not resolve the terminal-component decision.

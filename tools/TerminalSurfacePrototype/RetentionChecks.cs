@@ -7,7 +7,7 @@ using Windows.ApplicationModel.DataTransfer;
 internal static class RetentionChecks
 {
     internal static string? Workload;
-    internal static readonly string[] Workloads = ["aggregate-sustained", "aggregate-cycles", "combined", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
+    internal static readonly string[] Workloads = ["aggregate-sustained", "aggregate-empty-cycles", "aggregate-idle-cycles", "aggregate-cycles", "combined", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
     internal static int OutputLimit => Workload is null or "cutoff" ? 1048576 : 67108864;
 }
 
@@ -144,11 +144,16 @@ internal sealed partial class PrototypeView
         IsHitTestVisible = false;
         try
         {
-            await StartAsync(false);
-            await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
-            Require((await ReadResearchStatsAsync()).GetProperty("utf8").GetBoolean());
-            await RecordResearchStatsAsync("baseline");
-            if (RetentionChecks.Workload is "aggregate-sustained" or "aggregate-cycles") await CheckAggregateAsync();
+            bool aggregate = RetentionChecks.Workload!.StartsWith("aggregate-", StringComparison.Ordinal);
+            // All matched baselines have never constructed xterm. Compatibility runs afterward.
+            if (!aggregate)
+            {
+                await StartAsync(false);
+                await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+                Require((await ReadResearchStatsAsync()).GetProperty("utf8").GetBoolean());
+                await RecordResearchStatsAsync("baseline");
+            }
+            if (aggregate) await CheckAggregateAsync();
             else if (RetentionChecks.Workload == "combined") await CheckCombinedCellsAsync();
             else if (RetentionChecks.Workload == "combining")
             {
@@ -238,8 +243,13 @@ internal sealed partial class PrototypeView
     private async Task CheckAggregateAsync()
     {
         bool sustained = RetentionChecks.Workload == "aggregate-sustained";
+        bool empty = RetentionChecks.Workload == "aggregate-empty-cycles";
+        bool idle = RetentionChecks.Workload == "aggregate-idle-cycles";
+        bool control = empty || idle;
         await CloseAsync();
-        await RecordResearchStatsAsync("aggregate-empty-baseline");
+        var baseline = await RecordResearchStatsAsync("aggregate-empty-baseline");
+        Require(baseline.GetProperty("constructed").GetInt32() == 0
+            && !baseline.GetProperty("terminalPresent").GetBoolean());
         await Task.Delay(8000); // Keep this state stable for native VM/footprint snapshots.
         int cycles = sustained ? 1 : 12;
         for (int cycle = 1; cycle <= cycles; cycle++)
@@ -248,7 +258,8 @@ internal sealed partial class PrototypeView
             await RecordResearchStatsAsync($"cycle-{cycle:D2}-baseline");
             long id = generation;
             var elapsed = Stopwatch.StartNew();
-            producer = fixture.ProduceResearchAsync(sustained ? "aggregate-sustained" : "aggregate-cycle");
+            if (control) await Task.Delay(24 * 60); // Matched paced output window, zero output.
+            else producer = fixture.ProduceResearchAsync(sustained ? "aggregate-sustained" : "aggregate-cycle");
             if (sustained)
                 while (!producer.IsCompleted)
                 {
@@ -258,17 +269,36 @@ internal sealed partial class PrototypeView
                     Require(generation == id && elapsed.Elapsed < TimeSpan.FromMinutes(12));
                 }
             await producer.WaitAsync(TimeSpan.FromSeconds(30));
-            await WaitForAsync(() => deliveredBytes == fixture.ResearchBytes);
-            Require(fixture.ProducerCompleted && generation == id && fixture.ResearchBytes < 67108864);
+            if (!control) await WaitForAsync(() => deliveredBytes == fixture.ResearchBytes);
+            Require(generation == id && (control ? deliveredBytes == 0 : fixture.ProducerCompleted && fixture.ResearchBytes < 67108864));
             if (sustained) Require(elapsed.Elapsed >= TimeSpan.FromMinutes(10) && deliveredBytes > 1048576);
             // Populate alt while normal stays retained, also exercise extended attributes.
-            await SendCombinedAsync("\x1b[?1049h" + string.Concat(Enumerable.Repeat("\x1b[4:3;58:2::4:3:2mALT a\u0301 café λ 世界 🐳\x1b[0m\r\n", 30)));
+            if (!control) await SendCombinedAsync("\x1b[?1049h" + string.Concat(Enumerable.Repeat("\x1b[4:3;58:2::4:3:2mALT a\u0301 café λ 世界 🐳\x1b[0m\r\n", 30)));
             await Task.Delay(1200);
             var populated = await RecordResearchStatsAsync($"cycle-{cycle:D2}-populated");
-            CheckAggregateBounds(populated);
-            Require(populated.GetProperty("normalLines").GetInt32() == 224
-                && populated.GetProperty("alternateLines").GetInt32() == 24
-                && populated.GetProperty("widthCacheEvictions").GetInt64() > 0);
+            Require(populated.GetProperty("frameCount").GetInt32() == 1
+                && populated.GetProperty("opaqueSandbox").GetBoolean()
+                && populated.GetProperty("frameWidth").GetDouble() == baseline.GetProperty("frameWidth").GetDouble()
+                && populated.GetProperty("frameHeight").GetDouble() == baseline.GetProperty("frameHeight").GetDouble()
+                && populated.GetProperty("starts").GetInt32() == cycle);
+            if (empty)
+                Require(!populated.GetProperty("terminalPresent").GetBoolean()
+                    && populated.GetProperty("constructed").GetInt32() == 0
+                    && populated.GetProperty("opened").GetInt32() == 0
+                    && populated.GetProperty("renders").GetInt32() == 0
+                    && populated.GetProperty("attachedTerminalNodes").GetInt32() == 0);
+            else
+            {
+                CheckAggregateBounds(populated);
+                Require(populated.GetProperty("constructed").GetInt32() == cycle
+                    && populated.GetProperty("opened").GetInt32() == cycle
+                    && populated.GetProperty("renders").GetInt32() >= cycle);
+                Require(populated.GetProperty("normalLines").GetInt32() == (idle ? 24 : 224)
+                    && populated.GetProperty("alternateLines").GetInt32() == (idle ? 0 : 24));
+                if (!idle) Require(populated.GetProperty("widthCacheEvictions").GetInt64() > 0);
+            }
+            if (control) Require(populated.GetProperty("received").GetInt64() == 0
+                && populated.GetProperty("acceptedWrites").GetInt32() == 0);
             if (sustained || cycle is 1 or 12) await Task.Delay(8000);
             // Block a fresh producer in the same populated session; close must join both tasks.
             holdDelivery = true;
@@ -278,19 +308,44 @@ internal sealed partial class PrototypeView
             await CloseAsync(); holdDelivery = false;
             Require(producer.IsCompleted && pump.IsCompleted && generation < 0);
             await web.ExecuteScriptAsync($"surface.write({id},0,'c3RhbGU=')");
+            await web.ExecuteScriptAsync($"surface.write({generation},0,'c3RhbGU=')");
             var closed = await RecordResearchStatsAsync($"cycle-{cycle:D2}-post-close");
             Require(!closed.GetProperty("terminalPresent").GetBoolean()
                 && closed.GetProperty("attachedTerminalNodes").GetInt32() == 0
-                && closed.GetProperty("received").GetInt64() == populated.GetProperty("received").GetInt64());
+                && closed.GetProperty("received").GetInt64() == populated.GetProperty("received").GetInt64()
+                && closed.GetProperty("disposed").GetInt32() == (empty ? 0 : cycle)
+                && closed.GetProperty("staleWrites").GetInt32() == cycle
+                && closed.GetProperty("inactiveWrites").GetInt32() == cycle);
+            if (cycle is 1 or 12) await Task.Delay(8000); // Closed capture dwell, identical across variants.
             await Task.Delay(sustained ? 30000 : 8000);
             await RecordResearchStatsAsync($"cycle-{cycle:D2}-post-idle");
             if (sustained || cycle is 1 or 12) await Task.Delay(8000);
         }
+        // Measurement ends above. Verify an empty replacement cannot retain a prior terminal.
+        await OpenResearchAsync("aggregate-idle-cycles");
+        long staleControl = generation;
+        await OpenResearchAsync("aggregate-empty-cycles");
+        await web.ExecuteScriptAsync($"surface.write({staleControl},0,'c3RhbGU=')");
+        await web.ExecuteScriptAsync($"surface.write({generation},0,'c3RhbGU=')");
+        var cleared = await RecordResearchStatsAsync("control-replaced-terminal");
+        Require(!cleared.GetProperty("terminalPresent").GetBoolean()
+            && cleared.GetProperty("attachedTerminalNodes").GetInt32() == 0
+            && cleared.GetProperty("received").GetInt64() == 0);
         // Reopen and prove delayed old writes/failures cannot affect a replacement.
         await StartAsync(false);
         await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await FailSurfaceAsync(staleControl, "accessibility-limit");
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
         await CheckResearchLifecycleAsync();
-        await RecordResearchStatsAsync("aggregate-reopened-compatible");
+        await web.ExecuteScriptAsync("surface.probePopup()");
+        await web.ExecuteScriptAsync("surface.probeFetch()");
+        await web.ExecuteScriptAsync("surface.probeNavigation()");
+        await web.ExecuteScriptAsync("surface.probeExternal()");
+        await WaitForAsync(() => fetchBlocked == true && sandboxPopupBlocked == true);
+        var secured = await RecordResearchStatsAsync("aggregate-reopened-compatible");
+        Require(secured.GetProperty("utf8").GetBoolean()
+            && secured.GetProperty("externalPopupBlocked").GetBoolean()
+            && secured.GetProperty("topNavigationBlocked").GetBoolean());
     }
     private static void CheckAggregateBounds(JsonElement value)
     {

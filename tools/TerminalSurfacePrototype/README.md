@@ -67,3 +67,47 @@ There are no heap dumps, forced collections or debugger/privacy changes. Only
 660 seconds); its producer has a finite twelve-minute deadline. The ordinary
 1 MiB cutoff and named 64 MiB diagnostic ceiling are unchanged. See the research
 document and committed metadata summary for observed results and remaining gaps.
+
+## Matched native-memory controls
+
+Publish the development bundle above, then run the three variants in separate
+fresh actual Uno macOS applications (the runner launches them sequentially):
+
+```sh
+python3 tools/TerminalSurfacePrototype/run-retention-checks.py artifacts/terminal-surface/macos/TerminalSurfaceResearch.app --workload aggregate-empty-cycles --workload aggregate-idle-cycles --workload aggregate-cycles --output artifacts/terminal-surface/matched-controls-2026-10-15
+python3 tools/TerminalSurfacePrototype/summarize-controls.py artifacts/terminal-surface/matched-controls-2026-10-15 tools/TerminalSurfacePrototype/Results/matched-controls-2026-10-15.json
+```
+
+All three retain one native host, WKWebView and opaque sandbox frame throughout
+12 cycles, with the same embedded assets/CSP/bridge, native fixture/channel,
+80×24 dimensions and window geometry. `aggregate-empty-cycles` starts/closes
+bridge sessions without constructing xterm; it still loads/parses the bundled
+library and CSS. It does **not** recreate the iframe, navigate WKWebView, unload
+the library or emulate a different browser. `aggregate-idle-cycles` constructs,
+opens, focuses and disposes xterm with accessibility enabled but no output.
+`aggregate-cycles` remains the fixed populated reference: 24 paced ticks,
+normal+alternate screens and width-cache churn, with no renderer change.
+
+Measurements begin before any terminal has been constructed. Controls wait the
+same 24×60 ms output window plus 1,200 ms render-settle period. The populated
+reference also includes actual delivery/parse overhead. The shared `populated`
+stage name denotes the active-phase checkpoint for controls, which receive zero
+terminal output. Every variant then
+holds native delivery, blocks the same finite producer on four channel slots,
+and cancels/joins producer and pump; those control bytes never reach xterm.
+Every close tests stale-generation and current-closed-generation writes and
+requires unchanged received bytes and no attached terminal. Selected first/final
+populated and idle stages dwell eight seconds for native tools. First/final
+closed stages have an eight-second capture dwell followed by the ordinary
+eight-second idle; other cycles idle eight seconds. Corresponding stages have
+identical cadence across variants; captures remain sequential observations.
+
+Counters record starts/closes, xterm construction/open/disposal/render events,
+accepted/rejected writes, current DOM geometry/counts and existing bounded
+retention metadata. After the measurement window, each variant explicitly
+replaces an idle terminal with the empty control, proves no terminal remains,
+then runs ordinary compatibility/replacement and fixed security probes. Thus the
+empty **measured** sequence constructs zero terminals, while its later checks
+intentionally construct terminals. No forced collection, sensitive reporting or
+production alternative mode is introduced. Read the research report and the
+metadata summary for observations, attribution limits and remaining evidence.

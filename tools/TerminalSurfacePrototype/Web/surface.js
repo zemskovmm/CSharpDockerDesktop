@@ -5,9 +5,13 @@
   // Only weak references and numeric snapshots: diagnostics must not root old terminals.
   const retired = [];
   let disposed = 0, finalized = 0, lastDisposed = {};
+  let starts = 0, closes = 0, constructed = 0, opened = 0, renders = 0;
+  let acceptedWrites = 0, staleWrites = 0, inactiveWrites = 0;
   const finalizer = typeof FinalizationRegistry === 'function'
     ? new FinalizationRegistry(() => finalized++) : null;
   const lifecycleStats = () => ({terminalPresent:!!term, disposed, finalized,
+    starts, closes, constructed, opened, renders, acceptedWrites, staleWrites, inactiveWrites,
+    emptyControl:researchMode === 'aggregate-empty-cycles',
     weakRefSupported:typeof WeakRef === 'function',
     retiredRootsAlive:retired.filter(ref => ref.deref() !== undefined).length,
     attachedTerminalNodes:document.querySelectorAll('.terminal').length,
@@ -158,14 +162,20 @@
   window.surface = {
     start(id, probe = '') {
       generation = id; failed = false; received = 0; lastSequence = 0; a11yNavigated = false; a11yWriteHeld = false; blockedLinks = 0;
-      researchMode = probe;
-      if (term) disposeTerminal(term); document.getElementById('terminal').replaceChildren();
+      // Dispose under the previous mode before switching, including terminal -> empty.
+      if (term) disposeTerminal(term); term = undefined;
+      document.getElementById('terminal').replaceChildren();
+      researchMode = probe; starts++;
+      // Same opaque document and bridge lifecycle; no xterm construction/open/render.
+      if (probe === 'aggregate-empty-cycles') return;
       term = new Terminal({cols:80, rows:24, scrollback:200, fontSize:14, logLevel:'off',
         allowProposedApi:false, screenReaderMode:true,
         linkHandler:{activate:()=>{ blockedLinks++; }, allowNonHttpProtocols:false}});
+      constructed++;
       const target = term;
+      term.onRender(() => renders++);
       target._core.onResearchAccessibilityFailure(() => failSurface(target, id, lastSequence, 'accessibility-limit'));
-      term.open(document.getElementById('terminal'));
+      term.open(document.getElementById('terminal')); opened++;
       // Experimental fidelity tradeoff: links were already inert. Consume their
       // metadata too, avoiding per-opening link/marker retention on an untrimmed row.
       // A fixed synthetic baseline probe alone can compare stock behavior.
@@ -178,7 +188,9 @@
       term.focus();
     },
     write(id, sequence, base64) {
-      if (id !== generation || !term || failed) return;
+      if (id !== generation) { staleWrites++; return; }
+      if (!term || failed) { inactiveWrites++; return; }
+      acceptedWrites++;
       const target = term; lastSequence = sequence;
       const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
       received += bytes.length;
@@ -192,7 +204,7 @@
         post({kind:'ack', generation, sequence});
       });
     },
-    close(id) { failed = true; generation = id; if (term) disposeTerminal(term); term = undefined;
+    close(id) { closes++; failed = true; generation = id; if (term) disposeTerminal(term); term = undefined;
       document.getElementById('terminal').replaceChildren(); },
     resize(columns, rows) { term?.resize(columns, rows); term?.focus(); },
     selection() { return term?.getSelection() || ''; },
