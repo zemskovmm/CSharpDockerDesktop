@@ -30,6 +30,11 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Exec attachment official contracts raw duplex and EOF", ExecAttachmentChecks.ContractsAndRawDuplex),
+    ("Exec attachment rejections framing and continuity", ExecAttachmentChecks.RejectionsFramingAndContinuity),
+    ("Exec attachment cancellation admission and ownership", ExecAttachmentChecks.CancellationAdmissionAndOwnership),
+    ("Exec attachment noncooperative cleanup and input", ExecAttachmentChecks.NoncooperativeCleanupAndInput),
+    ("Exec attachment named-pipe duplex lost response and no replay", ExecAttachmentChecks.NamedPipeDuplexAndLostStart),
     ("Exec official negotiated contracts and explicit argument serialization", ExecChecks.OfficialContractsAndArguments),
     ("Exec additive unavailable and malformed evidence", ExecChecks.MissingNullAndMalformedEvidence),
     ("Exec bounded identities arguments request response and error bodies", ExecChecks.InputsAndBounds),

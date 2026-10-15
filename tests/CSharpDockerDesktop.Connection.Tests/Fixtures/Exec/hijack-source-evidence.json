@@ -1,0 +1,33 @@
+{
+  "retrieved": "2026-10-15",
+  "scope": "Bounded source facts, not real Engine execution evidence. Exact URLs and hashes permit rechecking.",
+  "sources": [
+    {
+      "name": "1.40-era-router",
+      "source": "https://raw.githubusercontent.com/moby/moby/v19.03.15/api/server/router/container/exec.go",
+      "sha256": "69b8abf21ccb243b79a1441831216951e512e297ede682e037bdac2003b90a5e",
+      "observations": [
+        "Upgrade request receives HTTP/1.1 101, Connection Upgrade, Upgrade tcp, Docker raw-stream media for TTY. Without upgrade, router emits historical 200 raw response.",
+        "Router sends attachment headers before invoking exec process start; later process-start failures may arrive as terminal output. TTY writes raw stdout; non-TTY uses stream framing."
+      ]
+    },
+    {
+      "name": "current-router",
+      "source": "https://raw.githubusercontent.com/moby/moby/b26fb77d3e7b01f9d21b89539c1ab428f5ca431f/daemon/server/router/container/exec.go",
+      "sha256": "708b067622c6fdfc12fcddf2fe159a0d97b3660c77dceca765074f74e4ba118b",
+      "observations": [
+        "Upgrade request receives HTTP/1.1 101, Connection Upgrade, Upgrade tcp, Docker raw-stream media for TTY. Without upgrade, router emits historical 200 raw response.",
+        "Router sends attachment headers before invoking exec process start; later process-start failures may arrive as terminal output. TTY writes raw stdout; non-TTY uses stream framing."
+      ]
+    },
+    {
+      "name": "hijack-client",
+      "source": "https://raw.githubusercontent.com/moby/moby/b26fb77d3e7b01f9d21b89539c1ab428f5ca431f/client/hijack.go",
+      "sha256": "e90ace95d459bd38c13277b0c2df54ccbc303255064543730b15ab919ff6f59e",
+      "observations": [
+        "Official client sends Upgrade tcp and requires status 101.",
+        "Client retains buffered read-ahead bytes when handing the connection to the caller."
+      ]
+    }
+  ]
+}

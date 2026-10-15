@@ -8,6 +8,11 @@ internal interface IDockerTransportFactory
     HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options);
 }
 
+internal interface IDockerDuplexTransportFactory
+{
+    ValueTask<Stream> OpenDuplexAsync(EngineEndpoint endpoint, DockerConnectionOptions options, CancellationToken token);
+}
+
 internal interface ITransportContinuity
 {
     long ConnectionGeneration { get; }
@@ -70,7 +75,7 @@ internal sealed class ContinuityHandler(HttpMessageHandler inner, PipeConnection
     }
 }
 
-internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerTransportFactory
+internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerTransportFactory, IDockerDuplexTransportFactory
 {
     public HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options)
     {
@@ -110,6 +115,19 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
             }
         };
         return new ContinuityHandler(handler, counter);
+    }
+
+    public async ValueTask<Stream> OpenDuplexAsync(EngineEndpoint endpoint, DockerConnectionOptions options, CancellationToken token)
+    {
+        if (!OperatingSystem.IsWindows() && !permitTestHost)
+            throw new ConnectionProtocolException(new(EngineConnectionFailureKind.UnsupportedEndpoint, "Docker named pipes require Windows."));
+        var pipe = new NamedPipeClientStream(".", GetLocalPipeName(endpoint), PipeDirection.InOut, PipeOptions.Asynchronous);
+        try
+        {
+            await pipe.ConnectAsync((int)Math.Ceiling(options.PipeConnectTimeout.TotalMilliseconds), token).ConfigureAwait(false);
+            return pipe;
+        }
+        catch { await pipe.DisposeAsync().ConfigureAwait(false); throw; }
     }
 
     internal static string GetLocalPipeName(EngineEndpoint endpoint)

@@ -323,10 +323,10 @@ internal static class LogChecks
 
     internal static async Task SimultaneousNamedPipe()
     {
-        // Actual SocketsHttpHandler over four controlled pipe connections, not a real Docker daemon.
+        // Actual SocketsHttpHandler over five controlled pipe connections, not a real Docker daemon.
         var name = "cdd-logs-" + Guid.NewGuid().ToString("N")[..8];
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var pipes = Enumerable.Range(0, 4).Select(_ => new NamedPipeServerStream(name, PipeDirection.InOut, 4, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)).ToArray();
+        var pipes = Enumerable.Range(0, 5).Select(_ => new NamedPipeServerStream(name, PipeDirection.InOut, 5, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)).ToArray();
         var paths = new ConcurrentQueue<string>();
         async Task Serve(NamedPipeServerStream pipe)
         {
@@ -350,6 +350,15 @@ internal static class LogChecks
                     using var createBody = System.Text.Json.JsonDocument.Parse(requestBody);
                     Check(createBody.RootElement.GetProperty("Cmd").EnumerateArray().Single().GetString() == "explicit-command"
                         && createBody.RootElement.GetProperty("AttachStdin").GetBoolean() && createBody.RootElement.GetProperty("Tty").GetBoolean());
+                }
+                if (path == $"/v1.56/exec/{ExecChecks.ExecId}/start")
+                {
+                    Check(header.ToString().Contains("Upgrade: tcp") && Encoding.UTF8.GetString(requestBody) == "{\"Detach\":false,\"Tty\":true}");
+                    await pipe.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 101 UPGRADED\r\nContent-Type: application/vnd.docker.raw-stream\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n").Concat(new byte[] { 0xe2, 0x82, 0xac, 27, 91, 109 }).ToArray(), deadline.Token);
+                    var control = new byte[3]; await pipe.ReadExactlyAsync(control, deadline.Token);
+                    Check(control.SequenceEqual(new byte[] { 3, 0, 27 }));
+                    try { Check(await pipe.ReadAsync(one, deadline.Token) == 0); } catch (IOException) { }
+                    return;
                 }
                 if (path.Contains("/logs?") || path.Contains("/events?") || path.Contains("/stats?"))
                 {
@@ -379,7 +388,7 @@ internal static class LogChecks
                     "/v1.56/volumes" => "{\"Volumes\":[{\"Name\":\"plugin/full?name\",\"Driver\":\"custom\"}],\"Warnings\":[\"private synthetic warning\"]}",
                     "/v1.56/volumes/plugin%2Ffull%3Fname" => "{\"Name\":\"plugin/full?name\",\"Status\":{\"token\":\"private synthetic secret\"}}",
                     var execPath when execPath == $"/v1.56/containers/{ExecChecks.ContainerId}/exec" => $$"""{"Id":"{{ExecChecks.ExecId}}"}""",
-                    var execPath when execPath == $"/v1.56/exec/{ExecChecks.ExecId}/json" => $$"""{"ID":"{{ExecChecks.ExecId}}","ContainerID":"{{ExecChecks.ContainerId}}","Running":false,"ExitCode":0}""",
+                    var execPath when execPath == $"/v1.56/exec/{ExecChecks.ExecId}/json" => $$$"""{"ID":"{{{ExecChecks.ExecId}}}","ContainerID":"{{{ExecChecks.ContainerId}}}","Running":false,"ExitCode":0,"OpenStdin":true,"OpenStdout":true,"OpenStderr":true,"ProcessConfig":{"tty":true}}""",
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
@@ -444,6 +453,14 @@ internal static class LogChecks
             Check(createdExec.IsUsableAcknowledgement && createdExec.AcknowledgedInstance!.ExecId == ExecChecks.ExecId);
             var inspectedExec = await ((IContainerExec)owner).InspectExecAsync(createdExec.AcknowledgedInstance!, deadline.Token);
             Check(inspectedExec.IsSuccess && inspectedExec.Value!.Running == false && inspectedExec.Value.ExitCode == 0);
+            var startedExec = await ((IContainerExec)owner).StartTtyExecAsync(createdExec.AcknowledgedInstance!, deadline.Token);
+            Check(startedExec.Disposition == ContainerExecStartDisposition.Established); await using var attachment = startedExec.Attachment!;
+            var terminalBytes = new List<byte>();
+            while (terminalBytes.Count < 6) terminalBytes.AddRange(await attachment.Output.ReadAsync(deadline.Token));
+            Check(terminalBytes.SequenceEqual(new byte[] { 0xe2, 0x82, 0xac, 27, 91, 109 }));
+            Check((await attachment.WriteAsync(new byte[] { 3, 0, 27 }, deadline.Token)).Disposition == ContainerExecWriteDisposition.Written);
+            Check(!attachment.Completion.IsCompleted && !logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted,
+                "Attached duplex exec must coexist with resource, event, logs and Stats work");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Exec protocol requests leave all live streams running");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Network deletion leaves unrelated live streams running");
             Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
@@ -451,6 +468,8 @@ internal static class LogChecks
             Check((await ((IImageReader)owner).ListImagesAsync(deadline.Token)).IsSuccess);
             Check((await ((IContainerCommands)owner).StartContainerAsync("canonical", deadline.Token)).Disposition == ContainerCommandDisposition.Acknowledged);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
+            await attachment.DisposeAsync();
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Attachment cleanup leaves all existing streams active");
             await logs.DisposeAsync(); await events.DisposeAsync(); await stats.DisposeAsync();
             Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
             Check((await ((INetworkReader)owner).InspectNetworkAsync("complete-network-id", deadline.Token)).IsSuccess);
@@ -459,8 +478,8 @@ internal static class LogChecks
             Check((await ((IContainerReader)owner).ListContainersAsync(deadline.Token)).IsSuccess);
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await owner.DisposeAsync(); await serving;
-            Check(paths.Count(p => p == "/version") == 4 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1 && paths.Count(p => p.Contains("/stats?")) == 1);
-            Check(paths.Count(p => p.EndsWith("/exec")) == 1 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/json") == 1);
+            Check(paths.Count(p => p == "/version") == 5 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1 && paths.Count(p => p.Contains("/stats?")) == 1);
+            Check(paths.Count(p => p.EndsWith("/exec")) == 1 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/json") == 2 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/start") == 1);
         }
         finally { foreach (var pipe in pipes) pipe.Dispose(); }
     }

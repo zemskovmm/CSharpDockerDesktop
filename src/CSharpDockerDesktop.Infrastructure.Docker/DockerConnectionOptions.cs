@@ -28,6 +28,13 @@ public sealed record DockerConnectionOptions
     public int MaximumExecResponseBytes { get; init; } = 64 * 1024;
     public int MaximumConcurrentExecInspections { get; init; } = 4;
 
+    public TimeSpan ExecOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
+    public int MaximumConcurrentExecAttachments { get; init; } = 2;
+    public int MaximumExecHeaderBytes { get; init; } = 16 * 1024;
+    public int ExecOutputCapacity { get; init; } = 16;
+    public int MaximumExecOutputChunkBytes { get; init; } = 4096;
+    public int MaximumExecInputBytes { get; init; } = 4096;
+
     public TimeSpan LogOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public int MaximumConcurrentLogSubscriptions { get; init; } = 4;
     public int MaximumLogTailLines { get; init; } = 10_000;
@@ -44,6 +51,12 @@ public sealed record DockerConnectionOptions
 
     internal void Validate()
     {
+        if (ExecOpeningTimeout <= TimeSpan.Zero || ExecOpeningTimeout.TotalMilliseconds > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(ExecOpeningTimeout));
+        if (MaximumConcurrentExecAttachments is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentExecAttachments));
+        if (MaximumExecHeaderBytes is < 128 or > 65536) throw new ArgumentOutOfRangeException(nameof(MaximumExecHeaderBytes));
+        if (ExecOutputCapacity is < 1 or > 4096) throw new ArgumentOutOfRangeException(nameof(ExecOutputCapacity));
+        if (MaximumExecOutputChunkBytes is < 1 or > 65536) throw new ArgumentOutOfRangeException(nameof(MaximumExecOutputChunkBytes));
+        if (MaximumExecInputBytes is < 1 or > 65536) throw new ArgumentOutOfRangeException(nameof(MaximumExecInputBytes));
         if (MaximumExecArguments is < 1 or > 4096) throw new ArgumentOutOfRangeException(nameof(MaximumExecArguments));
         if (MaximumExecArgumentBytes is < 1 or > 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(MaximumExecArgumentBytes));
         if (MaximumExecRequestBytes is < 128 or > 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(MaximumExecRequestBytes));

@@ -55,3 +55,9 @@ public sealed record ContainerExecInspectionResult(ContainerExecInspection? Valu
     public bool IsSuccess => Value is not null && Failure is null;
     public override string ToString() => $"Exec inspection success: {IsSuccess}; failure: {Failure?.Kind}";
 }
+
+public enum ContainerExecStartDisposition { NotDispatched, DaemonRejected, Established, Uncertain }
+public enum ContainerExecAttachmentTermination { EndOfStream, Canceled, Failed }
+public sealed record ContainerExecAttachmentCompletion(ContainerExecAttachmentTermination Termination, ContainerExecFailure? Failure = null);
+public enum ContainerExecWriteDisposition { NotWritten, Written, Uncertain }
+public sealed record ContainerExecWriteResult(ContainerExecWriteDisposition Disposition, ContainerExecFailure? Failure = null);

@@ -90,6 +90,10 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
         finally { http?.Dispose(); }
     }
 
+    internal ValueTask<Stream> OpenExecTransportAsync(EngineEndpoint endpoint, CancellationToken token)
+        => transport is IDockerDuplexTransportFactory duplex ? duplex.OpenDuplexAsync(endpoint, options, token)
+            : ValueTask.FromException<Stream>(new IOException("This transport does not support owned duplex attachments."));
+
     internal async Task<EngineConnectionFailure?> CheckLivenessAsync(HttpClient http, ITransportContinuity? continuity, long? generation, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -440,6 +444,7 @@ internal sealed partial class DockerEngineConnection(HttpClient http, EngineMeta
             http.Dispose();
             var pending = logSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()).ToList();
             pending.AddRange(execOperations);
+            pending.AddRange(execAttachments.Select(attachment => attachment.DisposeAsync().AsTask()));
             pending.AddRange(statsSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()));
             if (eventSubscription is { } subscription) pending.Add(subscription.DisposeAsync().AsTask());
             _ = Task.WhenAll(pending).ContinueWith(ended =>

@@ -23,3 +23,5 @@ The retained connection provides borrowed `INetworkCommands` for ordinary deleti
 The borrowed `IContainerStatsSource` provides cancelable continuous raw counter acquisition through independently negotiated bounded Stats pools. See [Stats ownership, platform schemas, budgets and verification limits](../../docs/container-stats.md). Derived metrics, DesktopSession history and Stats UI remain subsequent work.
 
 The retained connection exposes borrowed `IContainerExec` for explicit TTY exec creation and bounded inspection on its existing negotiated transport. See [exec protocol ownership, cancellation/outcome evidence, API compatibility and verification limits](../../docs/container-exec-protocol.md). Start/duplex attachment, resize, terminal coordination and UI are outside this capability.
+
+Attached TTY exec start now has a separately owned one-shot named-pipe duplex path behind `IContainerExec`. See [EXEC-ATTACHMENT.md](EXEC-ATTACHMENT.md) for the supported upgrade handshake, outcome/ownership budgets, simulated evidence and outstanding real Windows/Engine validation.
