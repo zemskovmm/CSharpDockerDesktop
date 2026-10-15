@@ -22,6 +22,9 @@ public sealed record VolumeOperationSnapshot(long OperationId, VolumeOperationRe
     VolumeDependencyObservationState DependencyObservationState = VolumeDependencyObservationState.NotRequested,
     EngineResourceFailure? DependencyFailure = null, int DependencyRefreshAttempts = 0)
 {
+    /// <summary>Captured at admission; retained evidence always belongs to this endpoint and Engine.</summary>
+    public EngineEndpoint? Endpoint { get; init; }
+    public string? EngineId { get; init; }
     public bool Pending => Phase != VolumeOperationPhase.Completed;
 }
 

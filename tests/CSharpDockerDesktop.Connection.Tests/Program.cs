@@ -411,6 +411,13 @@ var tests = new (string, Func<Task>)[]
     ("Container malformed and bounded responses", ContainerChecks.MalformedAndBounds),
     ("Container cancellation, deadlines and disposal", ContainerChecks.CancellationAndDisposal),
     ("Container retained transport continuity", ContainerChecks.Continuity),
+    ("Endpoint selection coalesces negotiation and joins shutdown races", EndpointSelectionChecks.CoalescedNegotiationAndShutdown),
+    ("Endpoint recovery uses current selection and disconnect fences cleanup", EndpointSelectionChecks.RecoveryAndDisconnectFence),
+    ("Endpoint switches isolate resources, details and deletion preparations", EndpointSelectionChecks.ResourceAndPreparationIsolation),
+    ("Endpoint switches retain original mutation evidence without replay", EndpointSelectionChecks.MutationEvidenceIsolation),
+    ("Endpoint switches retain image, volume and network mutation evidence", EndpointSelectionChecks.ResourceMutationEvidenceIsolation),
+    ("Endpoint switches revoke and join live sessions", EndpointSelectionChecks.LiveOwnershipAndCleanup),
+    ("Endpoint selection preserves infrastructure rejection without fallback", EndpointSelectionChecks.InvalidSelections),
     ("Coordinator initial failure and recovery", CoordinatorChecks.InitialRecovery),
     ("Coordinator healthy retention and fresh negotiation after loss", CoordinatorChecks.HealthyAndLost),
     ("Coordinator preserved failure distinctions and bounded attempts", CoordinatorChecks.FailuresAndBounds),
@@ -450,6 +457,8 @@ if (args.FirstOrDefault() == "--network-preparation")
     tests = tests.Where(test => test.Item1.StartsWith("Network preparation ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--network-operations")
     tests = tests.Where(test => test.Item1.StartsWith("Network operations ", StringComparison.Ordinal)).ToArray();
+if (args.FirstOrDefault() == "--endpoint-selection")
+    tests = tests.Where(test => test.Item1.StartsWith("Endpoint ", StringComparison.Ordinal)).ToArray();
 int failed = 0;
 foreach (var (name, test) in tests)
 {

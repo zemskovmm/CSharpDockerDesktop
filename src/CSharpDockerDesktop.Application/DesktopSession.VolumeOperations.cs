@@ -45,7 +45,8 @@ public sealed partial class DesktopSession : IVolumeOperations
             // Validation and consumption share the same gate with events, close, and supersession.
             prepared.Snapshot = evidence with { Identity = evidence.Identity with { Revision = evidence.Identity.Revision + 1 },
                 Phase = VolumePreparationPhase.Consumed };
-            volumeOperation = new(++nextVolumeOperation, request, VolumeOperationPhase.CommandPending, evidence);
+            volumeOperation = new(++nextVolumeOperation, request, VolumeOperationPhase.CommandPending, evidence)
+            { Endpoint = reads.Containers.Connection.Metadata.Endpoint, EngineId = reads.Containers.Connection.Metadata.EngineId };
             volumeOperationEndpoint = reads.Containers.Connection.Metadata.Endpoint;
             volumeOperationEngineId = reads.Containers.Connection.Metadata.EngineId;
             FenceVolumeOperationReadsLocked(reads);

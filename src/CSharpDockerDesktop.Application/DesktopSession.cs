@@ -41,6 +41,9 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private readonly ContainerOperationOptions operationOptions;
     private CancellationTokenSource? workflowCancellation;
     private Task workflow = Task.CompletedTask;
+    private ConnectionWorkflow? pendingWorkflow;
+    private bool workflowRunnerActive;
+    private Task connectionCleanup = Task.CompletedTask;
     private long generation;
     private bool started, disposed;
     private ConnectionSnapshot snapshot;
@@ -84,6 +87,18 @@ public sealed partial class DesktopSession : IAsyncDisposable
     public void Start() => Restart(onlyIfNotStarted: true);
     public void Retry() => Restart(onlyIfNotStarted: false);
 
+    /// <summary>
+    /// Select an explicit endpoint and connect asynchronously. Revokes the old connection before returning.
+    /// One active workflow drains before the latest pending selection starts; intermediate selections are discarded.
+    /// Selecting the current endpoint is a no-op; use Retry to negotiate it again.
+    /// Infrastructure validates the endpoint and reports unsupported selections without fallback.
+    /// </summary>
+    public void SelectEndpoint(EngineEndpoint endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        Restart(onlyIfNotStarted: false, endpoint);
+    }
+
     /// <summary>Cancel and join owned work while keeping the session available for a later Start/Retry.</summary>
     public Task DisconnectAsync()
     {
@@ -92,13 +107,14 @@ public sealed partial class DesktopSession : IAsyncDisposable
         {
             if (disposed) return Task.WhenAll(workflow, logsWork, logNotifications, statsWork, statsNotifications, terminalWork, terminalNotifications);
             started = false;
-            CloseStatsLocked();
-            CloseLogsLocked(ContainerLogsPhase.Closed);
+            pendingWorkflow = null;
+            snapshot = new(EngineConnectionState.NotConnected, snapshot.Endpoint);
             ++generation;
             InvalidateContainersLocked();
+            CloseStatsLocked();
+            CloseLogsLocked(ContainerLogsPhase.Closed);
             workflowCancellation?.Cancel();
-            snapshot = new(EngineConnectionState.NotConnected, snapshot.Endpoint);
-            completion = Task.WhenAll(workflow, logsWork, statsWork, terminalWork, JoinTerminalNotificationsLocked());
+            completion = Task.WhenAll(connectionCleanup, logsWork, statsWork, terminalWork, JoinTerminalNotificationsLocked());
         }
         Changed?.Invoke(this, EventArgs.Empty);
         NotifyContainerBrowsers();
@@ -106,34 +122,74 @@ public sealed partial class DesktopSession : IAsyncDisposable
         return completion;
     }
 
-    private void Restart(bool onlyIfNotStarted)
+    private void Restart(bool onlyIfNotStarted, EngineEndpoint? endpoint = null)
     {
         lock (gate)
         {
-            if (disposed || (onlyIfNotStarted && started)) return;
+            if (disposed || (onlyIfNotStarted && started) || endpoint == snapshot.Endpoint) return;
             started = true;
-            var previous = workflow;
+            var selected = endpoint ?? snapshot.Endpoint;
+            ++generation;
+            snapshot = new(EngineConnectionState.Connecting, selected);
+            pendingWorkflow = new(generation, selected);
             InvalidateContainersLocked();
-            workflowCancellation?.Cancel();
-            var cancellation = new CancellationTokenSource();
-            workflowCancellation = cancellation;
-            var currentGeneration = ++generation;
-            // Serial chaining also handles clients that complete successfully after cancellation.
-            workflow = Task.Run(async () =>
+            // Explicit selection ends live-view ownership even if the user returns to the same Engine later.
+            if (endpoint is not null)
             {
-                await previous.ConfigureAwait(false);
-                try { await RunAsync(currentGeneration, cancellation.Token).ConfigureAwait(false); }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
-                finally
-                {
-                    lock (gate) { if (ReferenceEquals(workflowCancellation, cancellation)) workflowCancellation = null; }
-                    cancellation.Dispose();
-                }
-            });
+                CloseLogsLocked(ContainerLogsPhase.Closed);
+                CloseStatsLocked();
+                eventCursor = null;
+                cursorEndpoint = null;
+                cursorEngineId = null;
+            }
+            workflowCancellation?.Cancel();
+            if (!workflowRunnerActive)
+            {
+                workflowRunnerActive = true;
+                workflow = Task.Run(RunConnectionQueueAsync);
+            }
         }
+        Changed?.Invoke(this, EventArgs.Empty);
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private async Task RunConnectionQueueAsync()
+    {
+        while (true)
+        {
+            ConnectionWorkflow request;
+            CancellationTokenSource cancellation;
+            TaskCompletionSource cleanup;
+            lock (gate)
+            {
+                if (disposed || pendingWorkflow is not { } pending)
+                {
+                    pendingWorkflow = null;
+                    workflowRunnerActive = false;
+                    return;
+                }
+                request = pending;
+                pendingWorkflow = null;
+                workflowCancellation = cancellation = new();
+                cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                connectionCleanup = cleanup.Task;
+            }
+            try { await RunAsync(request.Generation, request.Endpoint, cancellation.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+            finally
+            {
+                lock (gate)
+                {
+                    workflowCancellation = null;
+                    cancellation.Dispose();
+                    cleanup.TrySetResult();
+                }
+            }
+        }
+    }
+
+    private sealed record ConnectionWorkflow(long Generation, EngineEndpoint Endpoint);
 
     private bool Publish(long currentGeneration, ConnectionSnapshot value)
     {
@@ -146,14 +202,13 @@ public sealed partial class DesktopSession : IAsyncDisposable
         return true;
     }
 
-    private async Task RunAsync(long currentGeneration, CancellationToken token)
+    private async Task RunAsync(long currentGeneration, EngineEndpoint endpoint, CancellationToken token)
     {
         IEngineConnection? connection = null;
         ContainerReads? reads = null;
         ImageReads? images = null;
         VolumeReads? volumes = null;
         NetworkReads? networks = null;
-        var endpoint = Snapshot.Endpoint;
         var lost = false;
         int retries = 0;
         EngineConnectionFailure? lastFailure = null;
@@ -282,9 +337,10 @@ public sealed partial class DesktopSession : IAsyncDisposable
         {
             if (!disposed)
             {
+                disposed = true;
+                pendingWorkflow = null;
                 CloseLogsLocked(ContainerLogsPhase.Closed);
                 CloseStatsLocked();
-                disposed = true;
                 logNotificationLifetime.Cancel();
                 statsNotificationLifetime.Cancel();
                 terminalNotificationLifetime.Cancel();

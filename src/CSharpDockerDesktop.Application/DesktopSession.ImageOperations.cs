@@ -35,7 +35,8 @@ public sealed partial class DesktopSession : IImageOperations
                 return pending.Request == request ? imageOperationCompletion! : RejectImageOperation(request,
                     ImageCommandFailureKind.CapacityExceeded, "Another image operation is pending.");
             long id = ++nextImageOperation;
-            imageOperation = new(id, request, ImageOperationPhase.CommandPending);
+            imageOperation = new(id, request, ImageOperationPhase.CommandPending)
+            { Endpoint = reads.Containers.Connection.Metadata.Endpoint, EngineId = reads.Containers.Connection.Metadata.EngineId };
             imageOperationEndpoint = reads.Containers.Connection.Metadata.Endpoint;
             imageOperationEngineId = reads.Containers.Connection.Metadata.EngineId;
             FenceImageOperationReadsLocked(reads);
@@ -80,7 +81,6 @@ public sealed partial class DesktopSession : IImageOperations
             using var command = CancellationTokenSource.CreateLinkedTokenSource(reads.Lifetime.Token, caller, commandDeadline.Token);
             commandDeadline.CancelAfter(imageOperationOptions.CommandTimeout);
             ImageCommandResult outcome;
-            bool classifiedCancellation = false;
             lock (gate)
             {
                 if (!CurrentImageOperationLocked(reads, id)) return imageOperation!;
@@ -112,7 +112,7 @@ public sealed partial class DesktopSession : IImageOperations
                     NotifyImageOperationChanged();
                 });
                 try { outcome = await commands.DeleteImageAsync(request.Target.Id, command.Token).ConfigureAwait(false); }
-                catch (ImageCommandCanceledException canceled) { outcome = canceled.Outcome; classifiedCancellation = true; }
+                catch (ImageCommandCanceledException canceled) { outcome = canceled.Outcome; }
                 catch (OperationCanceledException)
                 { outcome = new(ImageCommandDisposition.Uncertain, Failure: new(caller.IsCancellationRequested
                     ? ImageCommandFailureKind.Canceled : ImageCommandFailureKind.Deadline,
@@ -127,9 +127,8 @@ public sealed partial class DesktopSession : IImageOperations
             {
                 if (!CurrentImageOperationLocked(reads, id))
                 {
-                    // A classified cancellation is useful command evidence during automatic recovery.
-                    // It never restores browsing publication or establishes an authoritative outcome.
-                    if (classifiedCancellation && !disposed && started && imageOperation?.OperationId == id)
+                    // Late protocol evidence retains its original provenance without restoring resource ownership.
+                    if (imageOperation?.OperationId == id)
                         imageOperation = imageOperation with { CommandOutcome = FreezeImageOutcome(outcome) };
                     return imageOperation!;
                 }

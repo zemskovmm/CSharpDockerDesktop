@@ -17,6 +17,9 @@ public sealed record ContainerOperationSnapshot(long OperationId, ContainerOpera
     bool? ObservedExists = null, ContainerRuntimeState? ObservedState = null,
     EngineResourceFailure? ObservationFailure = null, int Observations = 0)
 {
+    /// <summary>Captured at admission; retained evidence always belongs to this endpoint and Engine.</summary>
+    public EngineEndpoint? Endpoint { get; init; }
+    public string? EngineId { get; init; }
     public bool Pending => Phase != ContainerOperationPhase.Completed;
 }
 

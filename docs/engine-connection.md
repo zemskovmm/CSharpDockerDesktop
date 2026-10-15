@@ -139,3 +139,25 @@ Use Windows x64, .NET 10 and a normal non-elevated account. Record OS, SDK, Dock
 
 
 The borrowed event capability uses a separately negotiated, bounded stream transport while preserving ordinary-pool continuity checks. See [event observations and verification](engine-events.md).
+
+## Explicit Application endpoint selection
+
+`DesktopSession.SelectEndpoint(EngineEndpoint)` changes the selected endpoint on the existing session and starts connection work asynchronously. It requires an explicit non-null endpoint. Selection is in memory; there is no environment/context discovery, precedence policy, persistence, added transport, or Engine runtime management. The desktop still starts with the default local Windows named pipe. Presentation selection controls are separate work; this change provides the Application contract.
+
+Selecting a different endpoint synchronously revokes the old generation and clears all four resource snapshots, selections and Inspect details. Volume and Network deletion preparations become invalid immediately, including a preparation whose read ignores cancellation. Logs and Stats view ownership ends and terminal ownership is interrupted. Historical mutation and terminal response evidence retains its original target, endpoint, Engine identity and connection generation, including late protocol responses. Raw daemon content remains deliberate display data, never automatically logged. A matching resource ID or even matching Engine ID at another endpoint cannot reconcile an earlier mutation or authorize a captured deletion confirmation. No mutation, terminal command or input is replayed.
+
+The connection snapshot immediately names the new endpoint in Connecting, without old metadata or diagnostics. Subsequent Unavailable, Unsupported, Connected and recovery states continue to name that captured endpoint. Docker Infrastructure remains responsible for validating it and classifying failures. Unix/WSL-only sockets, remote pipe hosts and unsupported schemes acquire no transport and never fall back to the default pipe.
+
+One active workflow owns connection negotiation, borrowed reads/events/streams and transport cleanup. A single replaceable pending selection retains only the latest request. Rapid endpoint changes and Retry calls do not create a chain of waiting tasks or overlapping handshakes. The old workflow must finish cancellation and join all acquired work before the latest selection can negotiate; controlled noncooperative I/O or cleanup therefore delays replacement without blocking the selecting caller. Each workflow captures its endpoint and generation before running. It cannot connect to a later selection, publish late metadata or schedule recovery for that later selection. Returning to an earlier endpoint negotiates a fresh connection and authoritative snapshots. Endpoint changes reset event replay continuity; old Logs/Stats/terminal views do not reopen automatically.
+
+Selecting the current endpoint is a no-op. `Retry()` forces fresh negotiation of the current selection, preserving existing automatic recovery and same-Engine reconciliation behavior. `DisconnectAsync()` clears pending connection work and joins cleanup owned at that boundary; a subsequent Start/Retry or different selection can reconnect. Concurrent disposal prevents further admission and joins the active workflow and acquired cleanup exactly once. Operations that ignore cancellation are awaited until they finish, never overlapped or abandoned.
+
+Focused simulated checks are available with:
+
+```sh
+dotnet run --project tests/CSharpDockerDesktop.Connection.Tests -- --endpoint-selection
+```
+
+The fixtures use two explicit named-pipe endpoints with overlapping full Container/Image/Network IDs, volume names and Engine IDs. They exercise 5,000 coalesced selections during a controlled noncooperative handshake, selection during recovery, return negotiation, late resource/event/stream delivery, active deletion preparation, stale confirmation rejection, acknowledged/rejected/uncertain mutation evidence for all four resource families, live Logs/Stats/terminal cleanup, invalid endpoint rejection and concurrent selection/disconnect/disposal. Synchronization uses bounded waits and explicit completion barriers, without timing-dependent sleeps. These are simulated coordination and infrastructure validation results on macOS, not real Windows/Docker or performance evidence. Windows Win32 behavior, pipe ACLs, real Docker Desktop/WSL2 recovery and alternate-daemon compatibility still require the real-host checks above.
+
+Recorded for this Application selection change: **7/7 focused endpoint groups and 405/405 full regression groups passed on macOS 26.7.1** using .NET SDK 10.0.402. The Release solution build completed with zero warnings and errors. No project verification policy is configured; the repository executable checks and solution build supplied the verification evidence.

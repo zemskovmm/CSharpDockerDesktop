@@ -337,8 +337,10 @@ internal static partial class ImageBrowsingChecks
         (await DeleteList(fresh)).Succeed(); (await DeleteList(fresh)).Succeed();
         await DeleteState(session, s => s?.Resolution == ImageOperationResolution.ObservedAbsent);
         Check(fresh.DeleteCalls == 0 && old.DisposeCount == 1 && !old.DisposedWithDelete
-            && session.ImageOperation!.CommandOutcome!.Disposition == ImageCommandDisposition.Uncertain,
-            "Retry joins the original command and observes same Engine without accepting obsolete acknowledgement or replaying");
+            && session.ImageOperation!.CommandOutcome!.Disposition == ImageCommandDisposition.Acknowledged
+            && session.ImageOperation.Endpoint == old.Metadata.Endpoint
+            && session.ImageOperation.EngineId == old.Metadata.EngineId,
+            "Retry retains historical acknowledgement and joins the original command; fresh observation establishes absence without replay");
 
         var all = new ImageDeleteAllConnection(); var timing = new ImageEventClock();
         await using var together = DeleteSession(new ControlledClient(all), timing);

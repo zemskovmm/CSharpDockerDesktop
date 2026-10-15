@@ -45,7 +45,8 @@ public sealed partial class DesktopSession : INetworkOperations
             // Validation and consumption share the same gate with events, close, and supersession.
             prepared.Snapshot = evidence with { Identity = evidence.Identity with { Revision = evidence.Identity.Revision + 1 },
                 Phase = NetworkPreparationPhase.Consumed };
-            networkOperation = new(++nextNetworkOperation, request, NetworkOperationPhase.CommandPending, evidence);
+            networkOperation = new(++nextNetworkOperation, request, NetworkOperationPhase.CommandPending, evidence)
+            { Endpoint = reads.Containers.Connection.Metadata.Endpoint, EngineId = reads.Containers.Connection.Metadata.EngineId };
             networkOperationEndpoint = reads.Containers.Connection.Metadata.Endpoint;
             networkOperationEngineId = reads.Containers.Connection.Metadata.EngineId;
             FenceNetworkOperationReadsLocked(reads);

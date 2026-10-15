@@ -39,7 +39,8 @@ public sealed partial class DesktopSession : IContainerOperations
                 || request.GracePeriodSeconds is not null && request.Command is not (ContainerCommand.Stop or ContainerCommand.Restart))
                 return RejectedOperation(request, ContainerCommandFailureKind.InvalidRequest, "Supply a current full container identity and parameters for the requested action.");
             var id = ++nextOperation;
-            containerOperation = new(id, request, ContainerOperationPhase.CommandPending);
+            containerOperation = new(id, request, ContainerOperationPhase.CommandPending)
+            { Endpoint = reads.Connection.Metadata.Endpoint, EngineId = reads.Connection.Metadata.EngineId };
             operationEndpoint = reads.Connection.Metadata.Endpoint;
             operationEngineId = reads.Connection.Metadata.EngineId;
             operationStartedAt = null;
@@ -142,7 +143,13 @@ public sealed partial class DesktopSession : IContainerOperations
             Task<OperationObservation>? firstObservation = null;
             lock (gate)
             {
-                if (!CurrentOperationLocked(reads, id)) return containerOperation!;
+                if (!CurrentOperationLocked(reads, id))
+                {
+                    // Preserve the original connection's late protocol evidence without publishing resource state.
+                    if (containerOperation?.OperationId == id)
+                        containerOperation = containerOperation with { CommandOutcome = outcome };
+                    return containerOperation!;
+                }
                 lost = outcome.Failure?.Kind is ContainerCommandFailureKind.TransportFailure
                     or ContainerCommandFailureKind.StaleConnection or ContainerCommandFailureKind.ConnectionDisposed;
                 containerOperation = containerOperation! with { CommandOutcome = outcome,
@@ -245,7 +252,7 @@ public sealed partial class DesktopSession : IContainerOperations
     private void ResumeContainerOperationLocked(ContainerReads reads)
     {
         if (containerOperation is not { Resolution: ContainerOperationResolution.Unresolved, CommandOutcome.RequiresReconciliation: true } current
-            || operationEndpoint != reads.Connection.Metadata.Endpoint || operationEngineId != reads.Connection.Metadata.EngineId || reads.Reader is null) return;
+            || string.IsNullOrWhiteSpace(operationEngineId) || operationEndpoint != reads.Connection.Metadata.Endpoint || operationEngineId != reads.Connection.Metadata.EngineId || reads.Reader is null) return;
         containerOperation = current with { Phase = ContainerOperationPhase.Reconciling, Resolution = null };
         // Reconnection only observes. The original request retains its original scoped identity.
         var id = current.OperationId;

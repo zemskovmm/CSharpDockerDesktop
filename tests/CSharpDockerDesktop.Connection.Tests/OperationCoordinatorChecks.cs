@@ -310,8 +310,8 @@ internal static class OperationCoordinatorChecks
             {
                 (await fresh.NextList()).Succeed(Row()); await Observe(fresh, "running");
                 await Operation(session, o => o?.Resolution == ContainerOperationResolution.ObservedRequestedState);
-                Check(fresh.CommandCalls == 0 && session.ContainerOperation!.CommandOutcome!.Disposition == ContainerCommandDisposition.Uncertain,
-                    "Late original-generation acknowledgment is rejected; replacement observes without dispatch");
+                Check(fresh.CommandCalls == 0 && session.ContainerOperation!.CommandOutcome!.Disposition == ContainerCommandDisposition.Acknowledged,
+                    "Late acknowledgement retains original provenance; replacement observes without dispatch");
                 await session.DisposeAsync();
             }
             else
