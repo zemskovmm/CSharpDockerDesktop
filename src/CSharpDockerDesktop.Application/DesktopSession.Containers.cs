@@ -18,6 +18,8 @@ public sealed partial class DesktopSession : IContainerBrowser
         {
             if (containerReads is not { Reader: not null } reads || disposed || reads.Lifetime.IsCancellationRequested) return;
             InvalidateStatsLifecycleLocked(reads);
+            InvalidateTerminalLifecycleLocked(reads);
+            if (terminalRequest is { Active: true } terminal) RequestInspectionLocked(reads, terminal.ContainerId, true);
             if (statsRequest is { } stats) RequestInspectionLocked(reads, stats.ContainerId, true);
             reads.ListRevision++;
             reads.Refresh = true;
@@ -41,6 +43,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         {
             // Navigation remains an ownership boundary while recovery has no usable resource reader.
             if (statsRequest is { } stats && stats.ContainerId != containerId) CloseStatsLocked();
+            if (terminalRequest is { Active: true } terminal && terminal.ContainerId != containerId) CloseTerminalLocked(ContainerTerminalPhase.Closed);
             if (disposed || containerReads is not { Reader: not null } reads || reads.Lifetime.IsCancellationRequested) return;
             if (containerId is not null && !containerSnapshot.Containers.Any(row => row.Id == containerId))
                 containerId = null;
@@ -65,6 +68,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         lock (gate)
         {
             if (disposed || containerReads is not { Reader: not null } reads || reads.Lifetime.IsCancellationRequested) return;
+            CloseTerminalLocked(ContainerTerminalPhase.Closed);
             RequestInspectionLocked(reads, containerSnapshot.SelectedContainerId, false);
         }
         NotifyContainerBrowsers();
@@ -72,6 +76,11 @@ public sealed partial class DesktopSession : IContainerBrowser
 
     private void RequestInspectionLocked(ContainerReads reads, string? id, bool inspect)
     {
+        if (terminalRequest is { Active: true } terminal)
+        {
+            if (terminal.ContainerId != id) CloseTerminalLocked(ContainerTerminalPhase.Closed);
+            else InvalidateTerminalLifecycleLocked(reads, id);
+        }
         if (statsRequest is { } stats)
         {
             if (stats.ContainerId != id) CloseStatsLocked();
@@ -124,6 +133,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         InvalidateVolumesLocked();
         SuspendLogsLocked();
         SuspendStatsLocked();
+        CloseTerminalLocked(ContainerTerminalPhase.Interrupted, ContainerExecFailureKind.StaleConnection);
         containerSnapshot = new(containerSnapshot.ConnectionGeneration, ResourceReadState.Unavailable,
             Array.Empty<ContainerSummary>(), Failure: inspectionFailure ? null : failure,
             InspectionFailure: inspectionFailure ? failure : null);
@@ -146,7 +156,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
         }
         // A reader that ignores cancellation must finish before the connection owner disposes it.
-        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow, reads.StatsWorkflow, reads.PreparationWorkflow).ConfigureAwait(false); }
+        try { await Task.WhenAll(reads.Workflow, reads.EventsWorkflow, reads.OperationWorkflow, reads.LogsWorkflow, reads.StatsWorkflow, reads.PreparationWorkflow, reads.TerminalWorkflow).ConfigureAwait(false); }
         finally { reads.Lifetime.Dispose(); }
     }
 
@@ -274,6 +284,7 @@ public sealed partial class DesktopSession : IContainerBrowser
                     RequestInspectionLocked(reads, null, false);
             }
             ReconcileStatsLocked(reads);
+            ReconcileTerminalLocked(reads);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -305,6 +316,7 @@ public sealed partial class DesktopSession : IContainerBrowser
             else if (!reads.Inspect) containerSnapshot = containerSnapshot with { InspectionState = ResourceReadState.Ready,
                 Inspection = result.Value, InspectionFailure = null };
             ReconcileStatsLocked(reads);
+            ReconcileTerminalLocked(reads);
         }
         NotifyContainerBrowsers();
         ContainerOperationChanged?.Invoke(this, EventArgs.Empty);
@@ -330,6 +342,7 @@ public sealed partial class DesktopSession : IContainerBrowser
         public Task OperationWorkflow = Task.CompletedTask;
         public Task LogsWorkflow = Task.CompletedTask;
         public Task StatsWorkflow = Task.CompletedTask;
+        public Task TerminalWorkflow = Task.CompletedTask;
         public Task PreparationWorkflow = Task.CompletedTask;
         public OperationObservationRequest? OperationObservation;
         public bool OperationReadActive;

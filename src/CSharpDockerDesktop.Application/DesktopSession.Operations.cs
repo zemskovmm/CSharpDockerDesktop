@@ -357,6 +357,7 @@ public sealed partial class DesktopSession : IContainerOperations
                     if (containerSnapshot.SelectedContainerId == observation.Identity) RequestInspectionLocked(reads, null, false);
                 }
                 ReconcileStatsLocked(reads);
+                ReconcileTerminalLocked(reads);
                 observation.Completion.TrySetResult(new(exists, inspection?.State, failure, stale, epoch));
             }
         }

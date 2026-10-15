@@ -114,7 +114,7 @@ public sealed partial class DesktopSession
                         if (CurrentEventsLocked(reads))
                         {
                             InvalidateNetworkPreparationLocked(NetworkPreparationFailureKind.ObservedChange);
-                            if (statsRequest is not null) InvalidateEventDetailLocked(reads, null);
+                            if (statsRequest is not null || terminalRequest is { Active: true }) InvalidateEventDetailLocked(reads, null);
                         }
                     NotifyNetworkPreparationChanged();
                 }
@@ -198,8 +198,9 @@ public sealed partial class DesktopSession
     private bool InvalidateEventDetailLocked(ContainerReads reads, string? identity)
     {
         InvalidateStatsLifecycleLocked(reads, identity);
+        InvalidateTerminalLifecycleLocked(reads, identity);
         if (containerSnapshot.SelectedContainerId is not { } selected
-            || containerSnapshot.InspectionState == ResourceReadState.NotRequested
+            || (containerSnapshot.InspectionState == ResourceReadState.NotRequested && terminalRequest is not { Active: true })
             || (!string.IsNullOrEmpty(identity) && identity != selected)) return false;
         reads.Inspect = true;
         bool changed = containerSnapshot.Inspection is not null || containerSnapshot.InspectionState != ResourceReadState.Loading;

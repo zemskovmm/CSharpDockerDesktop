@@ -11,7 +11,10 @@ public enum ContainerExecFailureKind
     InvalidRequest, NotFound, Conflict, AccessDenied, DaemonFailure, UnexpectedResponse, MalformedResponse,
     TransportFailure, Deadline, CapacityExceeded, StaleConnection, ConnectionDisposed, Canceled
 }
-public sealed record ContainerExecFailure(ContainerExecFailureKind Kind, string Description);
+public sealed record ContainerExecFailure(ContainerExecFailureKind Kind, string Description)
+{
+    public override string ToString() => $"Exec failure {Kind}";
+}
 
 /// <summary>Deliberate sensitive evidence, including invalid UTF-8 or malformed JSON. Never automatically log/export this body or message.</summary>
 public sealed record ContainerExecResponseEvidence(int HttpStatusCode, ImmutableArray<byte> RawBody,
@@ -60,7 +63,10 @@ public enum ContainerExecStartDisposition { NotDispatched, DaemonRejected, Estab
 public enum ContainerExecAttachmentTermination { EndOfStream, Canceled, Failed }
 public sealed record ContainerExecAttachmentCompletion(ContainerExecAttachmentTermination Termination, ContainerExecFailure? Failure = null);
 public enum ContainerExecWriteDisposition { NotWritten, Written, Uncertain }
-public sealed record ContainerExecWriteResult(ContainerExecWriteDisposition Disposition, ContainerExecFailure? Failure = null);
+public sealed record ContainerExecWriteResult(ContainerExecWriteDisposition Disposition, ContainerExecFailure? Failure = null)
+{
+    public override string ToString() => $"Exec input {Disposition}; failure: {Failure?.Kind}";
+}
 
 public enum ContainerExecResizeDisposition { NotDispatched, Acknowledged, DaemonRejected, Uncertain }
 

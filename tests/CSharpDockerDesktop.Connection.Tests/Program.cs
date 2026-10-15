@@ -30,6 +30,21 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Terminal session lifecycle broadcasts and reentrant cancellation", TerminalSessionChecks.LifecycleBroadcastAndReentrantCancellation),
+    ("Terminal session diagnostics cancellation and notification join", TerminalSessionChecks.DiagnosticsCallerCancellationAndNotificationJoin),
+    ("Terminal session blocked output failure and admission close", TerminalSessionChecks.BlockedOutputFailureAndAdmissionClose),
+    ("Terminal session AdmissionAndExactBinding", TerminalSessionChecks.AdmissionAndExactBinding),
+    ("Terminal session LifecycleAuthorityAndAdmission", TerminalSessionChecks.LifecycleAuthorityAndAdmission),
+    ("Terminal session UncertainEstablishmentAndNoReplay", TerminalSessionChecks.UncertainEstablishmentAndNoReplay),
+    ("Terminal session ReplacementCloseAndLateAttachments", TerminalSessionChecks.ReplacementCloseAndLateAttachments),
+    ("Terminal session BackpressureRawOrderingAndEofDrain", TerminalSessionChecks.BackpressureRawOrderingAndEofDrain),
+    ("Terminal session InputUncertaintyControlByteAndClose", TerminalSessionChecks.InputUncertaintyControlByteAndClose),
+    ("Terminal session ResizeCoalescingAndHistoricalResults", TerminalSessionChecks.ResizeCoalescingAndHistoricalResults),
+    ("Terminal session ProcessEvidenceAndInspectionJoin", TerminalSessionChecks.ProcessEvidenceAndInspectionJoin),
+    ("Terminal session DisconnectReconnectAndNavigation", TerminalSessionChecks.DisconnectReconnectAndNavigation),
+    ("Terminal session DeadlineLateSuccessAndJoinedDisposal", TerminalSessionChecks.DeadlineLateSuccessAndJoinedDisposal),
+    ("Terminal session PrivacyBudgetsNotificationsAndCoexistence", TerminalSessionChecks.PrivacyBudgetsNotificationsAndCoexistence),
+
     ("Exec resize official negotiated contracts and dimension ordering", ExecResizeChecks.OfficialContractsAndDimensions),
     ("Exec resize validation binding errors and bounded private evidence", ExecResizeChecks.ValidationBindingAndErrors),
     ("Exec resize shared admission cancellation deadline and continuity", ExecResizeChecks.AdmissionAndCooperativeLifetimes),
