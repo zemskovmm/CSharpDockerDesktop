@@ -2,6 +2,7 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:CSharpDockerDesktop.Presentation">
+  <Page.Resources><SolidColorBrush x:Key="StatsChartBrush" Color="#0086C9" /></Page.Resources>
   <Grid Padding="24" RowSpacing="12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -70,7 +71,7 @@
         </Style>
       </ListView.ItemContainerStyle>
     </ListView>
-    <TextBlock Grid.Row="6" Text="Lifecycle actions use current Engine observations. Logs supports recent output, live follow and retained search. Terminal and Stats are pending."
+    <TextBlock Grid.Row="6" Text="Lifecycle actions use current Engine observations. Logs supports recent output, live follow and retained search. Stats shows active selected-container resource activity. Terminal is pending."
                TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" />
     <Border x:Name="DetailPanel" Grid.Row="2" Grid.RowSpan="3" Visibility="Collapsed" Padding="16"
             Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" BorderThickness="1"
@@ -81,6 +82,7 @@
           <Button x:Name="CloseDetailButton" Content="Back to containers" Click="OnCloseDetail" />
           <Button x:Name="OverviewTab" Content="Overview" Click="OnOverviewTab" />
           <Button x:Name="InspectTab" Content="Inspect" Click="OnInspectTab" AutomationProperties.Name="Show raw JSON Inspect" />
+          <Button x:Name="StatsTab" Content="Stats" Click="OnStatsTab" AutomationProperties.Name="Open container Stats" />
           <Button x:Name="LogsTab" Content="Logs" Click="OnLogsTab" AutomationProperties.Name="Open container Logs" />
           <Button x:Name="RefreshDetailButton" Content="Refresh details" Click="OnRefreshDetail" />
           <Button Content="Copy full ID" Click="OnCopy" />
@@ -88,6 +90,17 @@
         <TextBlock x:Name="DetailStatus" Grid.Row="1" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
         <ScrollViewer x:Name="OverviewPanel" Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <TextBlock x:Name="OverviewText" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Container Overview" />
+        </ScrollViewer>
+        <ScrollViewer x:Name="StatsPanel" Grid.Row="2" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="StatsReopen" Content="Reopen Stats" Click="OnStatsReopen" /><Button x:Name="StatsDaemonButton" Content="Show original daemon content (may be sensitive)" Click="OnStatsDaemon" Visibility="Collapsed" /></StackPanel>
+            <TextBlock x:Name="StatsStatus" TextWrapping="Wrap" AutomationProperties.Name="Stats session state" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock x:Name="StatsValues" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.Name="Current Stats values and provenance" />
+            <TextBlock x:Name="StatsRetention" TextWrapping="Wrap" />
+            <TextBlock x:Name="StatsDaemonText" Visibility="Collapsed" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+            <TextBlock Text="History charts · gaps break lines. Each metric has its own labelled scale; Block I/O is activity, not disk space. Times are UTC." TextWrapping="Wrap" />
+            <StackPanel x:Name="StatsCharts" Spacing="10" AutomationProperties.Name="Bounded Stats history charts" />
+          </StackPanel>
         </ScrollViewer>
         <Grid x:Name="LogsPanel" Grid.Row="2" RowSpacing="6" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>

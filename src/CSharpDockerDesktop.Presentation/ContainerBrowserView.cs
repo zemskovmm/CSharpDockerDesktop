@@ -16,6 +16,8 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
     public JsonInspectView Inspect { get; } = new(dispatch);
     public bool ShowingInspect { get; private set; }
     public bool ShowingLogs { get; private set; }
+    public bool ShowingStats { get; private set; }
+    public ContainerStatsView Stats { get; } = new(browser as IContainerStats, dispatch);
     public ContainerLogsView Logs { get; } = new(browser as IContainerLogs, dispatch);
     private void OnInspectChanged(object? sender, EventArgs args) => Changed?.Invoke(this, EventArgs.Empty);
     public event EventHandler? Changed;
@@ -39,7 +41,7 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
         _ when Rows.Count == 0 => "No containers match your search.",
         _ => $"{Rows.Count} of {Snapshot.Containers.Count} containers"
     };
-    public string DetailMessage => ShowingLogs ? "Container Logs · sensitive original output" : Snapshot.InspectionState switch
+    public string DetailMessage => ShowingStats ? "Container Stats · resource activity" : ShowingLogs ? "Container Logs · sensitive original output" : Snapshot.InspectionState switch
     {
         ResourceReadState.Loading => $"Loading {(ShowingInspect ? "Inspect" : "Overview")}…",
         ResourceReadState.Failed => $"{(ShowingInspect ? "Inspect" : "Overview")} failed. Choose Refresh details to retry." + FailureSuffix(Snapshot.InspectionFailure),
@@ -60,6 +62,16 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
         if (operations is not null) operations.ContainerOperationChanged += OnChanged;
         Inspect.Changed += OnInspectChanged;
         Logs.Changed += OnInspectChanged;
+        Stats.Changed += OnInspectChanged;
+        Stats.IsCurrentIdentity = () =>
+        {
+            var latest = browser.ContainerSnapshot;
+            return active && DetailOpen && ShowingStats && latest.SelectedContainerId == SelectedId
+                && latest.State != ResourceReadState.Unavailable && latest.ConnectionGeneration == Snapshot.ConnectionGeneration
+                && latest.Containers.Any(row => row.Id == SelectedId);
+        };
+        Stats.IsCurrentConnection = generation => generation == Snapshot.ConnectionGeneration
+            && browser.ContainerSnapshot.ConnectionGeneration == generation;
         Logs.IsCurrentIdentity = () => active && DetailOpen && ShowingLogs && browser.ContainerSnapshot.SelectedContainerId == SelectedId
             && browser.ContainerSnapshot.State != ResourceReadState.Unavailable
             && browser.ContainerSnapshot.ConnectionGeneration == Snapshot.ConnectionGeneration
@@ -90,6 +102,7 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
         ShowingOperationDetails = false;
         SelectedId = null;
         Logs.Changed -= OnInspectChanged; Logs.Close(); ShowingLogs = false;
+        Stats.Changed -= OnInspectChanged; Stats.Close(); ShowingStats = false;
         Inspect.Changed -= OnInspectChanged;
         Inspect.Dispose();
         Snapshot = new(0, ResourceReadState.Unavailable, []);
@@ -135,6 +148,7 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
         if (DetailOpen && latest.SelectedContainerId != SelectedId) DetailOpen = false;
         if (DeleteConfirmation is { } confirmation && !ConfirmationCurrent(confirmation)) DeleteConfirmation = null;
         if (!DetailOpen && ShowingLogs) { ShowingLogs = false; Logs.Close(); }
+        if (!DetailOpen && ShowingStats) { ShowingStats = false; Stats.Close(); }
         SyncInspect();
         Filter();
     }
@@ -146,13 +160,21 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
     public void ShowInspect(bool show)
     {
         if (!active || !DetailOpen) return;
+        ShowingStats = false; Stats.Close();
         ShowingLogs = false; Logs.Close(); ShowingInspect = show; SyncInspect(); Changed?.Invoke(this, EventArgs.Empty);
     }
     public void ShowLogs(bool follow = true)
     {
         if (!active || !DetailOpen || SelectedId is not { } id) return;
+        ShowingStats = false; Stats.Close();
         ShowingInspect = false; Inspect.Load(null); ShowingLogs = true; Logs.Open(id, follow);
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+    public void ShowStats()
+    {
+        if (!active || !DetailOpen || SelectedId is not { } id) return;
+        ShowingLogs = false; Logs.Close(); ShowingInspect = false; Inspect.Load(null);
+        ShowingStats = true; Stats.Open(id); Changed?.Invoke(this, EventArgs.Empty);
     }
     public void Search(string query)
     {
@@ -167,6 +189,7 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
         if (DetailOpen) browser.ClearContainerInspection();
         DetailOpen = false;
         ShowingLogs = false; Logs.Close();
+        ShowingStats = false; Stats.Close();
         ShowingInspect = false; Inspect.Load(null);
         DeleteConfirmation = null;
         SelectedId = id;
@@ -184,6 +207,7 @@ public sealed partial class ContainerBrowserView(IContainerBrowser browser, Func
     {
         if (!DetailOpen) return;
         ShowingLogs = false; Logs.Close();
+        ShowingStats = false; Stats.Close();
         DetailOpen = false;
         browser.ClearContainerInspection();
         ApplyLatest();

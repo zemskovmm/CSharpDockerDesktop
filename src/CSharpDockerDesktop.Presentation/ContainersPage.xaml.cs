@@ -20,6 +20,7 @@ public sealed partial class ContainersPage : Page
     private int pageEpoch;
     private IReadOnlyList<JsonInspectRow>? displayedInspect;
     private readonly ObservableCollection<ContainerLogRow> logRows = [];
+    public Task StatsCleanup { get; private set; } = Task.CompletedTask;
     public Task LogsCleanup { get; private set; } = Task.CompletedTask;
     public ContainersPage()
     {
@@ -51,7 +52,8 @@ public sealed partial class ContainersPage : Page
         deletionDialog = null; dialogConfirmation = null;
         if (view is not null) view.Changed -= OnViewChanged;
         view?.Dispose();
-        if (view is not null) LogsCleanup = JoinLogsAsync(view.Logs.Cleanup);
+        if (view is not null) { LogsCleanup = JoinLogsAsync(view.Logs.Cleanup); StatsCleanup = view.Stats.Cleanup; }
+        ClearStats();
         logRows.Clear(); LogsDaemonText.Text = LogsSearch.Text = LogsStatus.Text = LogsRetention.Text = LogsSearchStatus.Text = "";
         LogsDaemonPanel.Visibility = Visibility.Collapsed;
         OperationStatus.Text = AdmissionStatus.Text = OperationDetailsText.Text = "";
@@ -100,12 +102,15 @@ public sealed partial class ContainersPage : Page
             SearchBox.Visibility = RefreshButton.Visibility = OpenButton.Visibility = CopyButton.Visibility
                 = ContainerList.Visibility = ListStatus.Visibility = view.DetailOpen ? Visibility.Collapsed : Visibility.Visible;
             DetailStatus.Text = view.DetailMessage;
-            OverviewText.Text = view.ShowingInspect || view.ShowingLogs ? "" : view.Overview;
-            OverviewPanel.Visibility = view.ShowingInspect || view.ShowingLogs ? Visibility.Collapsed : Visibility.Visible;
+            OverviewText.Text = view.ShowingInspect || view.ShowingLogs || view.ShowingStats ? "" : view.Overview;
+            OverviewPanel.Visibility = view.ShowingInspect || view.ShowingLogs || view.ShowingStats ? Visibility.Collapsed : Visibility.Visible;
             InspectPanel.Visibility = view.ShowingInspect ? Visibility.Visible : Visibility.Collapsed;
-            OverviewTab.IsEnabled = view.ShowingInspect || view.ShowingLogs;
+            OverviewTab.IsEnabled = view.ShowingInspect || view.ShowingLogs || view.ShowingStats;
             InspectTab.IsEnabled = !view.ShowingInspect;
             LogsTab.IsEnabled = !view.ShowingLogs;
+            StatsTab.IsEnabled = !view.ShowingStats;
+            StatsPanel.Visibility = view.ShowingStats ? Visibility.Visible : Visibility.Collapsed;
+            RenderStats();
             LogsPanel.Visibility = view.ShowingLogs ? Visibility.Visible : Visibility.Collapsed;
             RenderLogs();
             if (InspectSearch.Text != view.Inspect.Query) InspectSearch.Text = view.Inspect.Query;
@@ -119,7 +124,7 @@ public sealed partial class ContainersPage : Page
             CopyPathButton.IsEnabled = CopyValueButton.IsEnabled = view.Inspect.CanCopy;
             ExpandNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: false };
             CollapseNodeButton.IsEnabled = !view.Inspect.Busy && view.Inspect.Selected is { IsContainer: true, Expanded: true };
-            RefreshDetailButton.IsEnabled = view.CanOpen && !view.ShowingLogs;
+            RefreshDetailButton.IsEnabled = view.CanOpen && !view.ShowingLogs && !view.ShowingStats;
             if (!wasOpen && view.DetailOpen) CloseDetailButton.Focus(FocusState.Programmatic);
             else if (wasOpen && !view.DetailOpen) ContainerList.Focus(FocusState.Programmatic);
             // Reset the virtualized viewport after a source replacement or reopening. The old scroll

@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Stats presentation ownership and detail tabs", StatsPresentationChecks.OwnershipAndTabs),
+    ("Stats presentation slow cleanup and bounded replacements", StatsPresentationChecks.SlowCleanupAndReplacement),
+    ("Stats presentation recreated page work budgets", StatsPresentationChecks.PageRecreationBudgets),
+    ("Stats presentation obsolete reads and queued callbacks", StatsPresentationChecks.ObsoleteReadsAndCallbacks),
+    ("Stats presentation coherent revisions eviction bounds and sustained updates", StatsPresentationChecks.RevisionsEvictionAndBounds),
+    ("Stats presentation lifecycle recovery and private evidence", StatsPresentationChecks.LifecycleRecoveryAndPrivacy),
+    ("Stats presentation valid zeros availability and memory provenance", StatsPresentationChecks.ValuesAndProvenance),
+    ("Stats presentation chart continuity and contexts", StatsPresentationChecks.ChartContinuity),
     ("Stats session admission cadence zeros and bounds", StatsSessionChecks.AdmissionCadenceZerosAndBounds),
     ("Stats session replacements late open and joined close", StatsSessionChecks.ReplacementsLateOpenAndJoinedClose),
     ("Stats session selection disconnect disposal and late failures", StatsSessionChecks.SelectionDisconnectDisposalAndLateFailures),
@@ -395,6 +403,8 @@ var tests = new (string, Func<Task>)[]
     ("Named-pipe failed and canceled attempt disposal", FailedAndCanceledPipe),
     ("Named-pipe missing endpoint and canceled connect", MissingAndCanceledPipe)
 };
+if (args.FirstOrDefault() == "--stats-presentation")
+    tests = tests.Where(test => test.Item1.StartsWith("Stats presentation ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--stats")
     tests = tests.Where(test => test.Item1.StartsWith("Stats ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--stream-termination")

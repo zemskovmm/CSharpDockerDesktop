@@ -7,6 +7,7 @@
     <!-- Exercise the actual Presentation state without loading a graphical Uno host. -->
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerBrowserView.cs" Link="Presentation/ContainerBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerBrowserView.Operations.cs" Link="Presentation/ContainerBrowserView.Operations.cs" />
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerStatsView.cs" Link="Presentation/ContainerStatsView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerLogsView.cs" Link="Presentation/ContainerLogsView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ImageBrowserView.cs" Link="Presentation/ImageBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ImageBrowserView.Operations.cs" Link="Presentation/ImageBrowserView.Operations.cs" />
