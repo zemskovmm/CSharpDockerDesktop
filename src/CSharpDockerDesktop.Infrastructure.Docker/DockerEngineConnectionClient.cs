@@ -210,7 +210,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     }
 }
 
-internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, INetworkReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, INetworkCommands, IContainerLogSource, IContainerStatsSource
+internal sealed partial class DockerEngineConnection(HttpClient http, EngineMetadata metadata, DockerEngineConnectionClient client, ITransportContinuity? continuity, long? generation, DockerConnectionOptions options) : IEngineConnection, IContainerReader, IImageReader, IVolumeReader, INetworkReader, IVolumeDependencyReader, IEngineEventSource, IContainerCommands, IImageCommands, IVolumeCommands, INetworkCommands, IContainerLogSource, IContainerStatsSource, IContainerExec
 {
     private int disposed;
     private readonly SemaphoreSlim commandSlots = new(options.MaximumConcurrentCommands);
@@ -432,13 +432,22 @@ internal sealed class DockerEngineConnection(HttpClient http, EngineMetadata met
         lock (eventGate)
         {
             if (disposal is not null) return new(disposal);
+            // Publish the join before cancellation callbacks can synchronously reenter disposal.
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            disposal = completion.Task;
             Volatile.Write(ref disposed, 1);
             lifetime.Cancel();
             http.Dispose();
             var pending = logSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()).ToList();
+            pending.AddRange(execOperations);
             pending.AddRange(statsSubscriptions.Select(subscription => subscription.DisposeAsync().AsTask()));
             if (eventSubscription is { } subscription) pending.Add(subscription.DisposeAsync().AsTask());
-            disposal = Task.WhenAll(pending);
+            _ = Task.WhenAll(pending).ContinueWith(ended =>
+            {
+                if (ended.Exception is { } error) completion.TrySetException(error.InnerExceptions);
+                else if (ended.IsCanceled) completion.TrySetCanceled();
+                else completion.TrySetResult();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             // Keep lifetime source usable by racing borrowed calls; it owns no wait handle.
             return new(disposal);
         }

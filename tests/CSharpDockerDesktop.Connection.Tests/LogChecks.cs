@@ -341,6 +341,16 @@ internal static class LogChecks
                     Check(header.Length < 8192); header.Append((char)one[0]);
                 }
                 var path = header.ToString().Split(' ')[1]; paths.Enqueue(path);
+                var contentLengthLine = header.ToString().Split("\r\n").SingleOrDefault(line => line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase));
+                int contentLength = contentLengthLine is null ? 0 : int.Parse(contentLengthLine.Split(':')[1]);
+                Check(contentLength <= 4096);
+                var requestBody = new byte[contentLength]; await pipe.ReadExactlyAsync(requestBody, deadline.Token);
+                if (path.EndsWith("/exec"))
+                {
+                    using var createBody = System.Text.Json.JsonDocument.Parse(requestBody);
+                    Check(createBody.RootElement.GetProperty("Cmd").EnumerateArray().Single().GetString() == "explicit-command"
+                        && createBody.RootElement.GetProperty("AttachStdin").GetBoolean() && createBody.RootElement.GetProperty("Tty").GetBoolean());
+                }
                 if (path.Contains("/logs?") || path.Contains("/events?") || path.Contains("/stats?"))
                 {
                     var media = path.Contains("/logs?") ? "application/vnd.docker.multiplexed-stream" : "application/json";
@@ -368,11 +378,13 @@ internal static class LogChecks
                     "/v1.56/networks/complete-network-id" => "{\"Id\":\"complete-network-id\",\"IPAM\":{\"Driver\":\"custom\"},\"Containers\":{\"canonical\":{\"EndpointID\":\"complete-endpoint-id\",\"IPv4Address\":\"private-address\"}}}",
                     "/v1.56/volumes" => "{\"Volumes\":[{\"Name\":\"plugin/full?name\",\"Driver\":\"custom\"}],\"Warnings\":[\"private synthetic warning\"]}",
                     "/v1.56/volumes/plugin%2Ffull%3Fname" => "{\"Name\":\"plugin/full?name\",\"Status\":{\"token\":\"private synthetic secret\"}}",
+                    var execPath when execPath == $"/v1.56/containers/{ExecChecks.ContainerId}/exec" => $$"""{"Id":"{{ExecChecks.ExecId}}"}""",
+                    var execPath when execPath == $"/v1.56/exec/{ExecChecks.ExecId}/json" => $$"""{"ID":"{{ExecChecks.ExecId}}","ContainerID":"{{ExecChecks.ContainerId}}","Running":false,"ExitCode":0}""",
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
                 bool command = (header.ToString().StartsWith("DELETE ") && path == "/v1.56/networks/complete-network-id") || path.EndsWith("/start") || path == "/v1.56/volumes/plugin%2Ffull%3Fname?force=false"; if (command) payload = [];
-                await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {(command ? "204 No Content" : "200 OK")}\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
+                await pipe.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {(command ? "204 No Content" : path.EndsWith("/exec") ? "201 Created" : "200 OK")}\r\nContent-Length: {payload.Length}\r\n\r\n"), deadline.Token);
                 await pipe.WriteAsync(payload, deadline.Token); await pipe.FlushAsync(deadline.Token);
             }
         }
@@ -428,6 +440,11 @@ internal static class LogChecks
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Volume deletion leaves unrelated live streams running");
             var networkRemoval = await ((INetworkCommands)owner).DeleteNetworkAsync("complete-network-id", deadline.Token);
             Check(networkRemoval.Disposition == NetworkCommandDisposition.Acknowledged && networkRemoval.RequiresReconciliation);
+            var createdExec = await ((IContainerExec)owner).CreateTtyExecAsync(new(ExecChecks.ContainerId, ["explicit-command"]), deadline.Token);
+            Check(createdExec.IsUsableAcknowledgement && createdExec.AcknowledgedInstance!.ExecId == ExecChecks.ExecId);
+            var inspectedExec = await ((IContainerExec)owner).InspectExecAsync(createdExec.AcknowledgedInstance!, deadline.Token);
+            Check(inspectedExec.IsSuccess && inspectedExec.Value!.Running == false && inspectedExec.Value.ExitCode == 0);
+            Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Exec protocol requests leave all live streams running");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Network deletion leaves unrelated live streams running");
             Check((await ((INetworkReader)owner).ListNetworksAsync(deadline.Token)).IsSuccess);
             Check((await ((IVolumeReader)owner).ListVolumesAsync(deadline.Token)).IsSuccess);
@@ -443,6 +460,7 @@ internal static class LogChecks
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await owner.DisposeAsync(); await serving;
             Check(paths.Count(p => p == "/version") == 4 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1 && paths.Count(p => p.Contains("/stats?")) == 1);
+            Check(paths.Count(p => p.EndsWith("/exec")) == 1 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/json") == 1);
         }
         finally { foreach (var pipe in pipes) pipe.Dispose(); }
     }

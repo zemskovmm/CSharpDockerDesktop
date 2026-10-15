@@ -22,6 +22,12 @@ public sealed record DockerConnectionOptions
     public int MaximumImageCommandResponseBytes { get; init; } = 64 * 1024;
     public int MaximumConcurrentCommands { get; init; } = 4;
 
+    public int MaximumExecArguments { get; init; } = 256;
+    public int MaximumExecArgumentBytes { get; init; } = 16 * 1024;
+    public int MaximumExecRequestBytes { get; init; } = 64 * 1024;
+    public int MaximumExecResponseBytes { get; init; } = 64 * 1024;
+    public int MaximumConcurrentExecInspections { get; init; } = 4;
+
     public TimeSpan LogOpeningTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public int MaximumConcurrentLogSubscriptions { get; init; } = 4;
     public int MaximumLogTailLines { get; init; } = 10_000;
@@ -38,6 +44,11 @@ public sealed record DockerConnectionOptions
 
     internal void Validate()
     {
+        if (MaximumExecArguments is < 1 or > 4096) throw new ArgumentOutOfRangeException(nameof(MaximumExecArguments));
+        if (MaximumExecArgumentBytes is < 1 or > 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(MaximumExecArgumentBytes));
+        if (MaximumExecRequestBytes is < 128 or > 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(MaximumExecRequestBytes));
+        if (MaximumExecResponseBytes is < 64 or > 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(MaximumExecResponseBytes));
+        if (MaximumConcurrentExecInspections is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(MaximumConcurrentExecInspections));
         if (StatsOpeningTimeout <= TimeSpan.Zero || StatsOpeningTimeout.TotalMilliseconds > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(StatsOpeningTimeout));
         if (MaximumConcurrentStatsSubscriptions is < 1 or > 64)

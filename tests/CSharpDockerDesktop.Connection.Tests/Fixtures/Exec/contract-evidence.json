@@ -1,0 +1,2629 @@
+{
+  "note": "Selected official OpenAPI contract evidence. Synthetic responses are constructed independently in ExecChecks.",
+  "versions": [
+    {
+      "api": "1.40",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.40.yaml",
+      "sha256": "020a79876fecf4b67920df94e7e39f217d8ce64df627ebd5b094e18720009ca5",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.41",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.41.yaml",
+      "sha256": "150601c804f075e235f7ce9759909796b270d3ebe172067a638b16aea8254ca8",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.42",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.42.yaml",
+      "sha256": "00057be6237ed000a47293c562254c4ff84daad52ede46ff49da8f041bba1ab1",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.43",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.43.yaml",
+      "sha256": "2590d14413f25581b61a2feb992b63867da0d53a476a2e6f34be9b2682e71c52",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.44",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.44.yaml",
+      "sha256": "97340315af1e1a957cd8e163e887cba11aaaf9d58bc6705d9da180ad76e5569f",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.45",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.45.yaml",
+      "sha256": "9167829335db9a45fc6b8521e06561da2db6f2bfa9d3530587859689d3c86a65",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.46",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.46.yaml",
+      "sha256": "7823b4ddb0e47dd12d16fb41771cbb14d4c75c831739dfc15720763457067cec",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.47",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.47.yaml",
+      "sha256": "9108f0595ed0b53a833459ddf50f5c0da498e78b53604bfaad02df5618366629",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.48",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.48.yaml",
+      "sha256": "b2be218811d321284ef85ab4ca3b7336f5d5014f3f3943a3c6cdf04f1a07b072",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.49",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.49.yaml",
+      "sha256": "a746096eaa890df7655025fcf6e56b0fb5fdb16c564b4f4a148e6bc2b753c477",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.50",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.50.yaml",
+      "sha256": "f10dc49581090cc172ad36a0830ea451a0c4422b93491d9179263ffb0fce3645",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.51",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.51.yaml",
+      "sha256": "f51b797750a7f64334e529e3ecaf3a28d0c531c07b54edeed06007c18bb605eb",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.52",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.52.yaml",
+      "sha256": "9f5ec065ffe2578f4919801ee3160a2d16061ebde121510c0d1c3ac1d0499e42",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.53",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.53.yaml",
+      "sha256": "6e79a473bdd4f0ef5394b069aa3a065e92a7fa947e940e78fa0af2100384afbe",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.54",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.54.yaml",
+      "sha256": "a0cf45b9601f37d83240b1cef658f3b88c9674bcef508bf904feb48151b1c3ab",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.55",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.55.yaml",
+      "sha256": "96f48176e6b00ced89d2e5479b43565847856b0d9522111b57383bfe15815a0e",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "api": "1.56",
+      "source": "https://docs.docker.com/reference/api/engine/version/v1.56.yaml",
+      "sha256": "00ccd7d2e6e0b7a943ac0067007d181d723b2513ef1f6af3b6b54145314a6fa7",
+      "createProperties": {
+        "AttachStdin": {
+          "type": "boolean",
+          "description": "Attach to `stdin` of the exec command."
+        },
+        "AttachStdout": {
+          "type": "boolean",
+          "description": "Attach to `stdout` of the exec command."
+        },
+        "AttachStderr": {
+          "type": "boolean",
+          "description": "Attach to `stderr` of the exec command."
+        },
+        "ConsoleSize": {
+          "type": "array",
+          "description": "Initial console size, as an `[height, width]` array.",
+          "x-nullable": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": [
+            80,
+            64
+          ]
+        },
+        "DetachKeys": {
+          "type": "string",
+          "description": "Override the key sequence for detaching a container. Format is\na single character `[a-Z]` or `ctrl-<value>` where `<value>`\nis one of: `a-z`, `@`, `^`, `[`, `,` or `_`.\n"
+        },
+        "Tty": {
+          "type": "boolean",
+          "description": "Allocate a pseudo-TTY."
+        },
+        "Env": {
+          "description": "A list of environment variables in the form `[\"VAR=value\", ...]`.\n",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Cmd": {
+          "type": "array",
+          "description": "Command to run, as a string or array of strings.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Runs the exec process with extended privileges.",
+          "default": false
+        },
+        "User": {
+          "type": "string",
+          "description": "The user, and optionally, group to run the exec process inside\nthe container. Format is one of: `user`, `user:group`, `uid`,\nor `uid:gid`.\n"
+        },
+        "WorkingDir": {
+          "type": "string",
+          "description": "The working directory for the exec process inside the container.\n"
+        }
+      },
+      "creationResponse": {
+        "description": "Response to an API call that returns just an Id",
+        "type": "object",
+        "x-go-name": "IDResponse",
+        "required": [
+          "Id"
+        ],
+        "properties": {
+          "Id": {
+            "description": "The id of the newly created object.",
+            "type": "string",
+            "x-nullable": false
+          }
+        }
+      },
+      "creationStatuses": [
+        "201",
+        "404",
+        "409",
+        "500"
+      ],
+      "inspectionStatuses": [
+        "200",
+        "404",
+        "500"
+      ],
+      "inspectionSchema": {
+        "type": "object",
+        "title": "ExecInspectResponse",
+        "properties": {
+          "CanRemove": {
+            "type": "boolean"
+          },
+          "DetachKeys": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Running": {
+            "type": "boolean"
+          },
+          "ExitCode": {
+            "type": "integer"
+          },
+          "ProcessConfig": {
+            "$ref": "#/definitions/ProcessConfig"
+          },
+          "OpenStdin": {
+            "type": "boolean"
+          },
+          "OpenStderr": {
+            "type": "boolean"
+          },
+          "OpenStdout": {
+            "type": "boolean"
+          },
+          "ContainerID": {
+            "type": "string"
+          },
+          "Pid": {
+            "type": "integer",
+            "description": "The system process ID for the exec process."
+          }
+        }
+      },
+      "processConfig": {
+        "type": "object",
+        "properties": {
+          "privileged": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "string"
+          },
+          "tty": {
+            "type": "boolean"
+          },
+          "entrypoint": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -30,6 +30,14 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Exec official negotiated contracts and explicit argument serialization", ExecChecks.OfficialContractsAndArguments),
+    ("Exec additive unavailable and malformed evidence", ExecChecks.MissingNullAndMalformedEvidence),
+    ("Exec bounded identities arguments request response and error bodies", ExecChecks.InputsAndBounds),
+    ("Exec classified failures and no automatic replay", ExecChecks.ClassifiedFailures),
+    ("Exec cancellation deadlines shared admission and generation", ExecChecks.CooperativeLifetimesAndAdmission),
+    ("Exec late evidence stale results and joined disposal", ExecChecks.LateEvidenceAndJoinedDisposal),
+    ("Exec historical acknowledgement rejection and shared admission", ExecChecks.HistoricalEvidenceAndSharedAdmission),
+    ("Exec named-pipe creation uncertainty cancellation and no replay", ExecChecks.NamedPipeCreationOutcomes),
     ("Stats presentation ownership and detail tabs", StatsPresentationChecks.OwnershipAndTabs),
     ("Stats presentation slow cleanup and bounded replacements", StatsPresentationChecks.SlowCleanupAndReplacement),
     ("Stats presentation recreated page work budgets", StatsPresentationChecks.PageRecreationBudgets),
@@ -254,7 +262,7 @@ var tests = new (string, Func<Task>)[]
     ("Logs bounded pressure, cancellation, disposal and admission", LogChecks.PressureCancellationAndAdmission),
     ("Logs opening deadlines, long follow and transport continuity", LogChecks.LifetimesAndContinuity),
     ("Logs opening/disposal races and concurrent admission", LogChecks.OpeningDisposalRaces),
-    ("Named-pipe simultaneous logs, events, reads, commands and liveness", LogChecks.SimultaneousNamedPipe),
+    ("Exec named-pipe coexistence with logs events stats resources commands and liveness", LogChecks.SimultaneousNamedPipe),
     ("Lifecycle coordinator observation diagnostics and canceled restart preflight", OperationCoordinatorChecks.ObservationFailuresAndCanceledPreflight),
     ("Lifecycle coordinator explicit disconnect and unrelated detail progress", OperationCoordinatorChecks.DisconnectAndUnrelatedInspectionProgress),
     ("Lifecycle coordinator observation transport loss and joined late list", OperationCoordinatorChecks.ObservationLossAndJoinedLateList),
@@ -403,6 +411,8 @@ var tests = new (string, Func<Task>)[]
     ("Named-pipe failed and canceled attempt disposal", FailedAndCanceledPipe),
     ("Named-pipe missing endpoint and canceled connect", MissingAndCanceledPipe)
 };
+if (args.FirstOrDefault() == "--exec")
+    tests = tests.Where(test => test.Item1.StartsWith("Exec ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--stats-presentation")
     tests = tests.Where(test => test.Item1.StartsWith("Stats presentation ", StringComparison.Ordinal)).ToArray();
 if (args.FirstOrDefault() == "--stats")
