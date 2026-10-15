@@ -68,6 +68,31 @@ There are no heap dumps, forced collections or debugger/privacy changes. Only
 1 MiB cutoff and named 64 MiB diagnostic ceiling are unchanged. See the research
 document and committed metadata summary for observed results and remaining gaps.
 
+## Content-free native allocation inspection
+
+`check-allocation-access.py` first records installed tool help and read-only
+developer-authorization status, then launches only the fixed `aggregate-cycles`
+native fixture. It selects exactly one newly observed WebContent candidate and
+requests content-free grouped reference trees at the first/final closed stages:
+
+```sh
+python3 tools/TerminalSurfacePrototype/check-allocation-access.py artifacts/terminal-surface/macos/TerminalSurfaceResearch.app --output artifacts/terminal-surface/allocation-access-new
+```
+
+The output directory must be fresh. Each `leaks --noContent --nostacks
+--nosources --quiet --referenceTree --groupByType <pid>` call has a six-second
+deadline and 4 MiB output limit within the existing eight-second checkpoint
+dwell. Capture metadata checks that the stage stayed current. On failure the
+runner stops inspection and lets the fixture finish its ordinary cleanup and
+security assertions. It creates no memory graph/dump and enables no reporting,
+remote debugging, stack logging, forced collection or memory pressure. It
+samples no RSS or VM categories. Existing desktop/browser processes are outside
+the target set; new-helper attribution remains provisional. Inherited allocator
+instrumentation is refused; the existing `MallocNanoZone=0/1` setting is retained
+and recorded. Tool exit success still requires reviewing warnings and actual
+heap/VM coverage; a reference-tree parent is a heuristic, not proof of ownership.
+See the research document and result summary for the observed capability limit.
+
 ## Matched native-memory controls
 
 Publish the development bundle above, then run the three variants in separate

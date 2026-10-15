@@ -1,5 +1,21 @@
 # Aggregate retention observations
 
+`allocation-access-2026-10-15.json` adds metadata-only content-free reference-tree
+evidence from one unchanged populated `aggregate-cycles` application. Reproduce
+with `check-allocation-access.py`, then project its `allocation-access.json` with
+`summarize-allocation-access.py`. The summary retains exact commands, preflight
+capabilities/status, timing/bounds, output hashes, selected numbered lines from
+the broad WebKit root and closed/idle/compatibility counters. It saves no memory
+contents or graph file. Complete content-free reports are local ignored artifacts
+under `artifacts/terminal-surface/allocation-access-2026-10-15`.
+
+The reference command succeeds, but most exposed WebKit bytes remain unnamed
+blocks and its graphics VM node has no size or ownership chain. See the research
+document for that concrete coverage limit. Type counts, the tool's heuristic
+parent selection, and collected wrapper roots do not identify a causal owner
+for the earlier unmapped-graphics growth. No new RSS/category campaign, renderer
+repair, component choice or bounded-memory conclusion follows.
+
 `aggregate-2026-10-15.json` is metadata from the actual macOS Release Uno/WKWebView
 application, using only the fixed `RetentionChecks.cs` fixtures. The research
 report in `docs/terminal-surface-research.md` explains source bounds, native tool

@@ -164,6 +164,128 @@ With the final asset, native `combined`, `combining`, `a11y-boundaries`, `a11y`,
 
 These short finite diagnostics, metadata logs and one-second RSS samples are under ignored `artifacts/terminal-surface/width-cache-final-v3`. WebKit helper PIDs are newly observed candidates, not definitive attribution if another browser starts concurrently. No forced collection or memory plateau acceptance is used. The ordinary **1 MiB cumulative cutoff** and finite **64 MiB diagnostic ceiling** remain. This focused experiment ends here; further overall-memory work requires its own workload/host baseline and browser/native retained-memory evidence. Windows rendering/input, WebView2 privacy/crash/network behavior, real Engine duplex sessions and production component selection remain unresolved.
 
+## Native allocation inspection boundary, 2026-10-15
+
+**Result: content-free live reference inspection works, but the dominant native
+graphics allocation ownership remains inaccessible in these reports. Stop at
+this coverage boundary.** This adds allocation/type/reference evidence to the
+matched category observations below; it establishes neither a leak cause nor a
+component choice or whole-browser memory bound.
+
+Before launching another fixture, the installed tools' help and local manuals
+(`heap(1)`, `leaks(1)`, `malloc_history(1)`, `DevToolsSecurity(8)`) were read:
+
+| Local capability | Supported evidence and limit |
+| --- | --- |
+| `/usr/bin/heap --help` | `--noContent --sortBySize` provides allocation types/counts, with optional addresses/layouts; type totals alone do not supply a retaining path. C++ type recognition uses vtables and can be imprecise. |
+| `/usr/bin/leaks --help` | Explicit `--noContent` suppresses allocation descriptions; live output otherwise defaults to full content. `--referenceTree --groupByType` includes reachable allocations and dynamic VM nodes. Its chosen parent is heuristic; the manual warns of false/stale references and incorrect parents. This mode was selected over a leak-only report. |
+| `/usr/bin/malloc_history -h` | `-callTree -noContent` supports allocation backtraces only when the target already has malloc stack logging. It was not enabled for the app/helpers; an environment variable on a new app does not establish instrumentation of launchd-owned WebKit helpers. No stack-logging run or at-exit instrumentation was attempted. |
+| `/usr/bin/xctrace version` | Exit **1**: requires Xcode; the selected developer directory contains Command Line Tools. The executable is a shim, not an available trace recorder. No tools were installed. |
+| `/usr/sbin/DevToolsSecurity -status` | `Developer mode is currently disabled.` Read-only status; no authorization policy, entitlements, signing, SIP or debugger settings changed. This status did **not** prevent the observed reference inspections. |
+
+### Matched content-free captures
+
+The new `check-allocation-access.py` launched the existing actual Release Uno
+development bundle once with `--check-retention aggregate-cycles`, preserving
+the exact matched-reference binary/assembly hashes recorded below. App PID was
+**9853**, with one new WebContent candidate **9856**, retained throughout the
+sequence. Helpers remain provisional candidates identified by prelaunch PID
+inventory and executable role, not definitive ownership of launchd children.
+Only that newly observed WebContent candidate received allocation inspection;
+no unrelated process, browser contents, GPU/Networking heap, memory dump or
+saved memory graph was examined. No RSS/VM category campaign was added.
+
+The exact live invocation at **both** first/final closed stages was:
+
+```sh
+/usr/bin/leaks --noContent --nostacks --nosources --quiet --referenceTree --groupByType 9856
+```
+
+| Capture | First closed | Final closed |
+| --- | ---: | ---: |
+| Native checkpoint seconds from browser readiness | 18.75 | 160.45 |
+| Tool duration seconds | 2.503 | 1.926 |
+| Capture end seconds from process launch | 22.021 | 163.140 |
+| Exit code / output bytes | 0 / 648,507 | 0 / 645,308 |
+| Tree total, reported tool units | 204,725 nodes / 32.8M | 904,375 nodes / 109M |
+| Broad `<WebKit Owned>` root | 192,920 / 28.3M | 892,720 / 104M |
+| Its unnamed `malloc-block` child group | 161,236 / 25.0M | 746,787 / 89.3M |
+| `WebCore::Text` under that root | 12,225 / 1.31M | 53,784 / 5.74M |
+| `WebCore::HTMLSpanElement` under that root | 10,558 / 1.29M | 46,529 / 5.68M |
+| `WebCore::RenderText` under that root | 332 / 36.3K | 2,222 / 243K |
+
+These are reported tree groups, whose counts/sizes can include descendants,
+rather than an exclusive allocation census to add together. The probe retained
+and recorded inherited `MallocNanoZone=0`; the older control summaries did not
+record that variable, so no independently verified cross-run allocator-setting
+equivalence is asserted.
+
+Each call stayed within the existing held closed checkpoint, below the runner's
+six-second / 4 MiB bounds. The native fixture passed in **188.69 seconds**.
+Every measured cycle still delivered **33,725 bytes**, retained the existing
+80×24 geometry and one 1024×566 opaque frame, joined producer/pump on close,
+removed all attached terminal nodes and rejected stale/current-closed writes.
+At first/final idle, selected retired roots were **0**, with **1/12** wrapper
+finalizations. Closed captures precede that idle collection; they do not imply
+that every counted native text/span object survived a natural GC. Final
+compatibility, clipboard/control/resize/replacement and security assertions also
+passed. Workload bytes, all three renderer patches, enabled accessibility,
+ordinary 1 MiB cutoff, finite 64 MiB diagnostic ceiling, persistent browser/frame
+lifetime and privacy controls were unchanged.
+
+### Ownership evidence versus remaining hypotheses
+
+The actual exposed relation is the broad tool root `<WebKit Owned>` with grouped
+typed and untyped children. It is **not** an identified DOM/renderer owner,
+retaining field chain, JS dominator or allocation backtrace. The counts show
+more native text/span/render allocations present at the matched closed moments;
+they do not establish why they remain, whether they are collectable, or that
+they own the historical graphics growth. The two trees also show unchanged
+**5 / 20.0K** `RemoteImageBufferSetProxy`, **15 / 19.7K**
+`PlatformCALayerRemote` and **1 / 4.00K** `RemoteImageBufferProxy` groups under
+that root. These small proxy objects do not measure their external backing.
+
+The bounded graphics evidence in **both** complete outputs is the line
+`+ ! 1 VM: VM_ALLOCATE (graphics)`, without a byte size or retaining-object chain.
+The trees expose no allocation class/backtrace/owner accounting for the prior
+**371 MB dirty owned-unmapped graphics** observation. That historical category
+is from a different matched run and cannot be subtracted from these tree totals
+or treated as the same heap metric. Graphics backing outside enumerated heap/VM
+nodes, WebKit allocator/cache behavior, detached native objects and coupled
+render/accessibility paths remain hypotheses. No causal attribution follows
+from the umbrella name, object counts, small proxy totals or collected wrapper
+roots.
+
+This is a **coverage blocker**, not an access-denied result: the exact command
+succeeds and exposes partial allocation/reference evidence, but not the dominant
+allocation owner. `heap`'s documented type summaries cannot supply that missing
+external ownership path; `malloc_history` has no pre-enabled helper stack logs,
+and `xctrace` is unavailable. No further run, idle-control repetition, category
+campaign or speculative renderer repair was performed after this boundary was
+identified. Any later investigation must first establish a supported,
+content-free means of observing those graphics allocations without weakening
+the current security/privacy configuration. Windows WebView2/runtime/privacy,
+real screen-reader/input behavior, real Engine duplex sessions and production
+resource/readiness acceptance remain open.
+
+Reproduce the probe with the prototype README command, then project the
+metadata-only committed result:
+
+```sh
+python3 tools/TerminalSurfacePrototype/summarize-allocation-access.py artifacts/terminal-surface/allocation-access-2026-10-15/allocation-access.json tools/TerminalSurfacePrototype/Results/allocation-access-2026-10-15.json
+```
+
+The [summary](../tools/TerminalSurfacePrototype/Results/allocation-access-2026-10-15.json)
+contains exact invocations, timing, exit/bounds evidence, selected numbered type
+and reference-tree lines, full-output hashes and lifecycle counters. Full
+content-free tool output and fixture logs remain in the ignored probe directory;
+no memory contents are saved. Focused checks passed: probe success/timeout/output
+limit handling and partial-log parsing; metadata projection, Python syntax and
+whitespace; Release prototype build with **zero warnings/errors** and the
+raw-byte/control/resize/revocation/backpressure/joined-producer fixture checks.
+The existing 398-group suite remains prior evidence, not a rerun for this tooling
+change.
+
 ## Matched lifecycle controls, 2026-10-15
 
 **Result: the large repeated-session WebContent footprint rise reproduced only
@@ -383,7 +505,7 @@ With the recorded final wrapper and unchanged pinned renderer, **all 17 selected
 
 Remaining gaps are specific:
 
-- No retained JS heap/dominator or native allocation-backtrace graph was obtained with the existing disabled-devtools configuration. Weak-root observations cover four selected objects per session; the native graphics and WebKit malloc growth has no object/path-level cause or established reclamation bound.
+- No retained JS heap/dominator or native allocation-backtrace graph was obtained with the existing disabled-devtools configuration. The later content-free native reference-tree probe above exposes grouped WebKit allocations, but no dominant graphics ownership path. Weak-root observations cover four selected objects per session; the native growth still has no established causal owner or reclamation bound.
 - This is one ten-minute generation and one twelve-session sequence on one macOS host, with eight-/thirty-second post-close idle windows. Longer lifetimes, repeated independent baselines, other memory-pressure/load conditions and recovery of native footprint remain unmeasured. Neither a short plateau nor all selected weak roots clearing establishes sustained whole-browser memory acceptance.
 - The source model is conditional on the configured fixed dimensions, handlers, no addons and default contrast policy. Worst-case simultaneous long combined cells, large completed titles, all edit/reflow/resize combinations, browser font/layout/GPU caches and an exhaustive callback/resource census are not measured by these aggregate workloads. Individual failure-boundary checks remain separate evidence.
 - Windows WebView2 runtime/input/accessibility, privacy/crash/network behavior, actual screen-reader use, real Engine duplex interaction and product CPU/working-set/latency acceptance remain outstanding. No renderer promotion, ordinary-cutoff removal or component decision follows from this experiment.

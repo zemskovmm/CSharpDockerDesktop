@@ -1,0 +1,508 @@
+{
+  "schema": 1,
+  "workload": "aggregate-cycles",
+  "checkpoints": [
+    "cycle-01-post-close",
+    "cycle-12-post-close"
+  ],
+  "platform": "macOS-26.7.1-arm64-arm-64bit",
+  "wallClock": "2026-10-15T06:13:16+0200",
+  "binarySha256": "5c7c1dcd3dc81f4089349a1a4a8208f65be7d424b2aa4c59d0ad10bf84423631",
+  "assemblySha256": "a59a3151bda436dbb8ce846d55eb54ebca479aa55df6553e440cdce4c9346c64",
+  "attribution": "New WebContent candidate since launch; launchd parentage is provisional ownership only.",
+  "noContent": true,
+  "memoryGraphSaved": false,
+  "stackLoggingEnabled": false,
+  "inheritedMallocNanoZone": "0",
+  "forcedCollection": false,
+  "securityChanged": false,
+  "appPid": 9853,
+  "fixturePassed": true,
+  "durationSeconds": 188.69,
+  "ownershipEstablished": false,
+  "scope": "Content-free live reference trees; no new RSS/category measurements, causal ownership or bounded-memory claim.",
+  "preflight": [
+    {
+      "command": [
+        "/usr/bin/heap",
+        "--help"
+      ],
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "command": [
+        "/usr/bin/leaks",
+        "--help"
+      ],
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "command": [
+        "/usr/bin/malloc_history",
+        "-h"
+      ],
+      "exitCode": 255,
+      "failure": null
+    },
+    {
+      "command": [
+        "/usr/bin/xctrace",
+        "version"
+      ],
+      "exitCode": 1,
+      "failure": null,
+      "diagnostic": "xcode-select: error: tool 'xctrace' requires Xcode, but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance\n"
+    },
+    {
+      "command": [
+        "/usr/sbin/DevToolsSecurity",
+        "-status"
+      ],
+      "exitCode": 0,
+      "failure": null,
+      "diagnostic": "Developer mode is currently disabled.\n"
+    }
+  ],
+  "referenceTreeCaveat": "Tool chooses one heuristic parent per allocation; references can be false/stale. <WebKit Owned> is a broad tool root, not a retaining-object path.",
+  "interpretation": "Metadata excerpt projection only; semantic review must establish coverage and any causal ownership. See the research document for the recorded run's coverage boundary.",
+  "observations": [
+    {
+      "command": [
+        "/usr/bin/leaks",
+        "--noContent",
+        "--nostacks",
+        "--nosources",
+        "--quiet",
+        "--referenceTree",
+        "--groupByType",
+        "9856"
+      ],
+      "exitCode": 0,
+      "failure": null,
+      "durationSeconds": 2.503,
+      "outputBytes": 648507,
+      "stage": "cycle-01-post-close",
+      "pid": 9856,
+      "role": "com.apple.WebKit.WebContent",
+      "requestedElapsedSeconds": 18.75,
+      "captureEndSeconds": 22.021,
+      "stageStillCurrent": true,
+      "referenceOutputSha256": "e283fda7b360fcb43b24c9f7198afcfdb124e2c742054632afdf859913ea4f51",
+      "captureStartSecondsDerived": 19.518,
+      "selectedReferenceTreeLines": [
+        {
+          "line": 1,
+          "text": "    204725 (32.8M) << TOTAL >>"
+        },
+        {
+          "line": 2,
+          "text": "      192920 (28.3M) <WebKit Owned>"
+        },
+        {
+          "line": 3,
+          "text": "      + 161236 (25.0M) malloc-block"
+        },
+        {
+          "line": 92,
+          "text": "      + ! 1 VM: VM_ALLOCATE (graphics)"
+        },
+        {
+          "line": 95,
+          "text": "      + 12225 (1.31M) WebCore::Text"
+        },
+        {
+          "line": 96,
+          "text": "      + 10558 (1.29M) WebCore::HTMLSpanElement"
+        },
+        {
+          "line": 97,
+          "text": "      + 5479 (257K) WebCore::InlineCSSStyleProperties"
+        },
+        {
+          "line": 98,
+          "text": "      + 348 (92.4K) WebCore::RenderBlockFlow"
+        },
+        {
+          "line": 100,
+          "text": "      + 332 (36.3K) WebCore::RenderText"
+        },
+        {
+          "line": 105,
+          "text": "      + 5 (20.0K) WebKit::RemoteImageBufferSetProxy"
+        },
+        {
+          "line": 106,
+          "text": "      + 15 (19.7K) WebKit::PlatformCALayerRemote"
+        },
+        {
+          "line": 115,
+          "text": "      + 1 (4.00K) WebKit::RemoteImageBufferProxy"
+        }
+      ]
+    },
+    {
+      "command": [
+        "/usr/bin/leaks",
+        "--noContent",
+        "--nostacks",
+        "--nosources",
+        "--quiet",
+        "--referenceTree",
+        "--groupByType",
+        "9856"
+      ],
+      "exitCode": 0,
+      "failure": null,
+      "durationSeconds": 1.926,
+      "outputBytes": 645308,
+      "stage": "cycle-12-post-close",
+      "pid": 9856,
+      "role": "com.apple.WebKit.WebContent",
+      "requestedElapsedSeconds": 160.45,
+      "captureEndSeconds": 163.14,
+      "stageStillCurrent": true,
+      "referenceOutputSha256": "9338c20d70ea9358f3f0422cb980f80c35b85b29dd4939d63b61f2314ba84861",
+      "captureStartSecondsDerived": 161.214,
+      "selectedReferenceTreeLines": [
+        {
+          "line": 1,
+          "text": "    904375 (109M) << TOTAL >>"
+        },
+        {
+          "line": 2,
+          "text": "      892720 (104M) <WebKit Owned>"
+        },
+        {
+          "line": 3,
+          "text": "      + 746787 (89.3M) malloc-block"
+        },
+        {
+          "line": 92,
+          "text": "      + ! 1 VM: VM_ALLOCATE (graphics)"
+        },
+        {
+          "line": 96,
+          "text": "      + 53784 (5.74M) WebCore::Text"
+        },
+        {
+          "line": 97,
+          "text": "      + 46529 (5.68M) WebCore::HTMLSpanElement"
+        },
+        {
+          "line": 98,
+          "text": "      + 38024 (1.74M) WebCore::InlineCSSStyleProperties"
+        },
+        {
+          "line": 99,
+          "text": "      + 1977 (525K) WebCore::RenderBlockFlow"
+        },
+        {
+          "line": 100,
+          "text": "      + 2222 (243K) WebCore::RenderText"
+        },
+        {
+          "line": 107,
+          "text": "      + 5 (20.0K) WebKit::RemoteImageBufferSetProxy"
+        },
+        {
+          "line": 108,
+          "text": "      + 15 (19.7K) WebKit::PlatformCALayerRemote"
+        },
+        {
+          "line": 118,
+          "text": "      + 1 (4.00K) WebKit::RemoteImageBufferProxy"
+        }
+      ]
+    }
+  ],
+  "checkpointMetadata": [
+    {
+      "workload": "aggregate-cycles",
+      "stage": "cycle-01-post-close",
+      "elapsedSeconds": 18.75,
+      "deliveredBytes": 33725,
+      "managedBytes": 33956416,
+      "processRssBytes": 254361600,
+      "pendingChunks": 4,
+      "generation": -2,
+      "producerJoined": true,
+      "pumpJoined": true,
+      "nativeAckPending": false,
+      "inputQueueEntries": 0,
+      "stats": {
+        "generation": -2,
+        "received": 33725,
+        "terminalPresent": false,
+        "disposed": 1,
+        "finalized": 0,
+        "starts": 1,
+        "closes": 3,
+        "constructed": 1,
+        "opened": 1,
+        "renders": 31,
+        "acceptedWrites": 25,
+        "staleWrites": 1,
+        "inactiveWrites": 1,
+        "emptyControl": false,
+        "weakRefSupported": true,
+        "retiredRootsAlive": 4,
+        "attachedTerminalNodes": 0,
+        "domNodes": 9,
+        "disposedWidthEntries": 0,
+        "disposedWidthUnits": 0,
+        "disposedWriteChunks": 0,
+        "disposedWriteCallbacks": 0,
+        "disposedRenderFramePending": false,
+        "frameCount": 1,
+        "frameWidth": 1024,
+        "frameHeight": 566,
+        "opaqueSandbox": true
+      }
+    },
+    {
+      "workload": "aggregate-cycles",
+      "stage": "cycle-01-post-idle",
+      "elapsedSeconds": 34.75,
+      "deliveredBytes": 33725,
+      "managedBytes": 33972864,
+      "processRssBytes": 254640128,
+      "pendingChunks": 4,
+      "generation": -2,
+      "producerJoined": true,
+      "pumpJoined": true,
+      "nativeAckPending": false,
+      "inputQueueEntries": 0,
+      "stats": {
+        "generation": -2,
+        "received": 33725,
+        "terminalPresent": false,
+        "disposed": 1,
+        "finalized": 1,
+        "starts": 1,
+        "closes": 3,
+        "constructed": 1,
+        "opened": 1,
+        "renders": 31,
+        "acceptedWrites": 25,
+        "staleWrites": 1,
+        "inactiveWrites": 1,
+        "emptyControl": false,
+        "weakRefSupported": true,
+        "retiredRootsAlive": 0,
+        "attachedTerminalNodes": 0,
+        "domNodes": 9,
+        "disposedWidthEntries": 0,
+        "disposedWidthUnits": 0,
+        "disposedWriteChunks": 0,
+        "disposedWriteCallbacks": 0,
+        "disposedRenderFramePending": false,
+        "frameCount": 1,
+        "frameWidth": 1024,
+        "frameHeight": 566,
+        "opaqueSandbox": true
+      }
+    },
+    {
+      "workload": "aggregate-cycles",
+      "stage": "cycle-12-post-close",
+      "elapsedSeconds": 160.45,
+      "deliveredBytes": 33725,
+      "managedBytes": 36652176,
+      "processRssBytes": 264323072,
+      "pendingChunks": 4,
+      "generation": -13,
+      "producerJoined": true,
+      "pumpJoined": true,
+      "nativeAckPending": false,
+      "inputQueueEntries": 0,
+      "stats": {
+        "generation": -13,
+        "received": 33725,
+        "terminalPresent": false,
+        "disposed": 12,
+        "finalized": 11,
+        "starts": 12,
+        "closes": 25,
+        "constructed": 12,
+        "opened": 12,
+        "renders": 375,
+        "acceptedWrites": 300,
+        "staleWrites": 12,
+        "inactiveWrites": 12,
+        "emptyControl": false,
+        "weakRefSupported": true,
+        "retiredRootsAlive": 4,
+        "attachedTerminalNodes": 0,
+        "domNodes": 9,
+        "disposedWidthEntries": 0,
+        "disposedWidthUnits": 0,
+        "disposedWriteChunks": 0,
+        "disposedWriteCallbacks": 0,
+        "disposedRenderFramePending": false,
+        "frameCount": 1,
+        "frameWidth": 1024,
+        "frameHeight": 566,
+        "opaqueSandbox": true
+      }
+    },
+    {
+      "workload": "aggregate-cycles",
+      "stage": "cycle-12-post-idle",
+      "elapsedSeconds": 176.45,
+      "deliveredBytes": 33725,
+      "managedBytes": 36668624,
+      "processRssBytes": 264323072,
+      "pendingChunks": 4,
+      "generation": -13,
+      "producerJoined": true,
+      "pumpJoined": true,
+      "nativeAckPending": false,
+      "inputQueueEntries": 0,
+      "stats": {
+        "generation": -13,
+        "received": 33725,
+        "terminalPresent": false,
+        "disposed": 12,
+        "finalized": 12,
+        "starts": 12,
+        "closes": 25,
+        "constructed": 12,
+        "opened": 12,
+        "renders": 375,
+        "acceptedWrites": 300,
+        "staleWrites": 12,
+        "inactiveWrites": 12,
+        "emptyControl": false,
+        "weakRefSupported": true,
+        "retiredRootsAlive": 0,
+        "attachedTerminalNodes": 0,
+        "domNodes": 9,
+        "disposedWidthEntries": 0,
+        "disposedWidthUnits": 0,
+        "disposedWriteChunks": 0,
+        "disposedWriteCallbacks": 0,
+        "disposedRenderFramePending": false,
+        "frameCount": 1,
+        "frameWidth": 1024,
+        "frameHeight": 566,
+        "opaqueSandbox": true
+      }
+    },
+    {
+      "workload": "aggregate-cycles",
+      "stage": "aggregate-reopened-compatible",
+      "elapsedSeconds": 184.94,
+      "deliveredBytes": 189,
+      "managedBytes": 40051264,
+      "processRssBytes": 266272768,
+      "pendingChunks": 0,
+      "generation": 18,
+      "producerJoined": true,
+      "pumpJoined": false,
+      "nativeAckPending": false,
+      "inputQueueEntries": 0,
+      "stats": {
+        "generation": 18,
+        "received": 189,
+        "columns": 80,
+        "rows": 24,
+        "lines": 24,
+        "maxLines": 224,
+        "blockedLinks": 0,
+        "externalPopupBlocked": true,
+        "topNavigationBlocked": true,
+        "utf8": true,
+        "cursorEdit": true,
+        "recovered": false,
+        "a11yNavigated": false,
+        "a11yWriteHeld": false,
+        "terminalPresent": true,
+        "disposed": 13,
+        "finalized": 13,
+        "starts": 18,
+        "closes": 33,
+        "constructed": 17,
+        "opened": 17,
+        "renders": 382,
+        "acceptedWrites": 497,
+        "staleWrites": 14,
+        "inactiveWrites": 13,
+        "emptyControl": false,
+        "weakRefSupported": true,
+        "retiredRootsAlive": 0,
+        "attachedTerminalNodes": 1,
+        "domNodes": 89,
+        "disposedWidthEntries": 0,
+        "disposedWidthUnits": 0,
+        "disposedWriteChunks": 0,
+        "disposedWriteCallbacks": 0,
+        "disposedRenderFramePending": false,
+        "combinedExact": false,
+        "combinedShort": false,
+        "combinedReflow": false,
+        "combinedUnits": 0,
+        "maxCombinedUnits": 0,
+        "extendedEntries": 0,
+        "markers": 0,
+        "combinedEntries": 0,
+        "staleCombinedEntries": 0,
+        "staleExtendedEntries": 0,
+        "cellArrayBytes": 23040,
+        "cellBackingBytes": 23040,
+        "maxLineColumns": 80,
+        "retainedLineObjects": 24,
+        "nonLogicalLineObjects": 0,
+        "backingSlots": 248,
+        "cleanupTasks": 0,
+        "cleanupCallbacks": 0,
+        "titleUnits": 0,
+        "titleStackEntries": 0,
+        "titleStackUnits": 0,
+        "parseBufferBytes": 16384,
+        "parserPaused": false,
+        "writeChunks": 0,
+        "writeCallbacks": 0,
+        "writePendingUnits": 0,
+        "renderFramePending": false,
+        "renderCallbacks": 0,
+        "rendererRows": 24,
+        "rendererNodes": 36,
+        "a11yRowUnits": 24,
+        "normalCapacity": 224,
+        "alternateCapacity": 24,
+        "links": 0,
+        "normalLines": 24,
+        "alternateLines": 0,
+        "parserUnits": 0,
+        "parserLimited": false,
+        "params": 1,
+        "parserState": 0,
+        "a11yUnits": 0,
+        "a11yPendingUnits": 83,
+        "a11yAggregateUnits": 83,
+        "a11yEchoEntries": 0,
+        "a11yEchoUnits": 0,
+        "a11yMaxEchoEntryUnits": 0,
+        "a11yRows": 24,
+        "a11yRefreshPending": true,
+        "widthCacheEntries": 4,
+        "widthCacheAccountedUnits": 9,
+        "widthCacheEvictions": 0,
+        "widthCacheMeasurements": 42,
+        "widthCacheHits": 0,
+        "widthCachePeakEntries": 4,
+        "widthCachePeakKeyUnits": 9,
+        "widthMeasureUnits": 0,
+        "widthRenderedCells": 0,
+        "widthRenderedWidth": 0,
+        "widthCacheKeyUnits": 9,
+        "frameCount": 1,
+        "frameWidth": 1024,
+        "frameHeight": 566,
+        "opaqueSandbox": true
+      }
+    }
+  ]
+}
