@@ -15,6 +15,16 @@ internal static class Program
     public static void Main(string[] args)
     {
         if (args is ["--check-fixture"]) { FixtureChecks.RunAsync().GetAwaiter().GetResult(); return; }
+        if (OperatingSystem.IsWindows())
+        {
+            try { WindowsResearchHost.Prepare(); }
+            catch
+            {
+                Console.Error.WriteLine("Windows research host unavailable or unsafe; no browser was started. See docs/terminal-surface-research.md.");
+                Environment.ExitCode = 2;
+                return;
+            }
+        }
         // Uno's macOS backend logs ExecuteScriptAsync arguments at Debug level.
         // Do not initialize any logging provider, telemetry or crash reporter here.
         Uno.UI.FeatureConfiguration.WebView2.EnableDevTools = false;
@@ -30,7 +40,27 @@ internal sealed class PrototypeApp : Microsoft.UI.Xaml.Application
         Resources.MergedDictionaries.Add(new XamlControlsResources());
         var view = new PrototypeView();
         window = new Window { Title = "Isolated terminal surface research — controlled fixture", Content = view };
-        window.Closed += async (_, _) => await view.CloseAsync();
+        if (OperatingSystem.IsWindows())
+        {
+            bool closing = false, closed = false;
+            window.AppWindow.Closing += async (_, e) =>
+            {
+                if (closed) return;
+                e.Cancel = true;
+                if (closing) return;
+                closing = true;
+                view.IsHitTestVisible = false;
+                try { await view.ShutdownAsync(); }
+                finally
+                {
+                    if (!await WindowsResearchHost.ShutdownAsync())
+                        Console.Error.WriteLine("Research profile retained: browser exit or profile cleanup could not be confirmed.");
+                    closed = true;
+                    window.Close();
+                }
+            };
+        }
+        else window.Closed += async (_, _) => await view.ShutdownAsync();
         window.Activate();
     }
 }
@@ -46,9 +76,10 @@ internal sealed class PrototypeView : Grid
     private CancellationTokenSource pumpLifetime = new();
     private Task pump = Task.CompletedTask;
     private Task producer = Task.CompletedTask;
+    private readonly Task inputPump;
     private TaskCompletionSource? ack;
     private long generation, sequence, awaitingSequence;
-    private bool bootstrapping = true, ready, holdDelivery;
+    private bool bootstrapping = true, ready, holdDelivery, shuttingDown;
     private int blockedNavigations, blockedPopups;
     private bool? fetchBlocked;
     private bool? sandboxPopupBlocked;
@@ -101,7 +132,7 @@ internal sealed class PrototypeView : Grid
         var top = new StackPanel { Spacing = 6 }; top.Children.Add(buttons); top.Children.Add(extra);
         Children.Add(top); SetRow(status, 1); Children.Add(status); SetRow(web, 2); Children.Add(web);
         Loaded += async (_, _) => await InitializeAsync();
-        _ = ConsumeInputAsync();
+        inputPump = ConsumeInputAsync();
 
         void Add(string label, Func<Task> action) => Button(buttons, label, action);
         void Extra(string label, Func<Task> action) => Button(extra, label, action);
@@ -120,10 +151,11 @@ internal sealed class PrototypeView : Grid
 
     private async Task InitializeAsync()
     {
-        if (ready) return;
+        if (ready || shuttingDown) return;
         try
         {
             await web.EnsureCoreWebView2Async();
+            if (shuttingDown) return;
             web.CoreWebView2.NavigationStarting += (_, e) =>
             {
                 // Only our initial in-memory document may load. Never grant data: generally.
@@ -163,7 +195,7 @@ internal sealed class PrototypeView : Grid
     }
     private void Receive(string json)
     {
-        if (json.Length > 12000) return;
+        if (shuttingDown || json.Length > 12000) return;
         try
         {
             using var outer = JsonDocument.Parse(json);
@@ -199,6 +231,7 @@ internal sealed class PrototypeView : Grid
         await transition.WaitAsync();
         try
         {
+            if (shuttingDown) return;
             await StopCoreAsync();
             generation = terminal.OpenContainerTerminal("controlled", [], 80, 24).SessionId;
             await web.ExecuteScriptAsync($"surface.start({generation})");
@@ -213,6 +246,14 @@ internal sealed class PrototypeView : Grid
         await transition.WaitAsync();
         try { await StopCoreAsync(); status.Text = "Closed; pending output revoked."; }
         finally { transition.Release(); }
+    }
+    public async Task ShutdownAsync()
+    {
+        shuttingDown = true;
+        ready = false;
+        input.Writer.TryComplete();
+        await CloseAsync();
+        await inputPump;
     }
     private async Task StopCoreAsync()
     {

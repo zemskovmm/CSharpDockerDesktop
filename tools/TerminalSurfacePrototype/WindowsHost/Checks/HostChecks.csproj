@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="HostChecks.cs;../TerminalResearchWebViewPolicy.cs;../../WindowsResearchHost.cs" />
+    <Reference Include="$(PrototypeReferences)/Uno.UI.dll;$(PrototypeReferences)/Uno.Foundation.dll;$(PrototypeReferences)/Uno.Foundation.Logging.dll;$(PrototypeReferences)/Uno.dll;$(PrototypeReferences)/DirectN*.dll;$(PrototypeReferences)/WebView2.dll" />
+    <Reference Include="Microsoft.Web.WebView2.Core" HintPath="$(PrototypeReferences)/Microsoft.Web.WebView2.Core.dll" Aliases="mswebview2" />
+  </ItemGroup>
+</Project>

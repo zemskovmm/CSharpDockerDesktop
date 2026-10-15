@@ -1,0 +1,141 @@
+--- a/src/Uno.UI.Runtime.Skia.Win32/UI/Xaml/Controls/WebView/Win32NativeAotWebView.cs
++++ b/src/Uno.UI.Runtime.Skia.Win32/UI/Xaml/Controls/WebView/Win32NativeAotWebView.cs
+@@ -47,46 +47,29 @@
+ 		{
+ 			try
+ 			{
+-				var userDataFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "WebView2");
+-
+-				// These options must be applied at environment creation time; CoreWebView2EnvironmentOptions cannot be
+-				// changed once the environment exists. They are surfaced through FeatureConfiguration.WebView2 because Uno
+-				// owns this CreateAsync call (the app never sees the CoreWebView2Environment), so it's the only injection point.
+-				var options = new WebView2.CoreWebView2EnvironmentOptions();
+-				options.put_AllowSingleSignOnUsingOSPrimaryAccount(
+-					FeatureConfiguration.WebView2.AllowSingleSignOnUsingOSPrimaryAccount ? BOOL.TRUE : BOOL.FALSE
+-				).ThrowOnError();
+-				var additionalBrowserArguments = FeatureConfiguration.WebView2.AdditionalBrowserArguments;
+-				if (!string.IsNullOrEmpty(additionalBrowserArguments))
+-				{
+-					unsafe
+-					{
+-						fixed (char* p_args = additionalBrowserArguments)
+-						{
+-							options.put_AdditionalBrowserArguments(new PWSTR(p_args)).ThrowOnError();
+-						}
+-					}
+-				}
++				TerminalResearchWebViewPolicy.RequireRuntime(Win32CoreWebView2EnvironmentStaticsExtension.Instance.GetAvailableBrowserVersionString(null));
++				var userDataFolder = TerminalResearchWebViewPolicy.ClaimUserDataFolder();
++				var options = TerminalResearchWebViewPolicy.CreateAotOptions();
+ 
+ 				CreateCoreWebView2Environment(userDataFolder, options, new WebView2.Utilities.CoreWebView2CreateCoreWebView2EnvironmentCompletedHandler((errorCode, environment) =>
+ 				{
+-					if (errorCode.IsError)
++					try
+ 					{
+-						tcs.TrySetException(errorCode.GetException() ?? new InvalidOperationException("Failed to create CoreWebView2 environment."));
+-						return;
++						errorCode.ThrowOnError();
++						TerminalResearchWebViewPolicy.TrackAotEnvironment(environment);
++						environment.CreateCoreWebView2Controller(new DirectN.HWND((IntPtr)Hwnd.Value), new WebView2.Utilities.CoreWebView2CreateCoreWebView2ControllerCompletedHandler((controllerError, controller) =>
++						{
++							try
++							{
++								controllerError.ThrowOnError();
++								TerminalResearchWebViewPolicy.TrackController(() => controller.Close().ThrowOnError());
++								controller.get_CoreWebView2(out var coreWebView).ThrowOnError();
++								tcs.TrySetResult((controller, (WebView2.ICoreWebView2_22)coreWebView));
++							}
++							catch (Exception e) { tcs.TrySetException(e); }
++						})).ThrowOnError();
+ 					}
+-
+-					environment.CreateCoreWebView2Controller(new DirectN.HWND((IntPtr)Hwnd.Value), new WebView2.Utilities.CoreWebView2CreateCoreWebView2ControllerCompletedHandler((controllerError, controller) =>
+-					{
+-						if (controllerError.IsError)
+-						{
+-							tcs.TrySetException(controllerError.GetException() ?? new InvalidOperationException("Failed to create CoreWebView2 controller."));
+-							return;
+-						}
+-
+-						controller.get_CoreWebView2(out var coreWebView).ThrowOnError();
+-						tcs.TrySetResult((controller, (WebView2.ICoreWebView2_22)coreWebView));
+-					})).ThrowOnError();
++					catch (Exception e) { tcs.TrySetException(e); }
+ 				}));
+ 			}
+ 			catch (Exception e)
+--- a/src/Uno.UI.Runtime.Skia.Win32/UI/Xaml/Controls/WebView/Win32NativeWebView.cs
++++ b/src/Uno.UI.Runtime.Skia.Win32/UI/Xaml/Controls/WebView/Win32NativeWebView.cs
+@@ -39,8 +39,7 @@
+ 			case null:
+ 				break;
+ 			default:
+-				typeof(Win32Host).LogError()?.Error($"Unsupported `UNO_WEBVIEW2_BACKEND` value `{backend}`! {SupportedUnoWebview2BackendValues}");
+-				break;
++				throw new InvalidOperationException("Unsupported research WebView2 backend; no fallback is allowed.");
+ 		}
+ 		return CreateDefaultWebView(contentPresenter);
+ 	}
+@@ -66,10 +65,9 @@
+ 		{
+ 			Assembly.Load("Microsoft.Web.WebView2.Core");
+ 		}
+-		catch (Exception)
+-		{
+-			typeof(Win32Host).LogError()?.Error($"Failed to load Microsoft.Web.WebView2.Core needed for WebView support. Make sure that WebView is included in the project's UnoFeatures. For more details, see https://aka.platform.uno/webview2 and https://aka.platform.uno/using-uno-sdk.");
+-			return null!;
++		catch (Exception e)
++		{
++			throw new InvalidOperationException("Required research WebView2 backend unavailable; no fallback is allowed.", e);
+ 		}
+ 		return new Win32NativeWebView(owner, contentPresenter);
+ 	}
+@@ -93,28 +91,25 @@
+ 		var tcs = new TaskCompletionSource<NativeWebView.CoreWebView2Controller>();
+ 		NativeDispatcher.Main.EnqueueAsync(async () =>
+ 		{
+-			var userDataFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "WebView2");
+-			// These options must be applied at environment creation time; CoreWebView2EnvironmentOptions cannot be
+-			// changed once the environment exists. They are surfaced through FeatureConfiguration.WebView2 because Uno
+-			// owns this CreateAsync call (the app never sees the CoreWebView2Environment), so it's the only injection point.
+-			var options = new NativeWebView.CoreWebView2EnvironmentOptions
+-			{
+-				AllowSingleSignOnUsingOSPrimaryAccount = FeatureConfiguration.WebView2.AllowSingleSignOnUsingOSPrimaryAccount
+-			};
+-			if (!string.IsNullOrEmpty(FeatureConfiguration.WebView2.AdditionalBrowserArguments))
+-			{
+-				options.AdditionalBrowserArguments = FeatureConfiguration.WebView2.AdditionalBrowserArguments;
+-			}
+-			var env = await NativeWebView.CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder, options: options);
+-			var controller = await env.CreateCoreWebView2ControllerAsync(Hwnd);
+-			controller.IsVisible = false;
+-
+-			if (Presenter.Background is SolidColorBrush { Color: { } color })
+-			{
+-				controller.DefaultBackgroundColor = Color.FromArgb(byte.MaxValue, color.R, color.G, color.B);
+-			}
+-
+-			tcs.SetResult(controller);
++			try
++			{
++				TerminalResearchWebViewPolicy.RequireRuntime(NativeWebView.CoreWebView2Environment.GetAvailableBrowserVersionString());
++				var userDataFolder = TerminalResearchWebViewPolicy.ClaimUserDataFolder();
++				var options = TerminalResearchWebViewPolicy.CreateManagedOptions();
++				var env = await NativeWebView.CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder, options: options);
++				TerminalResearchWebViewPolicy.TrackManagedEnvironment(env);
++				var controller = await env.CreateCoreWebView2ControllerAsync(Hwnd);
++				TerminalResearchWebViewPolicy.TrackController(controller.Close);
++				controller.IsVisible = false;
++
++				if (Presenter.Background is SolidColorBrush { Color: { } color })
++				{
++					controller.DefaultBackgroundColor = Color.FromArgb(byte.MaxValue, color.R, color.G, color.B);
++				}
++
++				tcs.SetResult(controller);
++			}
++			catch (Exception e) { tcs.TrySetException(e); }
+ 		});
+ 
+ 		while (!tcs.Task.IsCompleted)

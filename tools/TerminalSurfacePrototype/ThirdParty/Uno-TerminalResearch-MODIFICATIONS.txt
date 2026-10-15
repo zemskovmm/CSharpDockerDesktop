@@ -1,0 +1,18 @@
+Terminal surface research modifications, 2026-10-15
+
+The optional isolated Windows research output replaces Uno.UI.Runtime.Skia.Win32.dll
+from Uno.WinUI.Runtime.Skia.Win32 6.7.135, source commit
+da217df2312e9e39676880f9cb4b8d519cc297e0.
+
+Modified upstream files:
+- UI/Xaml/Controls/WebView/Win32NativeAotWebView.cs
+- UI/Xaml/Controls/WebView/Win32NativeWebView.cs
+
+The changes enforce documented custom crash-reporting options before environment
+creation, fresh/exclusive research profiles, strict initialization failures, and
+controller/browser-exit tracking for joined profile cleanup. The additional
+TerminalResearchWebViewPolicy.cs is experiment-only glue, not an upstream API.
+Source patch, helper, build/check procedure and limitations are supplied in
+WindowsHost/ and docs/terminal-surface-research.md. Uno's Apache-2.0 license
+is supplied alongside this file in Uno-LICENSE.md. Existing copyright and
+license notices remain applicable. No WebView2 Runtime is redistributed.

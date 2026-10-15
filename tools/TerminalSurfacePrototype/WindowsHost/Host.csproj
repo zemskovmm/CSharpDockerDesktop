@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Uno.UI.Runtime.Skia.Win32</AssemblyName>
+    <LangVersion>13.0</LangVersion>
+    <Version>255.255.255.255</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DefineConstants>$(DefineConstants);RUNTIME_CORECLR;__UNO_SKIA__</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(UnoSourceRoot)/src/Uno.UI.Runtime.Skia.Win32/**/*.cs" />
+    <Compile Include="TerminalResearchWebViewPolicy.cs" />
+    <Reference Include="$(PrototypeReferences)/Uno.Foundation*.dll;$(PrototypeReferences)/Uno.dll;$(PrototypeReferences)/Uno.UI.dll;$(PrototypeReferences)/Uno.UI.Composition.dll;$(PrototypeReferences)/Uno.UI.Dispatching.dll;$(PrototypeReferences)/Uno.UI.Runtime.Skia.dll;$(PrototypeReferences)/Uno.Xaml.dll;$(PrototypeReferences)/Uno.UI.Runtime.Skia.Win32.Support.dll;$(PrototypeReferences)/DirectN*.dll;$(PrototypeReferences)/WebView2.dll;$(PrototypeReferences)/HarfBuzzSharp.dll;$(PrototypeReferences)/Silk.NET*.dll" />
+    <Reference Include="Microsoft.Web.WebView2.Core" HintPath="$(PrototypeReferences)/Microsoft.Web.WebView2.Core.dll" Aliases="mswebview2" />
+    <!-- Match the pinned upstream host's compile API; the prototype retains its original 3.119.2 runtime. -->
+    <PackageReference Include="SkiaSharp" Version="[3.119.0]" />
+  </ItemGroup>
+  <Target Name="RequireResearchInputs" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(UnoSourceRoot)/src/Uno.UI.Runtime.Skia.Win32/UI/Xaml/Controls/WebView/Win32NativeWebView.cs')" Text="Run prepare-host.py on the pinned archive first." />
+    <Error Condition="!Exists('$(PrototypeReferences)/WebView2.dll')" Text="PrototypeReferences must point to the pinned prototype build output." />
+  </Target>
+</Project>

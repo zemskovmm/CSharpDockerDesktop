@@ -15,6 +15,7 @@
     <RuntimeIdentifiers>win-x64;osx-arm64;osx-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="WindowsHost/**/*.cs" />
     <ProjectReference Include="../../src/CSharpDockerDesktop.Application/CSharpDockerDesktop.Application.csproj" />
     <EmbeddedResource Include="Web/*" />
     <Content Include="ThirdParty/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
