@@ -61,3 +61,24 @@ public enum ContainerExecAttachmentTermination { EndOfStream, Canceled, Failed }
 public sealed record ContainerExecAttachmentCompletion(ContainerExecAttachmentTermination Termination, ContainerExecFailure? Failure = null);
 public enum ContainerExecWriteDisposition { NotWritten, Written, Uncertain }
 public sealed record ContainerExecWriteResult(ContainerExecWriteDisposition Disposition, ContainerExecFailure? Failure = null);
+
+public enum ContainerExecResizeDisposition { NotDispatched, Acknowledged, DaemonRejected, Uncertain }
+
+/// <summary>Exact requested binding and dimensions; no rendered-size or process-state claim.
+/// BindingResponse belongs to the read-only preflight, Response belongs only to resize.
+/// AcknowledgementObserved is historical HTTP 200 evidence and survives cancellation/staleness.</summary>
+public sealed record ContainerExecResizeResult(ContainerExecResizeDisposition Disposition,
+    ContainerExecInstance? RequestedInstance, int Columns, int Rows,
+    ContainerExecResponseEvidence? Response = null, ContainerExecResponseEvidence? BindingResponse = null,
+    ContainerExecFailure? Failure = null)
+{
+    public bool AcknowledgementObserved => Response?.HttpStatusCode == 200;
+    public bool IsAcknowledged => Disposition == ContainerExecResizeDisposition.Acknowledged && Failure is null;
+    public override string ToString() => $"Exec resize {Disposition}; failure: {Failure?.Kind}";
+}
+
+public sealed class ContainerExecResizeCanceledException(ContainerExecResizeResult outcome, CancellationToken token)
+    : OperationCanceledException("Exec resize was canceled; inspect Outcome before further action.", token)
+{
+    public ContainerExecResizeResult Outcome { get; } = outcome;
+}

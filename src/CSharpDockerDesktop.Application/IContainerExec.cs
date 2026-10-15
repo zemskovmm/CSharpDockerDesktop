@@ -11,6 +11,10 @@ public interface IContainerExec
     /// <summary>One-shot start on the exact binding. The token governs establishment and attachment lifetime.
     /// Cancellation throws ContainerExecStartCanceledException with historical outcome evidence; never retry automatically.</summary>
     Task<ContainerExecStartResult> StartTtyExecAsync(ContainerExecInstance instance, CancellationToken cancellationToken = default);
+    /// <summary>Resize the exact TTY binding with explicit columns/rows in 1..65535. HTTP acknowledgement
+    /// describes this request only. Never replays or reconnects. Cancellation throws ContainerExecResizeCanceledException
+    /// carrying historical response and possible-dispatch evidence. Does not own or consume an attachment.</summary>
+    Task<ContainerExecResizeResult> ResizeTtyExecAsync(ContainerExecInstance instance, int columns, int rows, CancellationToken cancellationToken = default);
     Task<ContainerExecInspectionResult> InspectExecAsync(ContainerExecInstance instance, CancellationToken cancellationToken = default);
 }
 

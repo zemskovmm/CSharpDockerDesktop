@@ -30,6 +30,11 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Exec resize official negotiated contracts and dimension ordering", ExecResizeChecks.OfficialContractsAndDimensions),
+    ("Exec resize validation binding errors and bounded private evidence", ExecResizeChecks.ValidationBindingAndErrors),
+    ("Exec resize shared admission cancellation deadline and continuity", ExecResizeChecks.AdmissionAndCooperativeLifetimes),
+    ("Exec resize late acknowledgement rejection and joined disposal", ExecResizeChecks.LateEvidenceAndJoinedDisposal),
+    ("Exec resize named-pipe outcomes and no replay", ExecResizeChecks.NamedPipeOutcomesAndNoReplay),
     ("Exec attachment official contracts raw duplex and EOF", ExecAttachmentChecks.ContractsAndRawDuplex),
     ("Exec attachment rejections framing and continuity", ExecAttachmentChecks.RejectionsFramingAndContinuity),
     ("Exec attachment cancellation admission and ownership", ExecAttachmentChecks.CancellationAdmissionAndOwnership),

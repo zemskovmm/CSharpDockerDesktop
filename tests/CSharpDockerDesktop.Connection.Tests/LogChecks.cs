@@ -389,6 +389,7 @@ internal static class LogChecks
                     "/v1.56/volumes/plugin%2Ffull%3Fname" => "{\"Name\":\"plugin/full?name\",\"Status\":{\"token\":\"private synthetic secret\"}}",
                     var execPath when execPath == $"/v1.56/containers/{ExecChecks.ContainerId}/exec" => $$"""{"Id":"{{ExecChecks.ExecId}}"}""",
                     var execPath when execPath == $"/v1.56/exec/{ExecChecks.ExecId}/json" => $$$"""{"ID":"{{{ExecChecks.ExecId}}}","ContainerID":"{{{ExecChecks.ContainerId}}}","Running":false,"ExitCode":0,"OpenStdin":true,"OpenStdout":true,"OpenStderr":true,"ProcessConfig":{"tty":true}}""",
+                    var execPath when execPath == $"/v1.56/exec/{ExecChecks.ExecId}/resize?h=37&w=132" => "",
                     _ => "{\"ID\":\"same-engine\"}"
                 };
                 var payload = Encoding.UTF8.GetBytes(body);
@@ -459,6 +460,7 @@ internal static class LogChecks
             while (terminalBytes.Count < 6) terminalBytes.AddRange(await attachment.Output.ReadAsync(deadline.Token));
             Check(terminalBytes.SequenceEqual(new byte[] { 0xe2, 0x82, 0xac, 27, 91, 109 }));
             Check((await attachment.WriteAsync(new byte[] { 3, 0, 27 }, deadline.Token)).Disposition == ContainerExecWriteDisposition.Written);
+            Check((await ((IContainerExec)owner).ResizeTtyExecAsync(createdExec.AcknowledgedInstance!, 132, 37, deadline.Token)).IsAcknowledged);
             Check(!attachment.Completion.IsCompleted && !logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted,
                 "Attached duplex exec must coexist with resource, event, logs and Stats work");
             Check(!logs.Completion.IsCompleted && !events.Completion.IsCompleted && !stats.Completion.IsCompleted, "Exec protocol requests leave all live streams running");
@@ -479,7 +481,8 @@ internal static class LogChecks
             Check(await owner.CheckLivenessAsync(deadline.Token) is null);
             await owner.DisposeAsync(); await serving;
             Check(paths.Count(p => p == "/version") == 5 && paths.Count(p => p.Contains("/logs?")) == 1 && paths.Count(p => p.Contains("/events?")) == 1 && paths.Count(p => p.Contains("/stats?")) == 1);
-            Check(paths.Count(p => p.EndsWith("/exec")) == 1 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/json") == 2 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/start") == 1);
+            Check(paths.Count(p => p.EndsWith("/exec")) == 1 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/json") == 3 && paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/start") == 1);
+            Check(paths.Count(p => p == $"/v1.56/exec/{ExecChecks.ExecId}/resize?h=37&w=132") == 1);
         }
         finally { foreach (var pipe in pipes) pipe.Dispose(); }
     }

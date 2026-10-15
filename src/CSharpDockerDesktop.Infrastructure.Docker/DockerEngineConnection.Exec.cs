@@ -52,6 +52,10 @@ internal sealed partial class DockerEngineConnection
         => TrackExecOperation(() => DockerContainerExec.InspectAsync(http, Metadata.Api.Negotiated, instance, options,
             continuity, generation, execInspectionSlots, lifetime.Token, cancellationToken));
 
+    public Task<ContainerExecResizeResult> ResizeTtyExecAsync(ContainerExecInstance instance, int columns, int rows, CancellationToken cancellationToken = default)
+        => TrackExecOperation(() => DockerContainerExec.ResizeAsync(http, Metadata.Api.Negotiated, instance, columns, rows,
+            options, continuity, generation, commandSlots, lifetime.Token, cancellationToken));
+
     private Task<T> TrackExecOperation<T>(Func<Task<T>> operation)
     {
         lock (eventGate)

@@ -6,7 +6,7 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Infrastructure.Docker;
 
-internal static class DockerContainerExec
+internal static partial class DockerContainerExec
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 

@@ -60,6 +60,29 @@ internal static class ExecAttachmentChecks
             Check(raw.Requests.Count == 5 && raw.Requests.Take(4).All(r => r.StartsWith("GET ")));
             Check(raw.Requests[4].StartsWith($"POST /v1.{minor}/exec/{Instance.ExecId}/start HTTP/1.1\r\n"));
             Check(raw.StartBody == "{\"Detach\":false,\"Tty\":true}" && raw.Requests[4].Contains("Upgrade: tcp\r\n"));
+            Check((await ((IContainerExec)owner).ResizeTtyExecAsync(Instance, 132, 37)).IsAcknowledged);
+            Check(!raw.Disposed && !attachment.Completion.IsCompleted && transport.OpenCount == 1);
+            Check((await attachment.WriteAsync(input)).Disposition == ContainerExecWriteDisposition.Written && raw.Input.SequenceEqual(input.Concat(input)));
+            using (var cancelResize = new CancellationTokenSource())
+            {
+                cancelResize.Cancel();
+                try { await ((IContainerExec)owner).ResizeTtyExecAsync(Instance, 80, 24, cancelResize.Token); throw new InvalidOperationException("Expected cancellation"); }
+                catch (ContainerExecResizeCanceledException ex) { Check(ex.Outcome.Disposition == ContainerExecResizeDisposition.NotDispatched); }
+            }
+            Check(!attachment.Completion.IsCompleted && !raw.Disposed);
+            if (minor == 56)
+            {
+                using var cancelResize = new CancellationTokenSource();
+                var issuedResize = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                transport.Resize = async (_, token) =>
+                { issuedResize.TrySetResult(); await Task.Delay(Timeout.Infinite, token); throw new InvalidOperationException("Unreachable"); };
+                var resizing = ((IContainerExec)owner).ResizeTtyExecAsync(Instance, 80, 24, cancelResize.Token);
+                await issuedResize.Task.WaitAsync(Limit); cancelResize.Cancel();
+                try { await resizing; throw new InvalidOperationException("Expected resize cancellation"); }
+                catch (ContainerExecResizeCanceledException ex) { Check(ex.Outcome.Disposition == ContainerExecResizeDisposition.Uncertain); }
+                Check(!raw.Disposed && !attachment.Completion.IsCompleted && (await attachment.WriteAsync(input)).Disposition == ContainerExecWriteDisposition.Written);
+                transport.Resize = null;
+            }
             Check((await ((IContainerExec)owner).InspectExecAsync(Instance)).IsSuccess);
             Check((await ((IContainerReader)owner).ListContainersAsync()).IsSuccess && transport.OpenCount == 1);
             raw.End(); Check((await attachment.Completion.WaitAsync(Limit)).Termination == ContainerExecAttachmentTermination.EndOfStream);
@@ -355,19 +378,21 @@ internal static class ExecAttachmentChecks
         internal PipeConnectionCounter Counter { get; } = new();
         internal int OpenCount;
         internal Task? OpenGate;
+        internal Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? Resize;
         internal TaskCompletionSource OpenEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public HttpMessageHandler Create(EngineEndpoint endpoint, DockerConnectionOptions options)
-        { Counter.Opened(); return new ContinuityHandler(new Handler(minor), Counter); }
+        { Counter.Opened(); return new ContinuityHandler(new Handler(minor, (request, token) => Resize?.Invoke(request, token)), Counter); }
         public async ValueTask<Stream> OpenDuplexAsync(EngineEndpoint endpoint, DockerConnectionOptions options, CancellationToken token)
         { Interlocked.Increment(ref OpenCount); OpenEntered.TrySetResult(); if (OpenGate is { } wait) await wait; return stream; }
     }
-    private sealed class Handler(int minor) : HttpMessageHandler
+    private sealed class Handler(int minor, Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>?> resize) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("/resize") && resize(request, cancellationToken) is { } pending) return pending;
             var body = path == "/_ping" ? "OK" : path == "/version" ? Version(minor) : path.EndsWith("/info") ? Info
-                : path.EndsWith("/json") && path.Contains("/exec/") ? Inspect : "[]";
+                : path.EndsWith("/json") && path.Contains("/exec/") ? Inspect : path.EndsWith("/resize") ? "" : "[]";
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
         }
     }
