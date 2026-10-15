@@ -5,7 +5,7 @@ using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 
 // Research fixture only. No Engine, shell, disk transcript, or command default.
-internal sealed class ControlledTerminal : IContainerTerminal
+internal sealed partial class ControlledTerminal : IContainerTerminal
 {
     private Channel<byte[]> output = NewOutput();
     private CancellationTokenSource lifetime = new();

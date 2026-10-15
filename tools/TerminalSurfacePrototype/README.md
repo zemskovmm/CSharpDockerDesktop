@@ -13,4 +13,14 @@ dotnet run --project tools/TerminalSurfacePrototype/TerminalSurfacePrototype.csp
 
 On macOS, `sh tools/TerminalSurfacePrototype/run-macos.sh` creates and opens a development app wrapper. Dependencies and notices live under this folder only; production projects have no terminal-surface dependency.
 
+For the reproducible native retention investigation, publish that wrapper first, then run:
+
+```sh
+python3 tools/TerminalSurfacePrototype/run-retention-checks.py artifacts/terminal-surface/macos/TerminalSurfaceResearch.app
+```
+
+This runs fixed synthetic workloads through the actual Application fixture, four-slot channel, sandbox bridge and acknowledged xterm byte writes. It writes metadata-only logs and one-second RSS samples under ignored `artifacts/terminal-surface/retention`. Use `--workload lifecycle`, `--workload cutoff`, or another named workload to select checks; the sustained case lasts about three minutes. Each native runner also accepts `--check-retention <name>`. The runner refuses non-macOS hosts and disables interaction while checking. It exercises the real native clipboard with the fixed seven-character fixture selection.
+
+Ordinary interactive fixtures retain the **1 MiB safety cutoff**. Only these finite, named synthetic diagnostics receive a **64 MiB total-output ceiling** to measure behavior beyond 1 MiB; there is no unrestricted session mode. The experimental OSC 8 hook now consumes inactive link metadata as well as preventing activation. The `stock-links` and `stock-alternate` fixed diagnostics temporarily omit that hook to reproduce the pinned upstream baseline. Combining-cell and accessibility text remain unbounded with cumulative output absent the lifetime cutoff. Neither source counters nor RSS samples prove bounded browser memory; see the research document for results, attribution limits and next evidence.
+
 The optional Windows experiment is built with `sh tools/TerminalSurfacePrototype/WindowsHost/build-windows-host.sh /path/to/pinned-uno-source.tar.gz`. Read the research document for the archive checksum, preparation/build steps, source notices, strict initialization, fresh-profile retention and joined-cleanup limitations. No Edge runtime is bundled, and no Windows privacy or terminal conformance result is implied by cross-publishing.

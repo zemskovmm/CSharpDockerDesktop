@@ -15,6 +15,13 @@ internal static class Program
     public static void Main(string[] args)
     {
         if (args is ["--check-fixture"]) { FixtureChecks.RunAsync().GetAwaiter().GetResult(); return; }
+        if (args is ["--check-retention", var workload] && RetentionChecks.Workloads.Contains(workload))
+            RetentionChecks.Workload = workload;
+        else if (args.Length != 0) { Environment.ExitCode = 2; return; }
+        // The diagnostic runner exits after joined terminal cleanup. It deliberately
+        // does not bypass Windows' separate browser-exit/profile cleanup protocol.
+        if (RetentionChecks.Workload is not null && !OperatingSystem.IsMacOS())
+        { Console.Error.WriteLine("Retention runner requires the macOS development surface."); Environment.ExitCode = 2; return; }
         if (OperatingSystem.IsWindows())
         {
             try { WindowsResearchHost.Prepare(); }
@@ -65,7 +72,7 @@ internal sealed class PrototypeApp : Microsoft.UI.Xaml.Application
     }
 }
 
-internal sealed class PrototypeView : Grid
+internal sealed partial class PrototypeView : Grid
 {
     private readonly ControlledTerminal fixture = new();
     private readonly IContainerTerminal terminal;
@@ -204,9 +211,16 @@ internal sealed class PrototypeView : Grid
                 ? outer.RootElement.GetString()! : json);
             var root = message.RootElement;
             var kind = root.GetProperty("kind").GetString();
-            if (kind == "ready") { bootstrapping = false; ready = true; status.Text = "Ready. Controlled echo fixture only; no Docker connection."; return; }
+            if (kind == "ready")
+            {
+                bootstrapping = false; ready = true; status.Text = "Ready. Controlled echo fixture only; no Docker connection.";
+                if (RetentionChecks.Workload is not null) _ = RunRetentionChecksAsync();
+                return;
+            }
             var id = root.GetProperty("generation").GetInt64();
             if (id != generation) return;
+            if (kind == "stats" && root.GetProperty("request").GetInt64() == researchStatsSequence)
+                researchStats?.TrySetResult(root.GetProperty("stats").Clone());
             if (kind == "ack" && root.GetProperty("sequence").GetInt64() == awaitingSequence) ack?.TrySetResult();
             if (kind == "fetch") fetchBlocked = root.GetProperty("blocked").GetBoolean();
             if (kind == "sandboxPopup") sandboxPopupBlocked = root.GetProperty("blocked").GetBoolean();
@@ -234,7 +248,8 @@ internal sealed class PrototypeView : Grid
             if (shuttingDown) return;
             await StopCoreAsync();
             generation = terminal.OpenContainerTerminal("controlled", [], 80, 24).SessionId;
-            await web.ExecuteScriptAsync($"surface.start({generation})");
+            deliveredBytes = 0;
+            await web.ExecuteScriptAsync($"surface.start({generation},{JsonSerializer.Serialize(RetentionChecks.Workload is null ? "" : "retention")})");
             pump = PumpAsync(generation, pumpLifetime.Token);
             producer = fixture.ProduceAsync(sustained, lineCount);
             status.Text = "Controlled fixture active. Type, select/copy/paste, resize, hold, close or replace.";
@@ -284,12 +299,16 @@ internal sealed class PrototypeView : Grid
                 // A row cap alone cannot bound strings of combining characters in one cell.
                 // Research-only hard lifetime budget: end this fixture rather than retain unlimited parser state.
                 sessionBytes += output.Bytes.Length;
-                if (sessionBytes > 1048576 || output.Bytes.Length > 4096)
+                // Fixed synthetic diagnostic workloads have a separate finite 64 MiB ceiling.
+                // This is NOT a switch allowing unrestricted terminal sessions past the safety cap.
+                if (sessionBytes > RetentionChecks.OutputLimit || output.Bytes.Length > 4096)
                 {
                     generation = -Math.Abs(generation) - 1;
                     await terminal.CloseContainerTerminalAsync();
                     await web.ExecuteScriptAsync($"surface.close({generation})");
-                    status.Text = "Fixture ended at its 1 MiB output lifetime limit; open a new fixture to continue.";
+                    status.Text = RetentionChecks.OutputLimit == 1048576
+                        ? "Fixture ended at its 1 MiB output lifetime limit; open a new fixture to continue."
+                        : "Fixed research workload exceeded its finite diagnostic budget; delivery ended.";
                     break;
                 }
                 ack = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -297,6 +316,12 @@ internal sealed class PrototypeView : Grid
                 await web.ExecuteScriptAsync($"surface.write({id},{sequence},{JsonSerializer.Serialize(Convert.ToBase64String(output.Bytes.AsSpan()))})");
                 // One <=4096-byte write outstanding until xterm has parsed it. No unbounded JS queue.
                 await ack.Task.WaitAsync(TimeSpan.FromSeconds(10), token);
+                deliveredBytes += output.Bytes.Length;
+                if (RetentionChecks.Workload is not null && deliveredBytes >= nextResearchSample)
+                {
+                    nextResearchSample = deliveredBytes + 262144;
+                    await RecordResearchStatsAsync("stream");
+                }
             }
         }
         catch (OperationCanceledException) { }

@@ -22,10 +22,10 @@
     try { value = JSON.parse(event.data); } catch { return; }
     if (value.kind === 'policy') note(value.directive);
     if (value.stats) cachedStats = value.stats;
-    if (['ready','ack','input','capacity','copy','fetch','sandboxPopup'].includes(value.kind))
+    if (['ready','ack','input','capacity','copy','fetch','sandboxPopup','stats'].includes(value.kind))
       nativePost(event.data);
   });
-  window.surface = { stats:() => ({...cachedStats, violations}), requestStats:() => send('stats', []) };
+  window.surface = { stats:() => ({...cachedStats, violations}), requestStats:(request = 0) => send('stats', [request]) };
   function send(method, args) { frame.contentWindow.postMessage({method, args}, '*'); }
   for (const method of ['start','write','close','resize','selection','paste','selectFixture',
     'controlC','probePopup','probeNavigation','probeFetch','probeExternal'])
