@@ -24,6 +24,14 @@ XtermSource/accessibility-limit.patch additionally modifies:
 - src/common/CoreTerminal.ts and src/browser/Types.d.ts: research-only accessibility
   failure event/entry point for failures outside an active parser write.
 
-Accessibility remains enabled. These guards do not bound renderer width-cache
-retention, browser heap or overall RSS and do not establish screen-reader
+XtermSource/width-cache-limit.patch additionally modifies:
+- src/browser/renderer/dom/WidthCache.ts: experimental FIFO eviction before
+  insertion, 512 entries / 32,768 key UTF-16 units shared by all variants,
+  one-unit variant prefix, aggregate accounting, saturating numeric research
+  counters, clear/font invalidation, hidden measurement text cleanup in finally,
+  and explicit disposal of cache/flat storage/span holdings.
+
+Accessibility remains enabled. Cache eviction remeasures rather than failing,
+truncating output or resetting a healthy terminal. These guards bound identified
+holdings, not browser heap or overall RSS; they do not establish screen-reader
 acceptance or a production terminal policy.

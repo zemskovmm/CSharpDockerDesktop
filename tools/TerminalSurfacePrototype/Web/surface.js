@@ -52,7 +52,17 @@
     }
     const a11y = core._accessibilityManager.value;
     const handlers = [...parser._oscParser._active, ...parser._dcsParser._active];
-    const widths = core._renderService._renderer.value._widthCache._holey;
+    const cache = core._renderService._renderer.value._widthCache, widths = cache._holey;
+    let widthRenderedCells = 0, widthRenderedWidth = 0;
+    const row = term.buffer.active.getLine(term.buffer.active.baseY + term.buffer.active.cursorY);
+    for (let i=0; row && i<term.cols; i++) {
+      const cell = row.getCell(i);
+      const value = cell.getChars();
+      const variant = (cell.isBold() ? 1 : 0) | (cell.isItalic() ? 2 : 0);
+      if (value.length > 1 && widths.has(String(variant) + value)) {
+        widthRenderedCells++; widthRenderedWidth += widths.get(String(variant) + value);
+      }
+    }
     return {combinedUnits, maxCombinedUnits, extendedEntries, markers,
       links:core._oscLinkService._dataByLinkId.size,
       normalLines:core._bufferService.buffers.normal.lines.length,
@@ -69,6 +79,14 @@
       a11yRows:a11y?._rowElements.length || 0,
       a11yRefreshPending:!!a11y?._liveRegionDebouncer._refreshTimeoutID,
       widthCacheEntries:widths.size,
+      widthCacheAccountedUnits:cache._keyUnits,
+      widthCacheEvictions:cache._researchEvictions,
+      widthCacheMeasurements:cache._researchMeasurements,
+      widthCacheHits:cache._researchHits,
+      widthCachePeakEntries:cache._researchPeakEntries,
+      widthCachePeakKeyUnits:cache._researchPeakKeyUnits,
+      widthMeasureUnits:cache._measureElements.reduce((n, el) => n + el.textContent.length, 0),
+      widthRenderedCells, widthRenderedWidth,
       widthCacheKeyUnits:Array.from(widths.keys()).reduce((sum, key) => sum + key.length, 0),
       domNodes:document.getElementsByTagName('*').length};
   }
@@ -117,6 +135,11 @@
     selectFixture() { term?.select(0, 0, 7); },
     controlC() { encode('\x03'); },
     stats,
+    probeWidthCache(action) {
+      if (!researchMode.startsWith('width-cache') || !term || failed) return;
+      if (action === 'refresh') term.refresh(0, term.rows - 1);
+      if (action === 'font') term.options.fontSize = term.options.fontSize === 14 ? 15 : 14;
+    },
     probeAccessibility(action) {
       if (!researchMode || !term || failed) return;
       const a = term._core._accessibilityManager.value;
@@ -162,7 +185,7 @@
     }
   };
   const allowed = new Set(['start','write','close','resize','selection','paste','selectFixture',
-    'controlC','stats','probeAccessibility','probePopup','probeNavigation','probeFetch','probeExternal']);
+    'controlC','stats','probeWidthCache','probeAccessibility','probePopup','probeNavigation','probeFetch','probeExternal']);
   window.addEventListener('message', event => {
     if (event.source !== window.parent || !allowed.has(event.data?.method)) return;
     const method = event.data.method;

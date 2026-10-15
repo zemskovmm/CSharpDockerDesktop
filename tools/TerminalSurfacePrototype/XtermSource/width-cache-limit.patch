@@ -1,0 +1,109 @@
+--- a/src/browser/renderer/dom/WidthCache.ts
++++ b/src/browser/renderer/dom/WidthCache.ts
+@@ -13,7 +13,10 @@
+   /** size of flat cache, size-1 equals highest codepoint handled by flat */
+   FLAT_SIZE = 256,
+   /** char repeat for measuring */
+-  REPEAT = 32
++  REPEAT = 32,
++  /** Experimental holey-cache budgets; flat cache remains 256 Float32 values. */
++  MAX_ENTRIES = 512,
++  MAX_KEY_UNITS = 32768
+ }
+ 
+ 
+@@ -34,9 +37,16 @@
+   protected _flat = new Float32Array(WidthCacheSettings.FLAT_SIZE);
+ 
+   // holey cache for bold, italic and bold&italic for any string
+-  // FIXME: can grow really big over time (~8.5 MB for full BMP caching),
+-  //        so a shared API across terminals is needed
++  // Experimental FIFO eviction: evicted widths are measured again on demand.
+   protected _holey: Map<string, number> | undefined;
++
++  protected _keyUnits = 0;
++  // Numeric research evidence only; saturate so diagnostics remain finite.
++  protected _researchEvictions = 0;
++  protected _researchMeasurements = 0;
++  protected _researchHits = 0;
++  protected _researchPeakEntries = 0;
++  protected _researchPeakKeyUnits = 0;
+ 
+   private _font = '';
+   private _fontSize = 0;
+@@ -83,7 +93,11 @@
+   }
+ 
+   public dispose(): void {
++    for (const element of this._measureElements) element.textContent = '';
++    this._keyUnits = 0;
++    this._flat = new Float32Array(0);
+     this._container.remove();           // remove elements from DOM
++    this._container.textContent = '';  // release detached span nodes
+     this._measureElements.length = 0;   // release element refs
+     this._holey = undefined;            // free cache memory via GC
+   }
+@@ -92,6 +106,8 @@
+    * Clear the width cache.
+    */
+   public clear(): void {
++    this._keyUnits = 0;
++    for (const element of this._measureElements) element.textContent = '';
+     this._flat.fill(WidthCacheSettings.FLAT_UNSET);
+     // .clear() has some overhead, re-assign instead (>3 times faster)
+     this._holey = new Map<string, number>();
+@@ -143,25 +159,46 @@
+       }
+       return width;
+     }
+-    let key = c;
+-    if (bold) key += 'B';
+-    if (italic) key += 'I';
++    let variant = 0;
++    if (bold) variant |= FontVariant.BOLD;
++    if (italic) variant |= FontVariant.ITALIC;
++    // Prefix prevents collisions between literal trailing B/I and variant suffixes.
++    // Check before allocating a key. Renderer cells are already capped at 256 units.
++    const keyUnits = c.length + 1;
++    if (keyUnits > WidthCacheSettings.MAX_KEY_UNITS) return this._measure(c, variant);
++    const key = String(variant) + c;
+     let width = this._holey!.get(key);
+     if (width === undefined) {
+-      let variant = 0;
+-      if (bold) variant |= FontVariant.BOLD;
+-      if (italic) variant |= FontVariant.ITALIC;
+       width = this._measure(c, variant);
+       if (width > 0) {
++        // Evict before insertion, satisfying BOTH budgets at every retained state.
++        while (this._holey!.size >= WidthCacheSettings.MAX_ENTRIES
++          || this._keyUnits + keyUnits > WidthCacheSettings.MAX_KEY_UNITS) {
++          const oldest = this._holey!.keys().next().value!;
++          this._holey!.delete(oldest);
++          this._keyUnits -= oldest.length;
++          this._researchEvictions = Math.min(Number.MAX_SAFE_INTEGER, this._researchEvictions + 1);
++        }
+         this._holey!.set(key, width);
++        this._keyUnits += keyUnits;
++        this._researchPeakEntries = Math.max(this._researchPeakEntries, this._holey!.size);
++        this._researchPeakKeyUnits = Math.max(this._researchPeakKeyUnits, this._keyUnits);
+       }
++    } else {
++      this._researchHits = Math.min(Number.MAX_SAFE_INTEGER, this._researchHits + 1);
+     }
+     return width;
+   }
+ 
+   protected _measure(c: string, variant: FontVariant): number {
+     const el = this._measureElements[variant];
+-    el.textContent = c.repeat(WidthCacheSettings.REPEAT);
+-    return el.offsetWidth / WidthCacheSettings.REPEAT;
++    this._researchMeasurements = Math.min(Number.MAX_SAFE_INTEGER, this._researchMeasurements + 1);
++    // At most 8192 units for a valid 256-unit cell. No measurement text is retained.
++    try {
++      el.textContent = c.repeat(WidthCacheSettings.REPEAT);
++      return el.offsetWidth / WidthCacheSettings.REPEAT;
++    } finally {
++      el.textContent = '';
++    }
+   }
+ }

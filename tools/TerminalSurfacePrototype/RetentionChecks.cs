@@ -7,7 +7,7 @@ using Windows.ApplicationModel.DataTransfer;
 internal static class RetentionChecks
 {
     internal static string? Workload;
-    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
+    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
     internal static int OutputLimit => Workload is null or "cutoff" ? 1048576 : 67108864;
 }
 
@@ -30,14 +30,6 @@ internal sealed partial class ControlledTerminal
                 case "combining":
                     await Add("a");
                     for (int i = 0; i < 131072; i++) await Add("\u0301");
-                    break;
-                case "width-cache":
-                    for (int i = 0; i < 1200; i++)
-                    {
-                        await Add($"\ra{(char)(0x300 + i % 100)}{(char)(0x300 + i / 100)}");
-                        await Send();
-                        await Task.Delay(20, token); // Ensure many distinct cells actually render.
-                    }
                     break;
                 case "stock-links": case "links":
                     for (int i = 0; i < 8000; i++)
@@ -79,14 +71,8 @@ internal sealed partial class ControlledTerminal
         async Task Send()
         {
             int count = used;
-            int first = workload == "width-cache" ? count - 1 : count;
-            await writer.WriteAsync(chunk.AsSpan(0, first).ToArray(), token);
-            ResearchBytes += first;
-            if (first != count)
-            {
-                await writer.WriteAsync([chunk[first]], token); // Split the last UTF-8 combining scalar.
-                ResearchBytes++;
-            }
+            await writer.WriteAsync(chunk.AsSpan(0, count).ToArray(), token);
+            ResearchBytes += count;
             used = 0;
             if (workload == "sustained") await Task.Delay(10, token);
         }
@@ -147,6 +133,7 @@ internal sealed partial class PrototypeView
                 await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
                 await RecordResearchStatsAsync("combined-failure-reopened");
             }
+            else if (RetentionChecks.Workload is "width-cache" or "width-cache-long") await CheckWidthCacheAsync();
             else if (RetentionChecks.Workload == "a11y-boundaries") await CheckAccessibilityAsync();
             else if (RetentionChecks.Workload is "a11y" or "attributes")
             {
@@ -189,8 +176,6 @@ internal sealed partial class PrototypeView
                 switch (RetentionChecks.Workload)
                 {
                     case "normal": case "sustained": Require(deliveredBytes > 1048576); break;
-                    case "width-cache": Require(result.GetProperty("maxCombinedUnits").GetInt32() == 3
-                        && result.GetProperty("widthCacheEntries").GetInt32() > 8); break;
                     case "stock-links": Require(result.GetProperty("links").GetInt32() == 8000); break;
                     case "links": case "alternate": case "stock-alternate": Require(result.GetProperty("links").GetInt32() == 0); break;
                     case "osc": case "dcs": Require(result.GetProperty("parserLimited").GetBoolean()); break;
@@ -306,6 +291,100 @@ internal sealed partial class PrototypeView
         Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
         await CheckResearchLifecycleAsync();
         await RecordResearchStatsAsync("combined-complete");
+    }
+    private async Task CheckWidthCacheAsync()
+    {
+        bool longCells = RetentionChecks.Workload == "width-cache-long";
+        await OpenResearchAsync(RetentionChecks.Workload!);
+        int serial = 0; string firstText = ""; double firstWidth = 0;
+        foreach (string variant in new[] { "0", "1", "3", "1;3" })
+        {
+            for (int batch = 0; batch < (longCells ? 4 : 12); batch++)
+            {
+                // Deliberate blur clears prior announcements, then refocus keeps accessibility
+                // enabled. A long batch contains exactly 16,384 announced UTF-16 units.
+                await web.ExecuteScriptAsync("surface.probeAccessibility('blur')");
+                await web.ExecuteScriptAsync("surface.probeAccessibility('focus')");
+                long before = (await ReadResearchStatsAsync()).GetProperty("widthCacheMeasurements").GetInt64();
+                var text = new StringBuilder($"\r\x1b[2K\x1b[0;{variant}m");
+                for (int cell = 0; cell < 64; cell++, serial++)
+                {
+                    text.Append('a');
+                    if (longCells) text.Append('\u0301', 253);
+                    text.Append((char)(0x300 + serial % 112));
+                    text.Append((char)(0x300 + serial / 112));
+                }
+                if (serial == 64) firstText = text.ToString();
+                await SendCombinedAsync(text.ToString());
+                // Parsed writes may coalesce. Require the actual visible distinct cells in
+                // the cache plus measurements, without assuming one render per write.
+                var current = await WaitForWidthRenderedAsync(before + 64);
+                if (serial == 64) firstWidth = current.GetProperty("widthRenderedWidth").GetDouble();
+                CheckCacheBounds(current);
+            }
+            var sample = await RecordResearchStatsAsync("width-variant-" + variant.Replace(';', '-'));
+            Require(sample.GetProperty("a11yRows").GetInt32() == 24);
+        }
+        var result = await RecordResearchStatsAsync("width-capacity");
+        Require(result.GetProperty("widthCacheEvictions").GetInt64() > 0);
+        if (longCells) Require(result.GetProperty("widthCachePeakKeyUnits").GetInt32() >= 32000);
+        else Require(result.GetProperty("widthCachePeakEntries").GetInt32() == 512);
+        long hits = result.GetProperty("widthCacheHits").GetInt64();
+        await web.ExecuteScriptAsync("surface.probeWidthCache('refresh')");
+        await Task.Delay(150);
+        var hit = await RecordResearchStatsAsync("width-repeat-hits");
+        Require(hit.GetProperty("widthCacheHits").GetInt64() >= hits + 64
+            && hit.GetProperty("widthCacheMeasurements").GetInt64() == result.GetProperty("widthCacheMeasurements").GetInt64());
+        // An already evicted early row must measure again and render correctly.
+        await web.ExecuteScriptAsync("surface.probeAccessibility('blur')");
+        long measured = result.GetProperty("widthCacheMeasurements").GetInt64();
+        await SendCombinedAsync(firstText);
+        await WaitForWidthRenderedAsync(measured + 64);
+        var again = await RecordResearchStatsAsync("width-remeasurement");
+        Require(again.GetProperty("widthCacheMeasurements").GetInt64() > measured);
+        Require(again.GetProperty("widthRenderedCells").GetInt32() == 64
+            && again.GetProperty("widthRenderedWidth").GetDouble() == firstWidth && firstWidth > 0); CheckCacheBounds(again);
+        await web.ExecuteScriptAsync("surface.probeWidthCache('font')");
+        await WaitForWidthRenderedAsync(again.GetProperty("widthCacheMeasurements").GetInt64() + 64);
+        var font = await RecordResearchStatsAsync("width-font-changed");
+        Require(font.GetProperty("widthCacheMeasurements").GetInt64() >= again.GetProperty("widthCacheMeasurements").GetInt64() + 64
+            && font.GetProperty("widthRenderedCells").GetInt32() == 64); CheckCacheBounds(font);
+        await web.ExecuteScriptAsync("surface.probeWidthCache('font')");
+        await ResizeAsync(40, 10); await ResizeAsync(100, 30);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('blur')");
+        await web.ExecuteScriptAsync("surface.probeAccessibility('focus')");
+        await SendCombinedAsync("\x1b[0m\r\nRECOVERED\r\n");
+        await Task.Delay(100);
+        var recovered = await RecordResearchStatsAsync("width-resize-recovered");
+        Require(recovered.GetProperty("recovered").GetBoolean()); CheckCacheBounds(recovered);
+        await CloseAsync(); await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await CheckResearchLifecycleAsync();
+    }
+    private async Task<JsonElement> WaitForWidthRenderedAsync(long minimumMeasurements)
+    {
+        var timer = Stopwatch.StartNew();
+        do
+        {
+            var current = await ReadResearchStatsAsync();
+            if (current.GetProperty("widthRenderedCells").GetInt32() == 64
+                && current.GetProperty("widthCacheMeasurements").GetInt64() >= minimumMeasurements) return current;
+            if (timer.Elapsed > TimeSpan.FromSeconds(10)) throw new TimeoutException();
+            // Font/character-size invalidations can clear after the initial render.
+            // Request an ordinary redraw; never clear the cache or reset the terminal.
+            await web.ExecuteScriptAsync("surface.probeWidthCache('refresh')");
+            await Task.Delay(20);
+        } while (true);
+    }
+    private static void CheckCacheBounds(JsonElement result)
+    {
+        int units = result.GetProperty("widthCacheKeyUnits").GetInt32();
+        Require(result.GetProperty("widthCacheEntries").GetInt32() <= 512 && units <= 32768
+            && units == result.GetProperty("widthCacheAccountedUnits").GetInt32()
+            && result.GetProperty("widthCachePeakEntries").GetInt32() <= 512
+            && result.GetProperty("widthCachePeakKeyUnits").GetInt32() <= 32768
+            && result.GetProperty("widthMeasureUnits").GetInt32() == 0
+            && result.GetProperty("maxCombinedUnits").GetInt32() <= 256);
     }
     private async Task AwaitAccessibilityFailureAsync(long stale, int before)
     {

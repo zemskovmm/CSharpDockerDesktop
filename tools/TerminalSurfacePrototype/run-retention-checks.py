@@ -6,7 +6,7 @@ import pathlib
 import subprocess
 import time
 
-WORKLOADS = ("combined", "lifecycle", "cutoff", "normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries")
+WORKLOADS = ("combined", "lifecycle", "cutoff", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries")
 
 
 def webkit_processes():

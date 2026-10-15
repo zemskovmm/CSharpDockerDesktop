@@ -1,7 +1,7 @@
 # Modified xterm source experiment
 
 Only the isolated prototype consumes this modified MIT xterm.js 5.5.0 build.
-`checksums.json` pins the npm source archive, both ordered source patches and rebuilt asset.
+`checksums.json` pins the npm source archive, three ordered source patches and rebuilt asset.
 `package-lock.json` pins the isolated build tool and platform binaries by npm
 integrity; Node 22.23.1/npm 10.9.8/esbuild 0.25.0 were used for the recorded build.
 No installed package, NuGet cache assembly or upstream checkout is modified.
@@ -69,3 +69,32 @@ These callback/core-event extensions are deliberately outside stock xterm's publ
 It is research failure behavior, not an accepted production terminal policy.
 Preserve `ThirdParty/xterm-LICENSE` and the modification notice in distributions.
 See the main research document for native observations and remaining gaps.
+
+`width-cache-limit.patch` applies third. The DOM width cache evicts oldest keys
+**before insertion** to retain at most **512 entries / 32,768 key UTF-16 units**
+across all four font variants. A one-unit variant prefix avoids suffix collisions.
+Cache misses remeasure; hits preserve FIFO order without new key retention.
+The regular one-unit U+0000..U+00FF flat cache stays at 256 Float32 values (1 KiB).
+Clear/font invalidation resets accounting, while numeric research counters retain
+lifetime evidence; disposal releases the map, accounting, flat storage and spans.
+The existing 256-unit cell limit bounds one key to 257 units and one 32-repeat
+measurement to 8,192 units. Measurement spans clear in `finally`, also on layout
+failure; no repeated measurement text remains between calls. Logical key payload
+is at most 64 KiB, independently of map/DOM/string-copy/GC overhead. These are
+experimental budgets, not a browser/native-memory bound or production policy.
+
+`width-cache-checks.ts` tests entry and aggregate exact boundaries, eviction and
+remeasurement, repeated hits, four variants, literal suffix separation, flat
+storage, supplementary/combined text, zero measurements, exception cleanup,
+clear/font invalidation and disposal using actual source with simulated layout.
+Run native `--workload width-cache --workload width-cache-long` after publishing:
+short cells churn 3,072 distinct cells; long cells churn 1,024 exact 256-unit
+cells, across regular/bold/italic/bold-italic. Each 64-cell batch must actually
+appear in the cache and increase measurement counts; parsed write count is not a
+render count. Fixed redraw/font probes exercise ordinary rendering, without cache
+injection. Explicit blur/refocus between batches clears prior announcements while
+screen reader mode and row accessibility stay enabled; long batches announce
+exactly 16,384 units. Repeated redraws hit the cache, evicted text remeasures to the
+same numeric width, and font changes/resize/recovery/close/replacement are checked.
+These finite diagnostics retain the 64 MiB ceiling; ordinary fixtures keep 1 MiB.
+See the research document for numeric native results and limitations.
