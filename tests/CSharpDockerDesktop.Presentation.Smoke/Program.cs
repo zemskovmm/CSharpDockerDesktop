@@ -98,11 +98,21 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         networkActions.Children.Add(networkDeletion); networkActions.Children.Add(networkDeletionChecks); tools.Children.Add(networkActions);
         networkTools.Children.Add(networks); networkTools.Children.Add(networkEvent); networkTools.Children.Add(networkScenario); networkTools.Children.Add(networkChecks);
         tools.Children.Add(networkTools);
+        var endpointTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var endpointShell = new Button { Content = "Engine shell fixture" };
+        var releaseEndpoint = new Button { Content = "Release Engine attempt" };
+        var endpointChecks = new Button { Content = "Run endpoint shell checks" };
+        endpointShell.Click += async (_, _) => { await ShellEndpointUiSmokeChecks.Open(frame); };
+        releaseEndpoint.Click += (_, _) => ShellEndpointUiSmokeChecks.Release();
+        endpointChecks.Click += async (_, _) => { endpointChecks.IsEnabled = false; await ShellEndpointUiSmokeChecks.Run(frame, evidence); endpointChecks.IsEnabled = true; };
+        endpointTools.Children.Add(endpointShell); endpointTools.Children.Add(releaseEndpoint); endpointTools.Children.Add(endpointChecks); tools.Children.Add(endpointTools);
         tools.Children.Add(logScenarios); tools.Children.Add(new ScrollViewer { MaxHeight = 80, Content = evidence });
         grid.Children.Add(new ScrollViewer { Content = tools, MaxHeight = 160, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }); grid.Children.Add(frame); Grid.SetRow(frame, 1);
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
         frame.Navigate(typeof(NetworksPage), browser);
         window.Activate();
+        if (Environment.GetEnvironmentVariable("CSHARPDOCKER_ENDPOINT_UI_CHECKS") == "1")
+            _ = ShellEndpointUiSmokeChecks.Run(frame, evidence);
         if (Environment.GetEnvironmentVariable("CSHARPDOCKER_STATS_UI_CHECKS") == "1")
             _ = StatsUiSmokeChecks.Run(frame, browser, evidence);
     }

@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/ConnectionEditorView.cs" Link="Presentation/ConnectionEditorView.cs" />
+    <Compile Include="../../src/CSharpDockerDesktop.Presentation/OperationProvenanceDisplay.cs" Link="Presentation/OperationProvenanceDisplay.cs" />
     <!-- Exercise the actual Presentation state without loading a graphical Uno host. -->
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerBrowserView.cs" Link="Presentation/ContainerBrowserView.cs" />
     <Compile Include="../../src/CSharpDockerDesktop.Presentation/ContainerBrowserView.Operations.cs" Link="Presentation/ContainerBrowserView.Operations.cs" />

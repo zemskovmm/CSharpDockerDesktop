@@ -23,7 +23,7 @@ public sealed partial class ImageBrowserView
     public bool CanDelete => operations is not null && !submitting && DeleteConfirmation is null
         && operations.ImageOperation?.Pending != true && browser.ImageSnapshot.State == ResourceReadState.Ready
         && CurrentIdentity(browser.ImageSnapshot);
-    public string OperationMessage => Operation is { } operation ? ImageOperationDisplay.Status(operation) : "No image deletion in this session.";
+    public string OperationMessage => Operation is { } operation ? ImageOperationDisplay.Status(operation, Snapshot.State == ResourceReadState.Unavailable ? -1 : Snapshot.ConnectionGeneration) : "No image deletion in this session.";
     public bool HasOperationDetails => Operation?.CommandOutcome?.DaemonMessage is not null
         || Operation?.CommandOutcome?.RemovalRecords is { Count: > 0 } || Operation?.ObservationFailure?.DaemonMessage is not null;
     public string OperationDetails => ShowingOperationDetails && Operation is { } operation ? ImageOperationDisplay.SensitiveDetails(operation) : "";
@@ -111,7 +111,7 @@ public sealed partial class ImageBrowserView
 public static class ImageOperationDisplay
 {
     public const string Unresolved = "Unresolved outcome. The command may have taken effect. Unresolved mutations are never automatically replayed; check authoritative Engine state before another deliberate action.";
-    public static string Status(ImageOperationSnapshot operation)
+    public static string Status(ImageOperationSnapshot operation, long? currentGeneration = null)
     {
         string phase = operation.Phase switch
         {
@@ -134,7 +134,7 @@ public static class ImageOperationDisplay
         string observation = operation.ObservedExists is { } exists ? $"\nObserved: image {(exists ? "present" : "absent")}." : "";
         if (operation.ObservationFailure is { } error) observation += $"\nObservation failure: {ContainerDisplay.Failure(error)}";
         if (operation.ObservedConnectionGeneration is { } generation) observation += $" Observation connection generation: {generation}.";
-        return $"Non-force Delete — full ID {operation.Request.Target.Id}, connection generation {operation.Request.Target.ConnectionGeneration}\n{phase}{command}{observation}";
+        return $"Non-force Delete — full ID {operation.Request.Target.Id}, connection generation {operation.Request.Target.ConnectionGeneration}\n{OperationProvenanceDisplay.Describe(operation.Endpoint, operation.EngineId, operation.Request.Target.ConnectionGeneration, currentGeneration)}\n{phase}{command}{observation}";
     }
     private const int MaximumCharacters = 16384;
     private const int MaximumRecords = 128;

@@ -37,7 +37,7 @@ public sealed partial class ContainerBrowserView
                 : row.State == "restarting" ? "Start/Stop/Restart are unavailable while restarting. "
                 : row.State is not ("running" or "created" or "exited" or "dead") ? "Lifecycle actions are unavailable for this unknown state. " : "")
             + (operations?.ContainerOperation?.Pending == true || submitting ? "Another operation is pending; no actions are queued." : "The Engine decides whether an action is allowed.");
-    public string OperationMessage => Operation is { } operation ? ContainerOperationDisplay.Status(operation) : "No container operation in this session.";
+    public string OperationMessage => Operation is { } operation ? ContainerOperationDisplay.Status(operation, Snapshot.State == ResourceReadState.Unavailable ? -1 : Snapshot.ConnectionGeneration) : "No container operation in this session.";
     public bool HasOperationDetails => Operation?.CommandOutcome?.DaemonMessage is not null || Operation?.ObservationFailure?.DaemonMessage is not null;
     public string OperationDetails => ShowingOperationDetails && Operation is { } operation
         ? $"Original command daemon content:\n{operation.CommandOutcome?.DaemonMessage ?? "none"}\nOriginal observation daemon content:\n{operation.ObservationFailure?.DaemonMessage ?? "none"}" : "";
@@ -127,7 +127,7 @@ public sealed partial class ContainerBrowserView
 
 public static class ContainerOperationDisplay
 {
-    public static string Status(ContainerOperationSnapshot operation)
+    public static string Status(ContainerOperationSnapshot operation, long? currentGeneration = null)
     {
         string action = operation.Request.ForceDelete ? "Force Delete" : operation.Request.Command.ToString();
         string phase = operation.Phase switch
@@ -150,6 +150,6 @@ public static class ContainerOperationDisplay
             : operation.ObservedState is { } state ? $"\nObserved state: {ContainerDisplay.Text(state.Status)}; running: {ContainerDisplay.Flag(state.Running)}; paused: {ContainerDisplay.Flag(state.Paused)}; restarting: {ContainerDisplay.Flag(state.Restarting)}; dead: {ContainerDisplay.Flag(state.Dead)}." : "";
         if (operation.ObservationFailure is { } error) observation += $"\nObservation failure: {ContainerDisplay.Failure(error)}";
         if (operation.ObservedConnectionGeneration is { } generation) observation += $" Observation connection generation: {generation}.";
-        return $"{action} — full ID {operation.Request.Target.Id}, connection generation {operation.Request.Target.ConnectionGeneration}\n{phase}{command}{observation}";
+        return $"{action} — full ID {operation.Request.Target.Id}, connection generation {operation.Request.Target.ConnectionGeneration}\n{OperationProvenanceDisplay.Describe(operation.Endpoint, operation.EngineId, operation.Request.Target.ConnectionGeneration, currentGeneration)}\n{phase}{command}{observation}";
     }
 }

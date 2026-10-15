@@ -3,8 +3,9 @@ using System.Threading.Channels;
 using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 using CSharpDockerDesktop.Infrastructure.Docker;
+using CSharpDockerDesktop.Presentation;
 
-internal static class EndpointSelectionChecks
+internal static partial class EndpointSelectionChecks
 {
     private static readonly TimeSpan Limit = TimeSpan.FromSeconds(5);
     private static readonly EngineEndpoint A = new("npipe://./pipe/engine_a", EngineTransport.WindowsNamedPipe);
@@ -161,6 +162,9 @@ internal static class EndpointSelectionChecks
                 && history.Resolution == ContainerOperationResolution.Unresolved && history.ObservedConnectionGeneration is null);
             Check(next.Commands == 0 && next.ContainerInspections == 0 && old.Commands == 1,
                 "Overlapping IDs and Engine IDs must not reconcile or replay across endpoint boundaries");
+            using var view = new ContainerBrowserView(s, action => { action(); return true; }); view.Attach();
+            Check(view.OperationMessage.Contains(A.Address) && view.OperationMessage.Contains("Historical result")
+                && view.OperationMessage.Contains("same-engine-id") && !view.OperationMessage.Contains("original private daemon content"));
             Check((await s.ExecuteContainerOperationAsync(request)).CommandOutcome?.Failure?.Kind == ContainerCommandFailureKind.StaleConnection);
         }
     }
@@ -194,6 +198,11 @@ internal static class EndpointSelectionChecks
                 && imageHistory.CommandOutcome.RemovalRecords!.Single().Deleted == ImageId && imageHistory.Resolution == ImageOperationResolution.Unresolved);
             Check(volumeHistory.CommandOutcome?.DaemonErrorBody == "volume body" && volumeHistory.Resolution == VolumeOperationResolution.Unresolved
                 && networkHistory.CommandOutcome?.DaemonErrorBody == "network body" && networkHistory.Resolution == NetworkOperationResolution.Unresolved);
+            using var images = new ImageBrowserView(s, action => { action(); return true; }); images.Attach();
+            using var volumes = new VolumeBrowserView(s, action => { action(); return true; }); volumes.Attach();
+            using var networks = new NetworkBrowserView(s, action => { action(); return true; }); networks.Attach();
+            foreach (string message in new[] { images.OperationMessage, volumes.OperationMessage, networks.OperationMessage })
+                Check(message.Contains(A.Address) && message.Contains("same-engine-id") && message.Contains("Historical result"));
             Check(imageHistory.ObservedConnectionGeneration is null && volumeHistory.ObservedConnectionGeneration is null
                 && networkHistory.ObservedConnectionGeneration is null && next.Commands == 0 && next.ResourceCommands == 0 && old.ResourceCommands == 3);
         }

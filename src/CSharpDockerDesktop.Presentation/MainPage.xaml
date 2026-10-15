@@ -7,6 +7,7 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
+    <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Border Padding="24,16" BorderThickness="0,0,0,1"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
       <StackPanel Spacing="8">
@@ -21,6 +22,28 @@
                   AutomationProperties.AutomationId="RetryConnection"
                   AutomationProperties.Name="Retry Docker Engine connection" />
         </Grid>
+        <Expander x:Name="EndpointEditor" Header="Select Engine endpoint" HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Select Docker Engine endpoint">
+          <StackPanel Spacing="8">
+            <TextBox x:Name="EndpointDraft" Header="Endpoint address (draft)" MaxLength="2048"
+                     PlaceholderText="npipe://./pipe/docker_engine" TextChanged="OnEndpointDraftChanged"
+                     AutomationProperties.AutomationId="EndpointDraft"
+                     AutomationProperties.Name="Docker Engine endpoint address draft" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button x:Name="ApplyEndpoint" Content="Apply / Connect" Click="OnApplyEndpoint"
+                      AutomationProperties.AutomationId="ApplyEndpoint"
+                      AutomationProperties.Name="Apply endpoint and connect" />
+              <Button x:Name="UseDefaultEndpoint" Content="Use default local pipe" Click="OnUseDefaultEndpoint"
+                      AutomationProperties.AutomationId="UseDefaultEndpoint"
+                      AutomationProperties.Name="Select default local Windows pipe and connect" />
+            </StackPanel>
+            <TextBlock x:Name="EndpointDraftStatus" TextWrapping="Wrap" />
+            <TextBlock Text="Selection is kept only for this app session. Only local Windows named pipes are supported."
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Expander>
+        <TextBlock x:Name="SelectedEndpoint" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   AutomationProperties.AutomationId="SelectedEndpoint" />
         <TextBlock x:Name="EngineStatus" AutomationProperties.AutomationId="EngineStatus"
                    FontWeight="SemiBold" TextWrapping="Wrap" />
         <TextBlock x:Name="ConnectionDiagnostic" TextWrapping="Wrap" />
@@ -37,6 +60,7 @@
         </Expander>
       </StackPanel>
     </Border>
+    </ScrollViewer>
     <NavigationView x:Name="ResourceNavigation" Grid.Row="1"
                     PaneDisplayMode="Left" IsPaneOpen="True" OpenPaneLength="220"
                     IsSettingsVisible="False" IsBackButtonVisible="Collapsed"

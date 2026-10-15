@@ -8,13 +8,16 @@ namespace CSharpDockerDesktop.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly DesktopSession session;
-    private string? displayedDaemonMessage;
+    private readonly ConnectionEditorView connection;
     private bool attached;
+    private int connectionUpdateQueued;
 
     public MainPage(DesktopSession session)
     {
         this.session = session;
+        connection = new(session);
         InitializeComponent();
+        EndpointDraft.Text = connection.Draft;
         Loaded += (_, _) => { if (!attached) { session.Changed += OnSessionChanged; attached = true; } UpdateConnection(); };
         Unloaded += (_, _) => Detach();
         UpdateConnection();
@@ -25,18 +28,45 @@ public sealed partial class MainPage : Page
     {
         session.Changed -= OnSessionChanged;
         attached = false;
+        connection.HideDaemonMessage();
+        DaemonMessage.Text = "";
+        DaemonMessage.Visibility = Visibility.Collapsed;
         if (ResourceFrame.Content is ContainersPage containers) containers.Detach();
         if (ResourceFrame.Content is ImagesPage images) images.Detach();
         if (ResourceFrame.Content is VolumesPage volumes) volumes.Detach();
         if (ResourceFrame.Content is NetworksPage networks) networks.Detach();
     }
     private void OnSessionChanged(object? sender, EventArgs args)
-        => DispatcherQueue.TryEnqueue(() => { if (attached) UpdateConnection(); });
-    private void OnRetry(object sender, RoutedEventArgs args) => session.Retry();
+    {
+        if (Interlocked.Exchange(ref connectionUpdateQueued, 1) != 0) return;
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            Interlocked.Exchange(ref connectionUpdateQueued, 0);
+            if (attached) UpdateConnection();
+        })) Interlocked.Exchange(ref connectionUpdateQueued, 0);
+    }
+    private void OnRetry(object sender, RoutedEventArgs args) { connection.Retry(); UpdateConnection(); }
+    private void OnApplyEndpoint(object sender, RoutedEventArgs args)
+    {
+        connection.Draft = EndpointDraft.Text;
+        connection.Apply(); UpdateConnection();
+    }
+    private void OnUseDefaultEndpoint(object sender, RoutedEventArgs args)
+    {
+        connection.UseDefault(); EndpointDraft.Text = connection.Draft; UpdateConnection();
+    }
+    private void OnEndpointDraftChanged(object sender, TextChangedEventArgs args)
+    {
+        if (EndpointDraft is null || ApplyEndpoint is null || EndpointDraftStatus is null) return;
+        connection.Draft = EndpointDraft.Text;
+        ApplyEndpoint.IsEnabled = connection.CanApply;
+        EndpointDraftStatus.Text = connection.DraftStatus;
+    }
     private void OnShowDaemonMessage(object sender, RoutedEventArgs args)
     {
-        DaemonMessage.Text = session.Snapshot.Failure?.DaemonMessage ?? session.Snapshot.EventFailure?.DaemonMessage ?? "No daemon message available.";
-        DaemonMessage.Visibility = Visibility.Visible;
+        connection.RevealDaemonMessage();
+        DaemonMessage.Text = connection.DaemonMessage;
+        DaemonMessage.Visibility = connection.ShowingDaemonMessage ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateConnection()
@@ -51,47 +81,16 @@ public sealed partial class MainPage : Page
             EngineConnectionState.Unavailable => "Docker Engine: Unavailable",
             _ => "Docker Engine: Not connected"
         };
-        var recovery = s.AutomaticRecoveryPending ? " Automatic recovery is scheduled."
-            : s.State is EngineConnectionState.Unavailable or EngineConnectionState.Lost ? " Use Retry connection when ready." : "";
-        ConnectionDiagnostic.Text = s.Failure is { } failure
-            ? $"{FailureLabel(failure.Kind)}: {failure.Description}{recovery}"
-            : s.EventFailure is { } eventFailure
-                ? $"Automatic updates for containers, images, volumes and networks interrupted ({eventFailure.Kind}): {eventFailure.Description} "
-                    + (s.EventRecoveryPending ? "Observation recovery is scheduled. " : "Use Retry connection to restore observation. ")
-                    + "Manual refresh for containers, images, volumes and networks remains available, and you can continue navigating."
-            : s.State == EngineConnectionState.Connecting ? "Opening the default local Windows connection. Navigation remains available."
-            : s.State == EngineConnectionState.Connected ? "Engine connected. Containers include Overview, Inspect, Logs and lifecycle actions. Images include Overview, Inspect and confirmed non-force Delete. Dependencies may prevent deletion. Volumes include Overview, Inspect and confirmed deletion with dependency checks. Networks include read-only Overview and Inspect. All resource lists support automatic updates. Network deletion is pending." : "";
-        var daemonMessage = s.Failure?.DaemonMessage ?? s.EventFailure?.DaemonMessage;
-        if (!Equals(displayedDaemonMessage, daemonMessage))
-        {
-            DaemonMessage.Visibility = Visibility.Collapsed;
-            DaemonMessage.Text = "";
-            displayedDaemonMessage = daemonMessage;
-        }
-        ShowDaemonMessage.Visibility = daemonMessage is null ? Visibility.Collapsed : Visibility.Visible;
-        ConnectionDetails.Text = FormatDetails(s);
+        connection.Refresh();
+        SelectedEndpoint.Text = $"Selected: {ConnectionEditorView.Preview(s.Endpoint.Address)} · {s.Endpoint.Transport}";
+        EndpointDraftStatus.Text = connection.DraftStatus;
+        ApplyEndpoint.IsEnabled = connection.CanApply;
+        ConnectionDiagnostic.Text = connection.Diagnostic;
+        DaemonMessage.Text = connection.DaemonMessage;
+        DaemonMessage.Visibility = connection.ShowingDaemonMessage ? Visibility.Visible : Visibility.Collapsed;
+        ShowDaemonMessage.Visibility = connection.HasDaemonMessage ? Visibility.Visible : Visibility.Collapsed;
+        ConnectionDetails.Text = connection.Details;
         if (ResourceFrame.Content is ResourcePage page) page.UpdateConnection(s);
-    }
-
-    private static string FailureLabel(EngineConnectionFailureKind kind) => kind switch
-    {
-        EngineConnectionFailureKind.MissingEndpoint => "Pipe unavailable",
-        EngineConnectionFailureKind.AccessDenied => "Access denied",
-        EngineConnectionFailureKind.IncompatibleApi => "Incompatible Engine API",
-        EngineConnectionFailureKind.UnsupportedEndpoint => "Unsupported endpoint or platform",
-        EngineConnectionFailureKind.MalformedResponse => "Invalid Engine response",
-        EngineConnectionFailureKind.DaemonHttpError => "Daemon error",
-        EngineConnectionFailureKind.TransientTransportFailure => "Transport interrupted",
-        _ => "Connection error"
-    };
-
-    private static string FormatDetails(ConnectionSnapshot s)
-    {
-        var m = s.Metadata;
-        static string Text(string? value) => string.IsNullOrEmpty(value) ? "unknown" : value;
-        static string Flag(bool? value) => value switch { true => "available", false => "unavailable", _ => "unknown" };
-        var c = m?.Capabilities;
-        return $"Selection: Default local Windows pipe (no Docker CLI context selected)\nEndpoint: {s.Endpoint.Address}\nTransport: {s.Endpoint.Transport}\nEngine version: {Text(m?.EngineVersion)}\nDaemon API: {m?.Api.DaemonMinimum.ToString() ?? "unknown"}–{m?.Api.DaemonMaximum.ToString() ?? "unknown"}\nNegotiated API: {m?.Api.Negotiated.ToString() ?? "unknown"}\nOperating system: {Text(m?.OperatingSystem)}\nOS type: {Text(m?.OSType)}\nRuntime OS: {Text(m?.RuntimeOS)}\nHost architecture: {Text(m?.HostArchitecture)}\nRuntime architecture: {Text(m?.RuntimeArchitecture)}\nCapabilities reported by daemon:\nMemory limit: {Flag(c?.MemoryLimit)}; swap limit: {Flag(c?.SwapLimit)}\nCPU period: {Flag(c?.CpuCfsPeriod)}; CPU quota: {Flag(c?.CpuCfsQuota)}; CPU shares: {Flag(c?.CpuShares)}; CPU set: {Flag(c?.CpuSet)}\nPID limit: {Flag(c?.PidsLimit)}; IPv4 forwarding: {Flag(c?.IPv4Forwarding)}; experimental: {Flag(c?.Experimental)}\nSwarm state: {Text(c?.SwarmLocalNodeState)}";
     }
 
     private void OnResourceSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

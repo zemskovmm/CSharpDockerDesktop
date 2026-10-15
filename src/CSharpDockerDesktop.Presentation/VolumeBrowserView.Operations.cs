@@ -210,7 +210,7 @@ public sealed partial class VolumeBrowserView
             Changed?.Invoke(this, EventArgs.Empty);
         });
     }
-    public string OperationMessage => Operation is { } latest ? VolumeOperationDisplay.Status(latest) : "No volume deletion in this session.";
+    public string OperationMessage => Operation is { } latest ? VolumeOperationDisplay.Status(latest, Snapshot.State == ResourceReadState.Unavailable ? -1 : Snapshot.ConnectionGeneration) : "No volume deletion in this session.";
     public bool HasOperationDetails => Operation is { } latest && (latest.CommandOutcome is not null || latest.Preparation is not null
         || latest.ObservationFailure is not null || latest.ObservationListFailure is not null || latest.DependencyFailure is not null || latest.ObservedListing is not null);
     public string OperationDetails => ShowingOperationDetails && active && ReferenceEquals(operation, operations?.VolumeOperation) ? operationEvidence : "";
@@ -331,7 +331,7 @@ public static class VolumeOperationDisplay
         _ => $"Dependency preparation failed ({preparation.Failure?.Kind}). Deletion is disabled. Cancel and choose Delete for a fresh precheck."
             + (preparation.Failure?.ResourceFailure is { } failure ? " " + SafeFailure(failure) : "")
     };
-    public static string Status(VolumeOperationSnapshot operation)
+    public static string Status(VolumeOperationSnapshot operation, long? currentGeneration = null)
     {
         string phase = operation.Phase switch
         {
@@ -345,7 +345,7 @@ public static class VolumeOperationDisplay
                 _ => Unresolved
             }
         };
-        var text = new StringBuilder($"Non-force volume Delete · name: {Preview(operation.Request.Target.Name)} · connection generation: {operation.Request.Target.ConnectionGeneration}\n{phase}");
+        var text = new StringBuilder($"Non-force volume Delete · name: {Preview(operation.Request.Target.Name)} · connection generation: {operation.Request.Target.ConnectionGeneration}\n{OperationProvenanceDisplay.Describe(operation.Endpoint, operation.EngineId, operation.Request.Target.ConnectionGeneration, currentGeneration)}\n{phase}");
         if (operation.Rejection is { } rejection) text.Append($"\nAdmission rejection: {rejection}.");
         if (operation.Interruption is { } interruption) text.Append($"\nInterruption: {interruption}. Possible dispatch still requires observation.");
         if (operation.CommandOutcome is { } command)
