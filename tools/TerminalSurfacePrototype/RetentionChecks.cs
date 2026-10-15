@@ -7,7 +7,7 @@ using Windows.ApplicationModel.DataTransfer;
 internal static class RetentionChecks
 {
     internal static string? Workload;
-    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
+    internal static readonly string[] Workloads = ["aggregate-sustained", "aggregate-cycles", "combined", "normal", "sustained", "combining", "width-cache", "width-cache-long", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
     internal static int OutputLimit => Workload is null or "cutoff" ? 1048576 : 67108864;
 }
 
@@ -24,6 +24,32 @@ internal sealed partial class ControlledTerminal
         {
             switch (workload)
             {
+                case "aggregate-sustained": case "aggregate-cycle":
+                    // 1,200 half-second ticks: >=10 min, one generation, ~2 MiB.
+                    // CR overwrites leave stale combined/extended metadata; LF churns history.
+                    int ticks = workload == "aggregate-sustained" ? 1200 : 24;
+                    for (int tick = 0; tick < ticks; tick++)
+                    {
+                        var text = new StringBuilder();
+                        if (tick == 0) text.Append("\x1b]2;fixed-retention-title\a\x1b[22;0t");
+                        for (int line = 0; line < 16; line++)
+                            text.Append($"café λ 世界 🐳 {tick:D4} \x1b[4:3;58:2::4:3:2m")
+                                .Append(line % 2 == 0 ? "a\u0301b\u0308" : "ordinary")
+                                .Append("\x1b[0m\rplain\r\n");
+                        // A rendered row of distinct short combined keys, all four variants.
+                        text.Append($"\x1b[0;{new[] { "0", "1", "3", "1;3" }[tick % 4]}m");
+                        for (int cell = 0; cell < 64; cell++)
+                        {
+                            int serial = tick * 64 + cell;
+                            text.Append('a').Append((char)(0x300 + serial % 112))
+                                .Append((char)(0x300 + serial / 112 % 112));
+                        }
+                        text.Append("\x1b[0m");
+                        await Add(text.ToString());
+                        if (used != 0) await Send();
+                        await Task.Delay(workload == "aggregate-sustained" ? 500 : 60, token);
+                    }
+                    break;
                 case "normal": case "sustained":
                     for (int i = 0; i < (workload == "sustained" ? 1200000 : 300000); i++) await Add($"line {i:D6} café λ 世界 🐳 \x1b[31mRED\x1b[0m\r\n");
                     break;
@@ -105,7 +131,10 @@ internal sealed partial class PrototypeView
         Console.WriteLine("RETENTION " + JsonSerializer.Serialize(new { workload = RetentionChecks.Workload,
             stage, elapsedSeconds = Math.Round(researchClock.Elapsed.TotalSeconds, 2), deliveredBytes,
             managedBytes = GC.GetTotalMemory(false), processRssBytes = Process.GetCurrentProcess().WorkingSet64,
-            pendingChunks = fixture.PendingChunks, stats = result }));
+            pendingChunks = fixture.PendingChunks, generation,
+            producerJoined = producer.IsCompleted, pumpJoined = pump.IsCompleted,
+            nativeAckPending = ack is not null && !ack.Task.IsCompleted,
+            inputQueueEntries = input.Reader.Count, stats = result }));
         return result;
     }
     private async Task RunRetentionChecksAsync()
@@ -119,7 +148,8 @@ internal sealed partial class PrototypeView
             await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
             Require((await ReadResearchStatsAsync()).GetProperty("utf8").GetBoolean());
             await RecordResearchStatsAsync("baseline");
-            if (RetentionChecks.Workload == "combined") await CheckCombinedCellsAsync();
+            if (RetentionChecks.Workload is "aggregate-sustained" or "aggregate-cycles") await CheckAggregateAsync();
+            else if (RetentionChecks.Workload == "combined") await CheckCombinedCellsAsync();
             else if (RetentionChecks.Workload == "combining")
             {
                 await OpenResearchAsync();
@@ -204,6 +234,73 @@ internal sealed partial class PrototypeView
             // separate native browser-exit/profile-cleanup procedure and is refused at entry.
             Environment.Exit(exit);
         }
+    }
+    private async Task CheckAggregateAsync()
+    {
+        bool sustained = RetentionChecks.Workload == "aggregate-sustained";
+        await CloseAsync();
+        await RecordResearchStatsAsync("aggregate-empty-baseline");
+        await Task.Delay(8000); // Keep this state stable for native VM/footprint snapshots.
+        int cycles = sustained ? 1 : 12;
+        for (int cycle = 1; cycle <= cycles; cycle++)
+        {
+            await OpenResearchAsync(RetentionChecks.Workload!);
+            await RecordResearchStatsAsync($"cycle-{cycle:D2}-baseline");
+            long id = generation;
+            var elapsed = Stopwatch.StartNew();
+            producer = fixture.ProduceResearchAsync(sustained ? "aggregate-sustained" : "aggregate-cycle");
+            if (sustained)
+                while (!producer.IsCompleted)
+                {
+                    await Task.WhenAny(producer, Task.Delay(30000));
+                    var sample = await RecordResearchStatsAsync("aggregate-paced");
+                    CheckAggregateBounds(sample);
+                    Require(generation == id && elapsed.Elapsed < TimeSpan.FromMinutes(12));
+                }
+            await producer.WaitAsync(TimeSpan.FromSeconds(30));
+            await WaitForAsync(() => deliveredBytes == fixture.ResearchBytes);
+            Require(fixture.ProducerCompleted && generation == id && fixture.ResearchBytes < 67108864);
+            if (sustained) Require(elapsed.Elapsed >= TimeSpan.FromMinutes(10) && deliveredBytes > 1048576);
+            // Populate alt while normal stays retained, also exercise extended attributes.
+            await SendCombinedAsync("\x1b[?1049h" + string.Concat(Enumerable.Repeat("\x1b[4:3;58:2::4:3:2mALT a\u0301 café λ 世界 🐳\x1b[0m\r\n", 30)));
+            await Task.Delay(1200);
+            var populated = await RecordResearchStatsAsync($"cycle-{cycle:D2}-populated");
+            CheckAggregateBounds(populated);
+            Require(populated.GetProperty("normalLines").GetInt32() == 224
+                && populated.GetProperty("alternateLines").GetInt32() == 24
+                && populated.GetProperty("widthCacheEvictions").GetInt64() > 0);
+            if (sustained || cycle is 1 or 12) await Task.Delay(8000);
+            // Block a fresh producer in the same populated session; close must join both tasks.
+            holdDelivery = true;
+            producer = fixture.ProduceResearchAsync("normal");
+            await WaitForAsync(() => fixture.PendingChunks == 4);
+            Require(!producer.IsCompleted);
+            await CloseAsync(); holdDelivery = false;
+            Require(producer.IsCompleted && pump.IsCompleted && generation < 0);
+            await web.ExecuteScriptAsync($"surface.write({id},0,'c3RhbGU=')");
+            var closed = await RecordResearchStatsAsync($"cycle-{cycle:D2}-post-close");
+            Require(!closed.GetProperty("terminalPresent").GetBoolean()
+                && closed.GetProperty("attachedTerminalNodes").GetInt32() == 0
+                && closed.GetProperty("received").GetInt64() == populated.GetProperty("received").GetInt64());
+            await Task.Delay(sustained ? 30000 : 8000);
+            await RecordResearchStatsAsync($"cycle-{cycle:D2}-post-idle");
+            if (sustained || cycle is 1 or 12) await Task.Delay(8000);
+        }
+        // Reopen and prove delayed old writes/failures cannot affect a replacement.
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await CheckResearchLifecycleAsync();
+        await RecordResearchStatsAsync("aggregate-reopened-compatible");
+    }
+    private static void CheckAggregateBounds(JsonElement value)
+    {
+        Require(value.GetProperty("normalLines").GetInt32() <= 224
+            && value.GetProperty("alternateLines").GetInt32() <= 24
+            && value.GetProperty("maxCombinedUnits").GetInt32() <= 256
+            && value.GetProperty("a11yAggregateUnits").GetInt32() <= 16384
+            && value.GetProperty("links").GetInt32() == 0
+            && value.GetProperty("markers").GetInt32() == 0);
+        CheckCacheBounds(value);
     }
     private async Task OpenResearchAsync(string mode = "combined")
     {

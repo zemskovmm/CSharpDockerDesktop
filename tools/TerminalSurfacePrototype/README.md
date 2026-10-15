@@ -19,7 +19,7 @@ For the reproducible native retention investigation, publish that wrapper first,
 python3 tools/TerminalSurfacePrototype/run-retention-checks.py artifacts/terminal-surface/macos/TerminalSurfaceResearch.app
 ```
 
-This runs fixed synthetic workloads through the actual Application fixture, four-slot channel, sandbox bridge and acknowledged xterm byte writes. It writes metadata-only logs and one-second RSS samples under ignored `artifacts/terminal-surface/retention`. Use `--workload lifecycle`, `--workload cutoff`, or another named workload to select checks; the sustained case lasts about three minutes. Each native runner also accepts `--check-retention <name>`. The runner refuses non-macOS hosts and disables interaction while checking. It exercises the real native clipboard with the fixed seven-character fixture selection.
+This runs fixed synthetic workloads through the actual Application fixture, four-slot channel, sandbox bridge and acknowledged xterm byte writes. It writes metadata-only logs and one-second RSS samples under ignored `artifacts/terminal-surface/retention`. Use `--workload lifecycle`, `--workload cutoff`, or another named workload to select checks; the historical `sustained` case lasts about three minutes; `aggregate-sustained` lasts at least ten minutes in one generation. Each native runner also accepts `--check-retention <name>`. The runner refuses non-macOS hosts and disables interaction while checking. It exercises the real native clipboard with the fixed seven-character fixture selection.
 
 Ordinary interactive fixtures retain the **1 MiB safety cutoff**. Only these finite, named synthetic diagnostics receive a **64 MiB total-output ceiling** to measure behavior beyond 1 MiB; there is no unrestricted session mode. The experimental OSC 8 hook now consumes inactive link metadata as well as preventing activation. The `stock-links` and `stock-alternate` fixed diagnostics temporarily omit that hook to reproduce the pinned upstream baseline. The checksum-pinned source experiment now rejects combined cells above 256 UTF-16 units before append, with explicit session failure and joined cleanup. The ordered accessibility source patch also caps pending/live announcements at 16,384 UTF-16 units in aggregate, and echo retention at 256 entries / 1,024 units / 16 units per entry. Over-budget parsing, render callbacks and keyboard handling close the fixture with the fixed `accessibility-limit` failure and serialized cleanup; accessibility stays enabled. These are research budgets, not production policy. The third source patch bounds DOM width-cache retention at 512 entries / 32,768 key UTF-16 units, evicting before insertion and remeasuring on misses. Hidden measurement text clears after each measurement. Overall browser memory and real screen-reader acceptance remain unresolved. Source rebuild/check instructions are in [XtermSource/README.md](XtermSource/README.md); the `combined` native workload covers both screens, edits/reflow and failure/replacement, and `combining` now checks early failure of the former 131,073-unit reproducer. The `a11y` carriage-return and `attributes` workloads now expect an early accessibility failure, joined producer/pump and successful reopening; their historical unbounded-retention counts remain baseline evidence only. `a11y-boundaries` covers mixed pending/live exact limits, UTF-8 fragments, tabs, no-echo synthetic DOM keys, echo consumption, blur, row navigation, a keyboard failure with a parser write outstanding, delayed-render fault injection, disposal and failure/replacement. All accessibility holding counts are metadata only. Run it with `--workload a11y-boundaries`. Neither source counters nor RSS samples prove bounded browser memory; see the research document for results, attribution limits and next evidence.
 
@@ -37,3 +37,33 @@ resize, recovery, close and replacement. Run with `--workload width-cache
 Cache counts do not establish overall browser/native-memory or sustained-session
 conformance; production component selection, Windows privacy/runtime behavior and
 real Engine interaction remain unresolved.
+
+The aggregate retention baseline uses `--workload aggregate-sustained --workload
+aggregate-cycles`. The first emits 1,200 fixed half-second ticks, with 16
+Unicode/ANSI lines and 64 short combined cells per tick, without resets or focus
+clearing. The second runs 12 open/populate/close/idle cycles in one native
+application and browser lifetime. Each populates normal history and the alternate
+screen, churns bounded cache entries, blocks a producer on the four-slot channel,
+then cancels and joins producer/pump and probes a stale write. Both reopen the
+ordinary compatibility fixture afterward. No workload accepts external data.
+
+Metadata now includes circular-list backing slots (including non-visible held
+lines), the cached blank line, deduplicated cell array backing bytes, stale
+combined/extended map entries, titles/parser state, renderer/accessibility rows,
+write/render/cleanup callbacks, and closed-surface checkpoints. Diagnostic weak
+references and finalization counts observe natural collection without retaining
+terminal roots; absence of finalization is not proof of a leak. Snapshots allocate
+temporary inspection arrays and strings, without logging their contents.
+
+The runner records host conditions, assembly hash, app RSS separately from newly
+observed WebContent/GPU/Networking helper PIDs, and `vmmap -summary` / `footprint`
+at selected aggregate checkpoints. Stable checkpoint dwells allow native capture;
+capture manifests record the actual delay from the requested stage. The nominal
+RSS interval is one second, with longer gaps during native tooling. These helpers
+are PID candidates because XPC uses launchd parentage; concurrent WebKit launches
+would confound attribution. Native categories do not identify retained JS paths.
+There are no heap dumps, forced collections or debugger/privacy changes. Only
+`aggregate-sustained` receives an outer 840-second deadline (other cases retain
+660 seconds); its producer has a finite twelve-minute deadline. The ordinary
+1 MiB cutoff and named 64 MiB diagnostic ceiling are unchanged. See the research
+document and committed metadata summary for observed results and remaining gaps.

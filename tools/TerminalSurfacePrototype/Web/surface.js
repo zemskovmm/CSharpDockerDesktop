@@ -2,6 +2,34 @@
 (() => {
   'use strict';
   let term, generation = 0, received = 0, blockedLinks = 0, externalPopupBlocked = false, topNavigationBlocked = false, researchMode = '', failed = false, lastSequence = 0, a11yNavigated = false, a11yWriteHeld = false;
+  // Only weak references and numeric snapshots: diagnostics must not root old terminals.
+  const retired = [];
+  let disposed = 0, finalized = 0, lastDisposed = {};
+  const finalizer = typeof FinalizationRegistry === 'function'
+    ? new FinalizationRegistry(() => finalized++) : null;
+  const lifecycleStats = () => ({terminalPresent:!!term, disposed, finalized,
+    weakRefSupported:typeof WeakRef === 'function',
+    retiredRootsAlive:retired.filter(ref => ref.deref() !== undefined).length,
+    attachedTerminalNodes:document.querySelectorAll('.terminal').length,
+    domNodes:document.getElementsByTagName('*').length, ...lastDisposed});
+  const disposeTerminal = target => {
+    const core = target._core, renderer = core._renderService._renderer.value;
+    if (researchMode.startsWith('aggregate-')) {
+      disposed++;
+      if (typeof WeakRef === 'function') {
+        if (retired.length < 256) retired.push(new WeakRef(target), new WeakRef(core),
+          new WeakRef(core._bufferService.buffers), new WeakRef(renderer));
+        finalizer?.register(target, disposed);
+      }
+    }
+    target.dispose();
+    if (researchMode.startsWith('aggregate-')) lastDisposed = {
+      disposedWidthEntries:renderer._widthCache._holey?.size || 0,
+      disposedWidthUnits:renderer._widthCache._keyUnits,
+      disposedWriteChunks:core._writeBuffer._writeBuffer.length,
+      disposedWriteCallbacks:core._writeBuffer._callbacks.length,
+      disposedRenderFramePending:!!core._renderService._renderDebouncer._animationFrame};
+  };
   const post = value => {
     const message = JSON.stringify(value);
     window.parent.postMessage(message, '*');
@@ -17,11 +45,12 @@
     const bounds = researchMode ? retentionStats() : undefined;
     failed = true; term = undefined;
     // Fence synchronously, dispose after the parser/key/render stack unwinds.
-    queueMicrotask(() => { target.dispose();
+    queueMicrotask(() => { disposeTerminal(target);
       if (id === generation) document.getElementById('terminal').replaceChildren(); });
     post({kind:'failure', generation:id, sequence, code, received, bounds});
   };
   const stats = () => {
+    if (!term) return {generation, received, ...lifecycleStats()};
     const b = term.buffer.active;
     const lines = Array.from({length:b.length}, (_, i) => b.getLine(i).translateToString(true));
     return {generation, received, columns:term.cols, rows:term.rows,
@@ -29,7 +58,7 @@
       utf8: lines.some(line => line.includes('café λ 世界 🐳')),
       cursorEdit: lines.some(line => line.includes('12XYZ')),
       recovered: lines.some(line => line.includes('RECOVERED')),
-      a11yNavigated, a11yWriteHeld,
+      a11yNavigated, a11yWriteHeld, ...lifecycleStats(),
       combinedExact: lines.some(line => line.includes('a' + '\u0301'.repeat(255))),
       combinedShort: lines.some(line => line.includes('b\u0301')),
       combinedReflow: lines.join('').includes('a\u0301Y'),
@@ -40,15 +69,34 @@
   function retentionStats() {
     const core = term._core, parser = core._inputHandler._parser;
     let combinedUnits = 0, maxCombinedUnits = 0, extendedEntries = 0, markers = 0;
+    let combinedEntries = 0, staleCombinedEntries = 0, staleExtendedEntries = 0;
+    let cellArrayBytes = 0, cellBackingBytes = 0, maxLineColumns = 0;
+    const backings = new Set(), retainedLines = new Set(), logicalLines = new Set();
+    let backingSlots = 0, cleanupTasks = 0, cleanupCallbacks = 0;
+    for (const buffer of [core._bufferService.buffers.normal, core._bufferService.buffers.alt]) {
+      for (let i=0; i<buffer.lines.length; i++) logicalLines.add(buffer.lines.get(i));
+      backingSlots += buffer.lines._array.length;
+      for (const line of buffer.lines._array) if (line) retainedLines.add(line);
+      cleanupTasks += buffer._memoryCleanupQueue._tasks.length;
+      cleanupCallbacks += Number(!!buffer._memoryCleanupQueue._idleCallback);
+    }
+    if (core._bufferService._cachedBlankLine) retainedLines.add(core._bufferService._cachedBlankLine);
     for (const buffer of [core._bufferService.buffers.normal, core._bufferService.buffers.alt]) {
       markers += buffer.markers.length;
-      for (let i = 0; i < buffer.lines.length; i++) {
-        const line = buffer.lines.get(i);
-        for (const value of Object.values(line._combined)) {
+    }
+    for (const line of retainedLines) {
+        cellArrayBytes += line._data.byteLength;
+        maxLineColumns = Math.max(maxLineColumns, line.length);
+        if (!backings.has(line._data.buffer)) { cellBackingBytes += line._data.buffer.byteLength; backings.add(line._data.buffer); }
+        for (const [key, value] of Object.entries(line._combined)) {
+          combinedEntries++;
+          if (!(line._data[Number(key) * 3] & 0x200000)) staleCombinedEntries++;
           combinedUnits += value.length; maxCombinedUnits = Math.max(maxCombinedUnits, value.length);
         }
-        extendedEntries += Object.keys(line._extendedAttrs).length;
-      }
+        for (const key of Object.keys(line._extendedAttrs)) {
+          extendedEntries++;
+          if (!(line._data[Number(key) * 3 + 2] & 0x10000000)) staleExtendedEntries++;
+        }
     }
     const a11y = core._accessibilityManager.value;
     const handlers = [...parser._oscParser._active, ...parser._dcsParser._active];
@@ -63,7 +111,24 @@
         widthRenderedCells++; widthRenderedWidth += widths.get(String(variant) + value);
       }
     }
+    const handler = core._inputHandler, writer = core._writeBuffer;
+    const renderer = core._renderService._renderer.value, debouncer = core._renderService._renderDebouncer;
     return {combinedUnits, maxCombinedUnits, extendedEntries, markers,
+      combinedEntries, staleCombinedEntries, staleExtendedEntries, cellArrayBytes, cellBackingBytes, maxLineColumns,
+      retainedLineObjects:retainedLines.size, nonLogicalLineObjects:[...retainedLines].filter(line => !logicalLines.has(line)).length,
+      backingSlots, cleanupTasks, cleanupCallbacks,
+      titleUnits:handler._windowTitle.length + handler._iconName.length,
+      titleStackEntries:handler._windowTitleStack.length + handler._iconNameStack.length,
+      titleStackUnits:[...handler._windowTitleStack,...handler._iconNameStack].reduce((n,s) => n+s.length,0),
+      parseBufferBytes:handler._parseBuffer.byteLength, parserPaused:handler._parseStack.paused,
+      writeChunks:writer._writeBuffer.length, writeCallbacks:writer._callbacks.filter(Boolean).length,
+      writePendingUnits:writer._pendingData,
+      renderFramePending:!!debouncer._animationFrame, renderCallbacks:debouncer._refreshCallbacks.length,
+      rendererRows:renderer._rowElements.length,
+      rendererNodes:renderer._rowContainer.querySelectorAll('*').length,
+      a11yRowUnits:a11y?._rowElements.reduce((n,row) => n+row.textContent.length,0) || 0,
+      normalCapacity:core._bufferService.buffers.normal.lines.maxLength,
+      alternateCapacity:core._bufferService.buffers.alt.lines.maxLength,
       links:core._oscLinkService._dataByLinkId.size,
       normalLines:core._bufferService.buffers.normal.lines.length,
       alternateLines:core._bufferService.buffers.alt.lines.length,
@@ -94,7 +159,7 @@
     start(id, probe = '') {
       generation = id; failed = false; received = 0; lastSequence = 0; a11yNavigated = false; a11yWriteHeld = false; blockedLinks = 0;
       researchMode = probe;
-      term?.dispose(); document.getElementById('terminal').replaceChildren();
+      if (term) disposeTerminal(term); document.getElementById('terminal').replaceChildren();
       term = new Terminal({cols:80, rows:24, scrollback:200, fontSize:14, logLevel:'off',
         allowProposedApi:false, screenReaderMode:true,
         linkHandler:{activate:()=>{ blockedLinks++; }, allowNonHttpProtocols:false}});
@@ -127,7 +192,7 @@
         post({kind:'ack', generation, sequence});
       });
     },
-    close(id) { failed = true; generation = id; term?.dispose(); term = undefined;
+    close(id) { failed = true; generation = id; if (term) disposeTerminal(term); term = undefined;
       document.getElementById('terminal').replaceChildren(); },
     resize(columns, rows) { term?.resize(columns, rows); term?.focus(); },
     selection() { return term?.getSelection() || ''; },

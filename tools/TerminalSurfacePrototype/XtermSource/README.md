@@ -98,3 +98,14 @@ exactly 16,384 units. Repeated redraws hit the cache, evicted text remeasures to
 same numeric width, and font changes/resize/recovery/close/replacement are checked.
 These finite diagnostics retain the 64 MiB ceiling; ordinary fixtures keep 1 MiB.
 See the research document for numeric native results and limitations.
+
+The post-mitigation aggregate baseline leaves these three patches and their asset
+hash unchanged. The native `aggregate-sustained` and `aggregate-cycles` fixtures
+add a ten-minute generation and twelve sessions in one application/browser
+lifetime. Wrapper metadata inspects both circular-list backing arrays, cached
+blank lines, stale cell-map entries and natural collection eligibility, alongside
+parser/title/renderer/accessibility/callback counts. Native RSS, VM and footprint
+measurements remain separate from those logical payload counts. See the aggregate
+section in [the research report](../../../docs/terminal-surface-research.md) and
+[the recorded metadata](../Results/aggregate-2026-10-15.json) for results and gaps;
+this is not a new source mitigation or production memory policy.
