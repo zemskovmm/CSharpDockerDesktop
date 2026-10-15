@@ -1,0 +1,108 @@
+--- a/src/common/buffer/BufferLine.ts
++++ b/src/common/buffer/BufferLine.ts
+@@ -20,6 +20,15 @@
+ 
+ /** typed array slots taken by one cell */
+ const CELL_SIZE = 3;
++
++// MODIFIED for TerminalSurfacePrototype research, 2026-10-15. Not upstream policy.
++export const EXPERIMENTAL_COMBINED_CELL_LIMIT = 256;
++export class ExperimentalCombinedCellLimitError extends Error {
++  constructor() { super('combined-cell-limit'); }
++}
++function checkCombinedCellLength(length: number): void {
++  if (length > EXPERIMENTAL_COMBINED_CELL_LIMIT) throw new ExperimentalCombinedCellLimitError();
++}
+ 
+ /**
+  * Cell member indices.
+@@ -97,6 +106,7 @@
+    * @deprecated
+    */
+   public set(index: number, value: CharData): void {
++    checkCombinedCellLength(value[CHAR_DATA_CHAR_INDEX].length);
+     this._data[index * CELL_SIZE + Cell.FG] = value[CHAR_DATA_ATTR_INDEX];
+     if (value[CHAR_DATA_CHAR_INDEX].length > 1) {
+       this._combined[index] = value[1];
+@@ -197,6 +207,7 @@
+    */
+   public setCell(index: number, cell: ICellData): void {
+     if (cell.content & Content.IS_COMBINED_MASK) {
++      checkCombinedCellLength(cell.combinedData.length);
+       this._combined[index] = cell.combinedData;
+     }
+     if (cell.bg & BgFlags.HAS_EXTENDED) {
+@@ -230,10 +241,13 @@
+   public addCodepointToCell(index: number, codePoint: number, width: number): void {
+     let content = this._data[index * CELL_SIZE + Cell.CONTENT];
+     if (content & Content.IS_COMBINED_MASK) {
++      // Check numeric lengths BEFORE constructing the added scalar or concatenation.
++      checkCombinedCellLength(this._combined[index].length + (codePoint > 0xFFFF ? 2 : 1));
+       // we already have a combined string, simply add
+       this._combined[index] += stringFromCodePoint(codePoint);
+     } else {
+       if (content & Content.CODEPOINT_MASK) {
++        checkCombinedCellLength(((content & Content.CODEPOINT_MASK) > 0xFFFF ? 2 : 1) + (codePoint > 0xFFFF ? 2 : 1));
+         // normal case for combining chars:
+         //  - move current leading char + new one into combined string
+         //  - set combined flag
+--- a/src/common/input/WriteBuffer.ts
++++ b/src/common/input/WriteBuffer.ts
+@@ -6,6 +6,8 @@
+ 
+ import { EventEmitter } from 'common/EventEmitter';
+ import { Disposable } from 'common/Lifecycle';
++// MODIFIED for TerminalSurfacePrototype research, 2026-10-15.
++import { ExperimentalCombinedCellLimitError } from 'common/buffer/BufferLine';
+ 
+ declare const setTimeout: (handler: () => void, timeout?: number) => void;
+ 
+@@ -37,6 +39,7 @@
+ export class WriteBuffer extends Disposable {
+   private _writeBuffer: (string | Uint8Array)[] = [];
+   private _callbacks: ((() => void) | undefined)[] = [];
++  private _researchFailed = false;
+   private _pendingData = 0;
+   private _bufferOffset = 0;
+   private _isSyncWriting = false;
+@@ -58,6 +61,7 @@
+    * @deprecated Unreliable, to be removed soon.
+    */
+   public writeSync(data: string | Uint8Array, maxSubsequentCalls?: number): void {
++    if (this._researchFailed) throw new ExperimentalCombinedCellLimitError();
+     // stop writeSync recursions with maxSubsequentCalls argument
+     // This is dangerous to use as it will lose the current data chunk
+     // and return immediately.
+@@ -101,6 +105,10 @@
+   }
+ 
+   public write(data: string | Uint8Array, callback?: () => void): void {
++    if (this._researchFailed) {
++      (callback as ((failure: string) => void) | undefined)?.('combined-cell-limit');
++      return;
++    }
+     if (this._pendingData > DISCARD_WATERMARK) {
+       throw new Error('write data discarded, use flow control to avoid losing data');
+     }
+@@ -161,7 +169,20 @@
+     const startTime = lastTime || Date.now();
+     while (this._writeBuffer.length > this._bufferOffset) {
+       const data = this._writeBuffer[this._bufferOffset];
+-      const result = this._action(data, promiseResult);
++      let result: void | Promise<boolean>;
++      try {
++        result = this._action(data, promiseResult);
++      } catch (error) {
++        if (!(error instanceof ExperimentalCombinedCellLimitError)) throw error;
++        // Experimental callback extension: fixed failure code, never payload/error text.
++        // Revoke this buffer before notifying; no remainder or queued chunk is parsed.
++        const cb = this._callbacks[this._bufferOffset];
++        this._researchFailed = true;
++        this._writeBuffer.length = this._callbacks.length = 0;
++        this._pendingData = this._bufferOffset = 0;
++        (cb as ((failure: string) => void) | undefined)?.('combined-cell-limit');
++        return;
++      }
+       if (result) {
+         /**
+          * If we get a promise as return value, we re-schedule the continuation

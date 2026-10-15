@@ -22,7 +22,7 @@
     try { value = JSON.parse(event.data); } catch { return; }
     if (value.kind === 'policy') note(value.directive);
     if (value.stats) cachedStats = value.stats;
-    if (['ready','ack','input','capacity','copy','fetch','sandboxPopup','stats'].includes(value.kind))
+    if (['ready','ack','failure','input','capacity','copy','fetch','sandboxPopup','stats'].includes(value.kind))
       nativePost(event.data);
   });
   window.surface = { stats:() => ({...cachedStats, violations}), requestStats:(request = 0) => send('stats', [request]) };

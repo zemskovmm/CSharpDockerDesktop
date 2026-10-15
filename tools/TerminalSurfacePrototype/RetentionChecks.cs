@@ -7,7 +7,7 @@ using Windows.ApplicationModel.DataTransfer;
 internal static class RetentionChecks
 {
     internal static string? Workload;
-    internal static readonly string[] Workloads = ["normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "lifecycle", "cutoff"];
+    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "lifecycle", "cutoff"];
     internal static int OutputLimit => Workload is null or "cutoff" ? 1048576 : 67108864;
 }
 
@@ -133,7 +133,21 @@ internal sealed partial class PrototypeView
             await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
             Require((await ReadResearchStatsAsync()).GetProperty("utf8").GetBoolean());
             await RecordResearchStatsAsync("baseline");
-            if (RetentionChecks.Workload == "lifecycle") await CheckResearchLifecycleAsync();
+            if (RetentionChecks.Workload == "combined") await CheckCombinedCellsAsync();
+            else if (RetentionChecks.Workload == "combining")
+            {
+                await OpenResearchAsync();
+                long failedId = generation;
+                producer = fixture.ProduceResearchAsync("combining");
+                await WaitForAsync(() => combinedFailures == 1);
+                await failureCleanup.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(pump.IsCompleted && producer.IsCompleted && !fixture.ProducerCompleted
+                    && fixture.ResearchBytes >= 4 * 4093 && lastCombinedFailure == failedId && generation < 0);
+                await StartAsync(false);
+                await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+                await RecordResearchStatsAsync("combined-failure-reopened");
+            }
+            else if (RetentionChecks.Workload == "lifecycle") await CheckResearchLifecycleAsync();
             else if (RetentionChecks.Workload == "cutoff")
             {
                 await StartAsync(true, 100000);
@@ -163,7 +177,6 @@ internal sealed partial class PrototypeView
                 switch (RetentionChecks.Workload)
                 {
                     case "normal": case "sustained": Require(deliveredBytes > 1048576); break;
-                    case "combining": Require(result.GetProperty("maxCombinedUnits").GetInt32() == 131073); break;
                     case "width-cache": Require(result.GetProperty("maxCombinedUnits").GetInt32() == 3
                         && result.GetProperty("widthCacheEntries").GetInt32() > 8); break;
                     case "stock-links": Require(result.GetProperty("links").GetInt32() == 8000); break;
@@ -195,6 +208,91 @@ internal sealed partial class PrototypeView
             // separate native browser-exit/profile-cleanup procedure and is refused at entry.
             Environment.Exit(exit);
         }
+    }
+    private async Task OpenResearchAsync()
+    {
+        await transition.WaitAsync();
+        try
+        {
+            await StopCoreAsync();
+            generation = terminal.OpenContainerTerminal("controlled", [], 80, 24).SessionId;
+            deliveredBytes = 0;
+            await web.ExecuteScriptAsync($"surface.start({generation}," + JsonSerializer.Serialize("combined") + ")");
+            pump = PumpAsync(generation, pumpLifetime.Token);
+        }
+        finally { transition.Release(); }
+    }
+    private async Task SendCombinedAsync(string text, bool fragmented = false)
+    {
+        long target = deliveredBytes + Encoding.UTF8.GetByteCount(text);
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        if (fragmented)
+            foreach (byte value in bytes) await fixture.WriteContainerTerminalAsync(generation, new byte[] { value });
+        else await fixture.WriteContainerTerminalAsync(generation, bytes);
+        await WaitForAsync(() => deliveredBytes == target);
+    }
+    private async Task CheckCombinedCellsAsync()
+    {
+        foreach (bool alternate in new[] { false, true })
+        {
+            await OpenResearchAsync();
+            if (alternate) await SendCombinedAsync("\x1b[?1049h", true);
+            await SendCombinedAsync("a" + new string('\u0301', 255), true);
+            await RecordResearchStatsAsync(alternate ? "alternate-exact" : "normal-exact");
+            Require((await ReadResearchStatsAsync()).GetProperty("maxCombinedUnits").GetInt32() == 256
+                && (await ReadResearchStatsAsync()).GetProperty("combinedExact").GetBoolean());
+            await SendCombinedAsync("\x1b[1G\x1b[2@\x1b[1G\x1b[P", true);
+            await RecordResearchStatsAsync(alternate ? "alternate-edits" : "normal-edits");
+            Require((await ReadResearchStatsAsync()).GetProperty("maxCombinedUnits").GetInt32() == 256
+                && (await ReadResearchStatsAsync()).GetProperty("combinedExact").GetBoolean());
+            await ResizeAsync(40, 10); await ResizeAsync(100, 30);
+            Require((await ReadResearchStatsAsync()).GetProperty("maxCombinedUnits").GetInt32() == 256
+                && (await ReadResearchStatsAsync()).GetProperty("combinedExact").GetBoolean());
+            await SendCombinedAsync("\r\x1b[2Kb\u0301", true);
+            await RecordResearchStatsAsync(alternate ? "alternate-overwrite" : "normal-overwrite");
+            Require((await ReadResearchStatsAsync()).GetProperty("maxCombinedUnits").GetInt32() <= 256
+                && (await ReadResearchStatsAsync()).GetProperty("combinedShort").GetBoolean());
+            // Force wrapping and a real normal-screen reflow with the combined cell in the wrapped row.
+            await SendCombinedAsync("\r\x1b[2K" + new string('X', alternate ? 10 : 99) + "a\u0301Y\r\n");
+            await ResizeAsync(40, 10); await ResizeAsync(100, 30);
+            await RecordResearchStatsAsync(alternate ? "alternate-resize" : "normal-reflow");
+            Require((await ReadResearchStatsAsync()).GetProperty("maxCombinedUnits").GetInt32() <= 256
+                && (await ReadResearchStatsAsync()).GetProperty("combinedReflow").GetBoolean());
+            if (alternate)
+            {
+                await SendCombinedAsync("\x1b[?1049l", true);
+                Require((await ReadResearchStatsAsync()).GetProperty("alternateLines").GetInt32() == 0);
+            }
+            // Fresh exact-limit cell, then incomplete and completing UTF-8 fragments.
+            await OpenResearchAsync();
+            if (alternate) await SendCombinedAsync("\x1b[?1049h", true);
+            await SendCombinedAsync("a" + new string('\u0301', 255), true);
+            long stale = generation; int before = combinedFailures;
+            await fixture.WriteContainerTerminalAsync(stale, new byte[] { 0xcc });
+            await WaitForAsync(() => deliveredBytes == (alternate ? 520 : 512));
+            await fixture.WriteContainerTerminalAsync(stale, new byte[] { 0x81, 0x58 });
+            await WaitForAsync(() => combinedFailures == before + 1);
+            await failureCleanup.WaitAsync(TimeSpan.FromSeconds(10));
+            Require(generation < 0 && pump.IsCompleted && producer.IsCompleted && lastCombinedFailure == stale);
+            Require(status.Text == "Prototype failed: combined-cell allocation limit exceeded; session closed.");
+            await Task.WhenAll(CloseAsync(), StartAsync(false));
+            await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+            await web.ExecuteScriptAsync($"surface.write({stale},0,'zIFY')");
+            await FailCombinedSurfaceAsync(stale); // Delayed native failure must not close replacement.
+            await Task.Delay(100);
+            Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+        }
+        // Replacement queued while the failing browser fragment is in flight.
+        await OpenResearchAsync();
+        await SendCombinedAsync("a" + new string('\u0301', 255));
+        long pendingId = generation;
+        await fixture.WriteContainerTerminalAsync(pendingId, Encoding.UTF8.GetBytes("\u0301X"));
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await Task.Delay(100);
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+        await CheckResearchLifecycleAsync();
+        await RecordResearchStatsAsync("combined-complete");
     }
     private async Task CheckResearchLifecycleAsync()
     {

@@ -1,0 +1,17 @@
+xterm.js 5.5.0 (MIT), modified 2026-10-15 for isolated TerminalSurfacePrototype research.
+Original source: https://registry.npmjs.org/@xterm/xterm/-/xterm-5.5.0.tgz
+Preserve xterm-LICENSE with experimental distributions.
+
+XtermSource/combined-cell-limit.patch modifies:
+- src/common/buffer/BufferLine.ts: experimental 256 UTF-16-unit combined-cell guard,
+  checked numerically before append/scalar creation; guards imported combined values.
+- src/common/input/WriteBuffer.ts: catches only the dedicated limit exception,
+  permanently revokes that writer, clears pending data/callbacks and reports the
+  fixed 'combined-cell-limit' code via an experimental write callback extension.
+  No remaining chunk is parsed and no success acknowledgment is issued on failure.
+
+Web/xterm.js is rebuilt from the patched source using the pinned isolated esbuild
+build in XtermSource. It is not the original npm bundle. TypeScript declaration
+files containing const enums are resolved as source by the build tool. This is a
+research-only modified API, not an accepted production output-loss/session policy.
+The guard does not bound accessibility, width caches, browser heap or overall RSS.

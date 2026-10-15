@@ -83,6 +83,9 @@ internal sealed partial class PrototypeView : Grid
     private CancellationTokenSource pumpLifetime = new();
     private Task pump = Task.CompletedTask;
     private Task producer = Task.CompletedTask;
+    private Task failureCleanup = Task.CompletedTask;
+    private int combinedFailures;
+    private long lastCombinedFailure;
     private readonly Task inputPump;
     private TaskCompletionSource? ack;
     private long generation, sequence, awaitingSequence;
@@ -221,6 +224,12 @@ internal sealed partial class PrototypeView : Grid
             if (id != generation) return;
             if (kind == "stats" && root.GetProperty("request").GetInt64() == researchStatsSequence)
                 researchStats?.TrySetResult(root.GetProperty("stats").Clone());
+            if (kind == "failure" && root.GetProperty("code").GetString() == "combined-cell-limit"
+                && root.GetProperty("sequence").GetInt64() == awaitingSequence)
+            {
+                failureCleanup = FailCombinedSurfaceAsync(id);
+                return;
+            }
             if (kind == "ack" && root.GetProperty("sequence").GetInt64() == awaitingSequence) ack?.TrySetResult();
             if (kind == "fetch") fetchBlocked = root.GetProperty("blocked").GetBoolean();
             if (kind == "sandboxPopup") sandboxPopupBlocked = root.GetProperty("blocked").GetBoolean();
@@ -253,6 +262,20 @@ internal sealed partial class PrototypeView : Grid
             pump = PumpAsync(generation, pumpLifetime.Token);
             producer = fixture.ProduceAsync(sustained, lineCount);
             status.Text = "Controlled fixture active. Type, select/copy/paste, resize, hold, close or replace.";
+        }
+        finally { transition.Release(); }
+    }
+    private async Task FailCombinedSurfaceAsync(long id)
+    {
+        await transition.WaitAsync();
+        try
+        {
+            if (id != generation) return;
+            combinedFailures++; lastCombinedFailure = id;
+            // StopCore revokes identity and cancels the outstanding acknowledgment
+            // before joining both pump and bounded producer. No failure payload is logged.
+            await StopCoreAsync();
+            status.Text = "Prototype failed: combined-cell allocation limit exceeded; session closed.";
         }
         finally { transition.Release(); }
     }

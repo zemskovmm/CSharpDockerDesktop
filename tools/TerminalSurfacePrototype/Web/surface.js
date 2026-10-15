@@ -1,12 +1,13 @@
 /* Research wrapper. All terminal output stays bytes; never interpret it as HTML/JS. */
 (() => {
   'use strict';
-  let term, generation = 0, received = 0, blockedLinks = 0, externalPopupBlocked = false, topNavigationBlocked = false, researchMode = '';
+  let term, generation = 0, received = 0, blockedLinks = 0, externalPopupBlocked = false, topNavigationBlocked = false, researchMode = '', failed = false;
   const post = value => {
     const message = JSON.stringify(value);
     window.parent.postMessage(message, '*');
   };
   const encode = value => {
+    if (failed || !term) return;
     const bytes = new TextEncoder().encode(value);
     if (bytes.length > 4096) { post({kind:'capacity', generation}); return; }
     post({kind:'input', generation, data:btoa(String.fromCharCode(...bytes))});
@@ -19,6 +20,9 @@
       utf8: lines.some(line => line.includes('café λ 世界 🐳')),
       cursorEdit: lines.some(line => line.includes('12XYZ')),
       recovered: lines.some(line => line.includes('RECOVERED')),
+      combinedExact: lines.some(line => line.includes('a' + '\u0301'.repeat(255))),
+      combinedShort: lines.some(line => line.includes('b\u0301')),
+      combinedReflow: lines.join('').includes('a\u0301Y'),
       ...(researchMode ? retentionStats() : {})};
   };
   // Read-only, version-specific research instrumentation; never a production API.
@@ -52,7 +56,7 @@
   }
   window.surface = {
     start(id, probe = '') {
-      generation = id; received = 0; blockedLinks = 0;
+      generation = id; failed = false; received = 0; blockedLinks = 0;
       researchMode = probe;
       term?.dispose(); document.getElementById('terminal').replaceChildren();
       term = new Terminal({cols:80, rows:24, scrollback:200, fontSize:14, logLevel:'off',
@@ -71,15 +75,24 @@
       term.focus();
     },
     write(id, sequence, base64) {
-      if (id !== generation || !term) return;
+      if (id !== generation || !term || failed) return;
       const target = term;
       const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
       received += bytes.length;
-      target.write(bytes, () => {
-        if (id === generation && target === term) post({kind:'ack', generation, sequence});
+      // The checksum-pinned source build extends ONLY this callback with a fixed
+      // experimental failure code. This is not a stock xterm API or production policy.
+      target.write(bytes, failure => {
+        if (id !== generation || target !== term || failed) return;
+        if (failure === 'combined-cell-limit') {
+          failed = true; term = undefined;
+          target.dispose(); document.getElementById('terminal').replaceChildren();
+          post({kind:'failure', generation:id, sequence, code:'combined-cell-limit'});
+          return;
+        }
+        post({kind:'ack', generation, sequence});
       });
     },
-    close(id) { generation = id; term?.dispose(); term = undefined;
+    close(id) { failed = true; generation = id; term?.dispose(); term = undefined;
       document.getElementById('terminal').replaceChildren(); },
     resize(columns, rows) { term?.resize(columns, rows); term?.focus(); },
     selection() { return term?.getSelection() || ''; },
