@@ -1,0 +1,252 @@
+--- a/src/browser/Types.d.ts
++++ b/src/browser/Types.d.ts
+@@ -21,6 +21,7 @@
+   viewport: IViewport | undefined;
+   options: Required<ITerminalOptions>;
+ 
++  researchFailAccessibility(): void;
+   onBlur: IEvent<void>;
+   onFocus: IEvent<void>;
+   onA11yChar: IEvent<string>;
+--- a/src/common/CoreTerminal.ts
++++ b/src/common/CoreTerminal.ts
+@@ -57,6 +57,13 @@
+ 
+   protected _inputHandler: InputHandler;
+   private _writeBuffer: WriteBuffer;
++  // MODIFIED: fixed research-only failure event, including idle keyboard/render failures.
++  private readonly _researchFailure = this.register(new EventEmitter<void>());
++  public readonly onResearchAccessibilityFailure = this._researchFailure.event;
++  public researchFailAccessibility(): void {
++    this._writeBuffer.researchFail('accessibility-limit');
++    this._researchFailure.fire();
++  }
+   private _windowsWrappingHeuristics = this.register(new MutableDisposable());
+ 
+   private readonly _onBinary = this.register(new EventEmitter<string>());
+--- a/src/common/input/WriteBuffer.ts
++++ b/src/common/input/WriteBuffer.ts
+@@ -7,6 +7,7 @@
+ import { EventEmitter } from 'common/EventEmitter';
+ import { Disposable } from 'common/Lifecycle';
+ // MODIFIED for TerminalSurfacePrototype research, 2026-10-15.
++import { ExperimentalAccessibilityLimitError } from 'common/ExperimentalAccessibility';
+ import { ExperimentalCombinedCellLimitError } from 'common/buffer/BufferLine';
+ 
+ declare const setTimeout: (handler: () => void, timeout?: number) => void;
+@@ -39,7 +40,7 @@
+ export class WriteBuffer extends Disposable {
+   private _writeBuffer: (string | Uint8Array)[] = [];
+   private _callbacks: ((() => void) | undefined)[] = [];
+-  private _researchFailed = false;
++  private _researchFailed: string | undefined;
+   private _pendingData = 0;
+   private _bufferOffset = 0;
+   private _isSyncWriting = false;
+@@ -61,7 +62,7 @@
+    * @deprecated Unreliable, to be removed soon.
+    */
+   public writeSync(data: string | Uint8Array, maxSubsequentCalls?: number): void {
+-    if (this._researchFailed) throw new ExperimentalCombinedCellLimitError();
++    if (this._researchFailed) throw this._researchFailed === 'accessibility-limit' ? new ExperimentalAccessibilityLimitError() : new ExperimentalCombinedCellLimitError();
+     // stop writeSync recursions with maxSubsequentCalls argument
+     // This is dangerous to use as it will lose the current data chunk
+     // and return immediately.
+@@ -106,7 +107,7 @@
+ 
+   public write(data: string | Uint8Array, callback?: () => void): void {
+     if (this._researchFailed) {
+-      (callback as ((failure: string) => void) | undefined)?.('combined-cell-limit');
++      (callback as ((failure: string) => void) | undefined)?.(this._researchFailed);
+       return;
+     }
+     if (this._pendingData > DISCARD_WATERMARK) {
+@@ -165,7 +166,17 @@
+    *
+    * Note, for pure sync code `lastTime` and `promiseResult` have no meaning.
+    */
++  public researchFail(code: string): void {
++    if (this._researchFailed) return;
++    const cb = this._callbacks[this._bufferOffset];
++    this._researchFailed = code;
++    this._writeBuffer.length = this._callbacks.length = 0;
++    this._pendingData = this._bufferOffset = 0;
++    (cb as ((failure: string) => void) | undefined)?.(code);
++  }
++
+   protected _innerWrite(lastTime: number = 0, promiseResult: boolean = true): void {
++    if (this._researchFailed || this._isDisposed) return;
+     const startTime = lastTime || Date.now();
+     while (this._writeBuffer.length > this._bufferOffset) {
+       const data = this._writeBuffer[this._bufferOffset];
+@@ -173,16 +184,13 @@
+       try {
+         result = this._action(data, promiseResult);
+       } catch (error) {
+-        if (!(error instanceof ExperimentalCombinedCellLimitError)) throw error;
++        if (!(error instanceof ExperimentalCombinedCellLimitError) && !(error instanceof ExperimentalAccessibilityLimitError)) throw error;
+         // Experimental callback extension: fixed failure code, never payload/error text.
+         // Revoke this buffer before notifying; no remainder or queued chunk is parsed.
+-        const cb = this._callbacks[this._bufferOffset];
+-        this._researchFailed = true;
+-        this._writeBuffer.length = this._callbacks.length = 0;
+-        this._pendingData = this._bufferOffset = 0;
+-        (cb as ((failure: string) => void) | undefined)?.('combined-cell-limit');
++        this.researchFail(error instanceof ExperimentalAccessibilityLimitError ? 'accessibility-limit' : 'combined-cell-limit');
+         return;
+       }
++      if (this._researchFailed || this._isDisposed) return;
+       if (result) {
+         /**
+          * If we get a promise as return value, we re-schedule the continuation
+@@ -232,6 +240,10 @@
+         // 2. spawn a promise immediately resolving to `true`
+         // (executed on the same queue, thus properly aligned before continuation happens)
+         result.catch(err => {
++          if (err instanceof ExperimentalAccessibilityLimitError || err instanceof ExperimentalCombinedCellLimitError) {
++            this.researchFail(err instanceof ExperimentalAccessibilityLimitError ? 'accessibility-limit' : 'combined-cell-limit');
++            return false;
++          }
+           queueMicrotask(() => {throw err;});
+           return Promise.resolve(false);
+         }).then(continuation);
+--- /dev/null
++++ b/src/common/ExperimentalAccessibility.ts
+@@ -0,0 +1,4 @@
++// MODIFIED for TerminalSurfacePrototype research, 2026-10-15. Not production policy.
++export class ExperimentalAccessibilityLimitError extends Error {
++  constructor() { super('accessibility-limit'); }
++}
+--- a/src/browser/AccessibilityManager.ts
++++ b/src/browser/AccessibilityManager.ts
+@@ -12,6 +12,12 @@
+ import { IInstantiationService } from 'common/services/Services';
+ import { addDisposableDomListener } from 'browser/Lifecycle';
+ 
++import { ExperimentalAccessibilityLimitError } from 'common/ExperimentalAccessibility';
++// Finite experimental budgets in UTF-16 units; aggregate includes pending AND live.
++export const RESEARCH_ANNOUNCEMENT_UNITS = 16384;
++export const RESEARCH_ECHO_ENTRIES = 256;
++export const RESEARCH_ECHO_UNITS = 1024;
++export const RESEARCH_ECHO_ENTRY_UNITS = 16;
+ const MAX_ROWS_TO_READ = 20;
+ 
+ const enum BoundaryPosition {
+@@ -48,6 +54,8 @@
+    * question (Y/N, etc.).
+    */
+   private _charsToConsume: string[] = [];
++  private _researchEchoUnits = 0;
++  private _researchStopped = false;
+ 
+   private _charsToAnnounce: string = '';
+ 
+@@ -82,7 +90,7 @@
+     this._liveRegion.classList.add('live-region');
+     this._liveRegion.setAttribute('aria-live', 'assertive');
+     this._accessibilityContainer.appendChild(this._liveRegion);
+-    this._liveRegionDebouncer = this.register(new TimeBasedDebouncer(this._renderRows.bind(this)));
++    this._liveRegionDebouncer = this.register(new TimeBasedDebouncer((start, end) => this._researchGuard(() => this._renderRows(start, end))));
+ 
+     if (!this._terminal.element) {
+       throw new Error('Cannot enable accessibility before Terminal.open');
+@@ -112,8 +120,8 @@
+     this.register(this._terminal.onA11yChar(char => this._handleChar(char)));
+     this.register(this._terminal.onLineFeed(() => this._handleChar('\n')));
+     this.register(this._terminal.onA11yTab(spaceCount => this._handleTab(spaceCount)));
+-    this.register(this._terminal.onKey(e => this._handleKey(e.key)));
+-    this.register(this._terminal.onBlur(() => this._clearLiveRegion()));
++    this.register(this._terminal.onKey(e => this._researchGuard(() => this._handleKey(e.key))));
++    this.register(this._terminal.onBlur(() => { this._clearLiveRegion(true); this._charsToConsume.length = 0; this._researchEchoUnits = 0; }));
+     this.register(this._renderService.onDimensionsChange(() => this._refreshRowsDimensions()));
+     this.register(addDisposableDomListener(document, 'selectionchange', () => this._handleSelectionChange()));
+     this.register(this._coreBrowserService.onDprChange(() => this._refreshRowsDimensions()));
+@@ -125,8 +133,29 @@
+       } else {
+         this._accessibilityContainer.remove();
+       }
++      this._researchStopped = true;
++      this._clearLiveRegion(true);
++      this._charsToConsume.length = 0;
++      this._researchEchoUnits = 0;
+       this._rowElements.length = 0;
+     }));
++  }
++
++  private _researchGuard(action: () => void): void {
++    if (this._researchStopped || this._isDisposed) return;
++    try { action(); }
++    catch (error) {
++      if (!(error instanceof ExperimentalAccessibilityLimitError)) throw error;
++      // Never let a timer/keyboard budget failure escape as an unhandled exception.
++      this._terminal.researchFailAccessibility();
++    }
++  }
++
++  private _researchCheckAnnouncement(extra: number): void {
++    if (this._charsToAnnounce.length + (this._liveRegion.textContent?.length || 0) + extra > RESEARCH_ANNOUNCEMENT_UNITS) {
++      this._researchStopped = true;
++      throw new ExperimentalAccessibilityLimitError();
++    }
+   }
+ 
+   private _handleTab(spaceCount: number): void {
+@@ -136,10 +165,16 @@
+   }
+ 
+   private _handleChar(char: string): void {
++    if (this._researchStopped || this._isDisposed) return;
+     if (this._liveRegionLineCount < MAX_ROWS_TO_READ + 1) {
++      const suppress = this._charsToConsume.length > 0 && this._charsToConsume[0] === char;
++      const excessive = char === '\n' && this._liveRegionLineCount === MAX_ROWS_TO_READ;
++      // Preflight both mutations together, including the upstream excessive-output message.
++      this._researchCheckAnnouncement((suppress ? 0 : char.length) + (excessive ? Strings.tooMuchOutput.length : 0));
+       if (this._charsToConsume.length > 0) {
+         // Have the screen reader ignore the char if it was just input
+-        const shiftedChar = this._charsToConsume.shift();
++        const shiftedChar = this._charsToConsume.shift()!;
++        this._researchEchoUnits -= shiftedChar.length;
+         if (shiftedChar !== char) {
+           this._charsToAnnounce += char;
+         }
+@@ -156,7 +191,8 @@
+     }
+   }
+ 
+-  private _clearLiveRegion(): void {
++  private _clearLiveRegion(clearPending = false): void {
++    if (clearPending) this._charsToAnnounce = '';
+     this._liveRegion.textContent = '';
+     this._liveRegionLineCount = 0;
+   }
+@@ -165,7 +201,12 @@
+     this._clearLiveRegion();
+     // Only add the char if there is no control character.
+     if (!/\p{Control}/u.test(keyChar)) {
++      if (keyChar.length > RESEARCH_ECHO_ENTRY_UNITS || this._charsToConsume.length + 1 > RESEARCH_ECHO_ENTRIES || this._researchEchoUnits + keyChar.length > RESEARCH_ECHO_UNITS) {
++        this._researchStopped = true;
++        throw new ExperimentalAccessibilityLimitError();
++      }
+       this._charsToConsume.push(keyChar);
++      this._researchEchoUnits += keyChar.length;
+     }
+   }
+ 
+@@ -174,6 +215,7 @@
+   }
+ 
+   private _renderRows(start: number, end: number): void {
++    if (this._researchStopped || this._isDisposed) return;
+     const buffer: IBuffer = this._terminal.buffer;
+     const setSize = buffer.lines.length.toString();
+     for (let i = start; i <= end; i++) {
+@@ -201,6 +243,9 @@
+     if (this._charsToAnnounce.length === 0) {
+       return;
+     }
++    if (this._researchStopped || this._isDisposed) return;
++    // Transfer adds no aggregate units; do not count pending twice.
++    this._researchCheckAnnouncement(0);
+     this._liveRegion.textContent += this._charsToAnnounce;
+     this._charsToAnnounce = '';
+   }

@@ -14,4 +14,16 @@ Web/xterm.js is rebuilt from the patched source using the pinned isolated esbuil
 build in XtermSource. It is not the original npm bundle. TypeScript declaration
 files containing const enums are resolved as source by the build tool. This is a
 research-only modified API, not an accepted production output-loss/session policy.
-The guard does not bound accessibility, width caches, browser heap or overall RSS.
+XtermSource/accessibility-limit.patch additionally modifies:
+- src/browser/AccessibilityManager.ts: prospective pending/live aggregate limit
+  (16,384 UTF-16 units), echo queue limits (256 entries, 1,024 units total,
+  16 units per entry), blur/disposal clearing and guarded key/render callbacks.
+- src/common/ExperimentalAccessibility.ts: fixed content-free dedicated error.
+- src/common/input/WriteBuffer.ts: both fixed failure codes, pending/queued write
+  revocation and fenced asynchronous/reentrant continuations.
+- src/common/CoreTerminal.ts and src/browser/Types.d.ts: research-only accessibility
+  failure event/entry point for failures outside an active parser write.
+
+Accessibility remains enabled. These guards do not bound renderer width-cache
+retention, browser heap or overall RSS and do not establish screen-reader
+acceptance or a production terminal policy.

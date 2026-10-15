@@ -10,7 +10,7 @@ import tarfile
 HERE = pathlib.Path(__file__).resolve().parent
 manifest = json.loads((HERE / 'checksums.json').read_text())
 archive, destination = map(pathlib.Path, sys.argv[1:])
-for path, expected in [(archive, manifest['archive']), (HERE / 'combined-cell-limit.patch', manifest['patch'])]:
+for path, expected in [(archive, manifest['archive']), (HERE / 'combined-cell-limit.patch', manifest['patch']), (HERE / 'accessibility-limit.patch', manifest['accessibilityPatch'])]:
     if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
         raise SystemExit('Pinned input checksum mismatch; no sources written.')
 if destination.exists():
@@ -21,6 +21,7 @@ with tarfile.open(archive) as source:
         raise SystemExit('Unexpected archive entry.')
     destination.mkdir(parents=True)
     source.extractall(destination, members=members)
-subprocess.run(['git', 'apply', '--check', str(HERE / 'combined-cell-limit.patch')], cwd=destination / 'package', check=True)
-subprocess.run(['git', 'apply', str(HERE / 'combined-cell-limit.patch')], cwd=destination / 'package', check=True)
+for patch in ['combined-cell-limit.patch', 'accessibility-limit.patch']:
+    subprocess.run(['git', 'apply', '--check', str(HERE / patch)], cwd=destination / 'package', check=True)
+    subprocess.run(['git', 'apply', str(HERE / patch)], cwd=destination / 'package', check=True)
 print('Pinned research sources prepared.')

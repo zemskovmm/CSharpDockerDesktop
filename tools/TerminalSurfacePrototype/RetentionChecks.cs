@@ -7,7 +7,7 @@ using Windows.ApplicationModel.DataTransfer;
 internal static class RetentionChecks
 {
     internal static string? Workload;
-    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "lifecycle", "cutoff"];
+    internal static readonly string[] Workloads = ["combined", "normal", "sustained", "combining", "width-cache", "stock-links", "links", "stock-alternate", "alternate", "attributes", "osc", "dcs", "csi", "a11y", "a11y-boundaries", "lifecycle", "cutoff"];
     internal static int OutputLimit => Workload is null or "cutoff" ? 1048576 : 67108864;
 }
 
@@ -147,6 +147,18 @@ internal sealed partial class PrototypeView
                 await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
                 await RecordResearchStatsAsync("combined-failure-reopened");
             }
+            else if (RetentionChecks.Workload == "a11y-boundaries") await CheckAccessibilityAsync();
+            else if (RetentionChecks.Workload is "a11y" or "attributes")
+            {
+                await OpenResearchAsync(RetentionChecks.Workload!);
+                long failedId = generation; int before = accessibilityFailures;
+                producer = fixture.ProduceResearchAsync(RetentionChecks.Workload!);
+                await AwaitAccessibilityFailureAsync(failedId, before);
+                Require(!fixture.ProducerCompleted && fixture.ResearchBytes >= 4 * 4093);
+                await StartAsync(false);
+                await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+                await RecordResearchStatsAsync("accessibility-producer-reopened");
+            }
             else if (RetentionChecks.Workload == "lifecycle") await CheckResearchLifecycleAsync();
             else if (RetentionChecks.Workload == "cutoff")
             {
@@ -183,7 +195,6 @@ internal sealed partial class PrototypeView
                     case "links": case "alternate": case "stock-alternate": Require(result.GetProperty("links").GetInt32() == 0); break;
                     case "osc": case "dcs": Require(result.GetProperty("parserLimited").GetBoolean()); break;
                     case "csi": Require(result.GetProperty("params").GetInt32() <= 32); break;
-                    case "a11y": Require(result.GetProperty("a11yUnits").GetInt32() >= 262144); break;
                 }
                 // Terminate incomplete sequences using cancellation characters, then prove recovery.
                 await fixture.WriteContainerTerminalAsync(generation, Encoding.UTF8.GetBytes("\x18\x1b[0m\r\nRECOVERED\r\n"));
@@ -209,15 +220,15 @@ internal sealed partial class PrototypeView
             Environment.Exit(exit);
         }
     }
-    private async Task OpenResearchAsync()
+    private async Task OpenResearchAsync(string mode = "combined")
     {
         await transition.WaitAsync();
         try
         {
             await StopCoreAsync();
             generation = terminal.OpenContainerTerminal("controlled", [], 80, 24).SessionId;
-            deliveredBytes = 0;
-            await web.ExecuteScriptAsync($"surface.start({generation}," + JsonSerializer.Serialize("combined") + ")");
+            deliveredBytes = 0; awaitingSequence = 0;
+            await web.ExecuteScriptAsync($"surface.start({generation}," + JsonSerializer.Serialize(mode) + ")");
             pump = PumpAsync(generation, pumpLifetime.Token);
         }
         finally { transition.Release(); }
@@ -228,7 +239,9 @@ internal sealed partial class PrototypeView
         byte[] bytes = Encoding.UTF8.GetBytes(text);
         if (fragmented)
             foreach (byte value in bytes) await fixture.WriteContainerTerminalAsync(generation, new byte[] { value });
-        else await fixture.WriteContainerTerminalAsync(generation, bytes);
+        else
+            for (int offset = 0; offset < bytes.Length; offset += 4093)
+                await fixture.WriteContainerTerminalAsync(generation, bytes.AsMemory(offset, Math.Min(4093, bytes.Length - offset)));
         await WaitForAsync(() => deliveredBytes == target);
     }
     private async Task CheckCombinedCellsAsync()
@@ -293,6 +306,111 @@ internal sealed partial class PrototypeView
         Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
         await CheckResearchLifecycleAsync();
         await RecordResearchStatsAsync("combined-complete");
+    }
+    private async Task AwaitAccessibilityFailureAsync(long stale, int before)
+    {
+        await WaitForAsync(() => accessibilityFailures == before + 1);
+        await failureCleanup.WaitAsync(TimeSpan.FromSeconds(10));
+        Require(generation < 0 && pump.IsCompleted && producer.IsCompleted && lastAccessibilityFailure == stale);
+        Require(status.Text == "Prototype failed: accessibility retention limit exceeded; session closed.");
+    }
+    private async Task CheckAccessibilityAsync()
+    {
+        // Real fragmented bytes through Application, native bridge and xterm parser.
+        await OpenResearchAsync("a11y-boundaries");
+        await SendCombinedAsync(string.Concat(Enumerable.Repeat("🐳\r", 4096)));
+        await Task.Delay(1200); // First half becomes live; second half remains pending.
+        await SendCombinedAsync(string.Concat(Enumerable.Repeat("🐳\r", 4095)));
+        await SendCombinedAsync("🐳\r", true);
+        var exact = await RecordResearchStatsAsync("accessibility-exact");
+        Require(exact.GetProperty("a11yAggregateUnits").GetInt32() == 16384
+            && exact.GetProperty("a11yUnits").GetInt32() == 8192 && exact.GetProperty("a11yPendingUnits").GetInt32() == 8192);
+        Require(exact.GetProperty("a11yEchoEntries").GetInt32() == 0);
+        await Task.Delay(1200);
+        exact = await RecordResearchStatsAsync("accessibility-transferred");
+        Require(exact.GetProperty("a11yUnits").GetInt32() == 16384 && exact.GetProperty("a11yPendingUnits").GetInt32() == 0);
+        long stale = generation; int before = accessibilityFailures;
+        await fixture.WriteContainerTerminalAsync(stale, Encoding.UTF8.GetBytes("X\rSUFFIX"));
+        await AwaitAccessibilityFailureAsync(stale, before);
+        Require(deliveredBytes == 40960); // The failed write was never acknowledged.
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await FailSurfaceAsync(stale, "accessibility-limit");
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+
+        // Tab's expanded spaces share the pending/live budget.
+        await OpenResearchAsync("a11y-boundaries");
+        await SendCombinedAsync(new string('X', 16380));
+        stale = generation; before = accessibilityFailures;
+        await fixture.WriteContainerTerminalAsync(stale, Encoding.UTF8.GetBytes("\r\t"));
+        await AwaitAccessibilityFailureAsync(stale, before);
+
+        // No-echo keyboard queue: actual DOM keydown handlers, fixed synthetic keys.
+        await OpenResearchAsync("a11y-no-echo");
+        await web.ExecuteScriptAsync("surface.probeAccessibility('keys-exact')");
+        exact = await RecordResearchStatsAsync("accessibility-keys-exact");
+        Require(exact.GetProperty("a11yEchoEntries").GetInt32() == 256 && exact.GetProperty("a11yEchoUnits").GetInt32() == 256);
+        // A direct fixture echo consumes exactly one ordinary key entry.
+        await SendCombinedAsync("x");
+        exact = await ReadResearchStatsAsync();
+        Require(exact.GetProperty("a11yEchoEntries").GetInt32() == 255 && exact.GetProperty("a11yAggregateUnits").GetInt32() == 0);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('blur')");
+        exact = await RecordResearchStatsAsync("accessibility-blur");
+        Require(exact.GetProperty("a11yEchoEntries").GetInt32() == 0 && exact.GetProperty("a11yEchoUnits").GetInt32() == 0);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('focus')");
+        await web.ExecuteScriptAsync("surface.probeAccessibility('keys-exact')");
+        await web.ExecuteScriptAsync("surface.probeAccessibility('hold-write')");
+        await fixture.WriteContainerTerminalAsync(generation, Encoding.UTF8.GetBytes("\x1b[z"));
+        await Task.Delay(100);
+        Require((await ReadResearchStatsAsync()).GetProperty("a11yWriteHeld").GetBoolean() && ack is not null && !ack.Task.IsCompleted);
+        stale = generation; before = accessibilityFailures;
+        await web.ExecuteScriptAsync("surface.probeAccessibility('keys-over')");
+        await AwaitAccessibilityFailureAsync(stale, before);
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await Task.Delay(1600); // The old parser continuation must not acknowledge or touch the new terminal.
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+
+        // Inject prospective growth at the exact boundary through the real delayed
+        // accessibility-render callback. This is fault injection, not organic rendering.
+        await OpenResearchAsync("a11y-boundaries");
+        await SendCombinedAsync(new string('X', 16384));
+        stale = generation; before = accessibilityFailures;
+        await web.ExecuteScriptAsync("surface.probeAccessibility('delayed-failure')");
+        await AwaitAccessibilityFailureAsync(stale, before);
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+
+        // Dispose a pending debouncer and ensure it cannot announce into replacement.
+        await OpenResearchAsync("a11y-boundaries");
+        await SendCombinedAsync("café λ 世界 🐳\t\x1b[31mRED\x1b[0m\r\n", true);
+        var ordinary = await RecordResearchStatsAsync("accessibility-ordinary");
+        Require(ordinary.GetProperty("utf8").GetBoolean() && ordinary.GetProperty("a11yRows").GetInt32() == 24 && ordinary.GetProperty("a11yAggregateUnits").GetInt32() < 16384);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('blur')");
+        Require((await RecordResearchStatsAsync("accessibility-pending-cleared")).GetProperty("a11yAggregateUnits").GetInt32() == 0);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('focus')");
+        await SendCombinedAsync(string.Concat(Enumerable.Repeat("row\r\n", 40)));
+        await Task.Delay(1200);
+        await web.ExecuteScriptAsync("surface.probeAccessibility('navigation')");
+        Require((await RecordResearchStatsAsync("accessibility-navigation")).GetProperty("a11yNavigated").GetBoolean());
+        await web.ExecuteScriptAsync("surface.probeAccessibility('queue-refresh')");
+        Require((await ReadResearchStatsAsync()).GetProperty("a11yRefreshPending").GetBoolean());
+        await Task.WhenAll(CloseAsync(), StartAsync(false));
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await Task.Delay(1200);
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+        // Replacement queued while the failing write is in flight.
+        await OpenResearchAsync("a11y-boundaries");
+        await SendCombinedAsync(new string('X', 16384));
+        stale = generation;
+        await fixture.WriteContainerTerminalAsync(stale, Encoding.UTF8.GetBytes("X"));
+        await StartAsync(false);
+        await WaitForAsync(() => fixture.ProducerCompleted && deliveredBytes == 189);
+        await FailSurfaceAsync(stale, "accessibility-limit");
+        await Task.Delay(1200);
+        Require((await ReadResearchStatsAsync()).GetProperty("received").GetInt64() == 189);
+        await CheckResearchLifecycleAsync();
+        await RecordResearchStatsAsync("accessibility-complete");
     }
     private async Task CheckResearchLifecycleAsync()
     {

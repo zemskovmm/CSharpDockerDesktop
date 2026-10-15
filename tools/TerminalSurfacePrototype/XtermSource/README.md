@@ -1,7 +1,7 @@
 # Modified xterm source experiment
 
 Only the isolated prototype consumes this modified MIT xterm.js 5.5.0 build.
-`checksums.json` pins the npm source archive, source patch and rebuilt asset.
+`checksums.json` pins the npm source archive, both ordered source patches and rebuilt asset.
 `package-lock.json` pins the isolated build tool and platform binaries by npm
 integrity; Node 22.23.1/npm 10.9.8/esbuild 0.25.0 were used for the recorded build.
 No installed package, NuGet cache assembly or upstream checkout is modified.
@@ -35,7 +35,37 @@ write is not acknowledged as successful. Previously parsed bytes in that write
 may have changed the failed surface before disposal; there is no atomic-write or
 resumable-session promise. No suffix is parsed after the offending scalar.
 
-This callback extension is deliberately outside stock xterm's public contract.
+`accessibility-limit.patch` applies after the combined-cell patch. It bounds
+`AccessibilityManager` pending plus live announcements to **16,384 UTF-16 units
+in aggregate** (therefore neither holding can exceed that value). The keyboard
+echo queue permits **256 entries, 1,024 units total and 16 units per entry**.
+These are finite experimental choices, not production policy. Supplementary
+characters count as two units. The preflight includes expanded tab spaces and
+the upstream excessive-output message; pending-to-live transfer counts each
+retained unit once. Key handling retains upstream live-region clearing and echo
+suppression. Blur clears pending/live/echo state, and disposal clears these
+holdings and cancels the debouncer. Row navigation remains enabled.
+
+Parsing throws a dedicated fixed failure to the revoked writer. Keyboard and
+render callbacks catch that failure locally, revoke the writer, and emit a
+research-only core event even when no write is outstanding. The wrapper fences
+input/acks immediately, disposes after the callback stack unwinds, and reports
+`accessibility-limit` with the terminal generation and most recent write
+sequence (zero before the first write). Native cleanup validates both identities,
+cancels the outstanding acknowledgment, closes the fixture and joins its pump
+and producer. No failed write is acknowledged; a fresh fixture requires deliberate
+opening. There is no silent output truncation or periodic reset.
+
+`accessibility-checks.ts` uses a minimal simulated DOM plus the actual source;
+its pass is **not native browser or screen-reader acceptance**. It covers exact
+and over-budget units/entries, mixed pending/live retention and transfer, Unicode,
+tabs, excessive-output text, echo consumption, clear/blur, disposal, deferred
+callbacks and revoked/reentrant/async writes. The native `a11y-boundaries` runner
+separately covers the real Uno/WKWebView path, synthetic DOM keys, a held parser
+write, delayed callback fault injection, row navigation and close/replacement.
+See the research document for measured results and the explicit injected cases.
+
+These callback/core-event extensions are deliberately outside stock xterm's public contract.
 It is research failure behavior, not an accepted production terminal policy.
 Preserve `ThirdParty/xterm-LICENSE` and the modification notice in distributions.
 See the main research document for native observations and remaining gaps.

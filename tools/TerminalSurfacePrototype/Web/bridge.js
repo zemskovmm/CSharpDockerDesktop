@@ -28,6 +28,6 @@
   window.surface = { stats:() => ({...cachedStats, violations}), requestStats:(request = 0) => send('stats', [request]) };
   function send(method, args) { frame.contentWindow.postMessage({method, args}, '*'); }
   for (const method of ['start','write','close','resize','selection','paste','selectFixture',
-    'controlC','probePopup','probeNavigation','probeFetch','probeExternal'])
+    'controlC','probeAccessibility','probePopup','probeNavigation','probeFetch','probeExternal'])
     window.surface[method] = (...args) => send(method, args);
 })();

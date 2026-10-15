@@ -84,6 +84,8 @@ internal sealed partial class PrototypeView : Grid
     private Task pump = Task.CompletedTask;
     private Task producer = Task.CompletedTask;
     private Task failureCleanup = Task.CompletedTask;
+    private int accessibilityFailures;
+    private long lastAccessibilityFailure;
     private int combinedFailures;
     private long lastCombinedFailure;
     private readonly Task inputPump;
@@ -224,10 +226,20 @@ internal sealed partial class PrototypeView : Grid
             if (id != generation) return;
             if (kind == "stats" && root.GetProperty("request").GetInt64() == researchStatsSequence)
                 researchStats?.TrySetResult(root.GetProperty("stats").Clone());
-            if (kind == "failure" && root.GetProperty("code").GetString() == "combined-cell-limit"
+            if (kind == "failure" && (root.GetProperty("code").GetString() is "combined-cell-limit" or "accessibility-limit")
                 && root.GetProperty("sequence").GetInt64() == awaitingSequence)
             {
-                failureCleanup = FailCombinedSurfaceAsync(id);
+                failureCleanup = FailSurfaceAsync(id, root.GetProperty("code").GetString()!);
+                if (RetentionChecks.Workload is not null && root.TryGetProperty("bounds", out var bounds))
+                    Console.WriteLine("RETENTION_FAILURE " + JsonSerializer.Serialize(new {
+                        workload = RetentionChecks.Workload, generation = id, sequence = awaitingSequence,
+                        received = root.GetProperty("received").GetInt64(), deliveredBytes,
+                        pending = bounds.GetProperty("a11yPendingUnits").GetInt32(),
+                        live = bounds.GetProperty("a11yUnits").GetInt32(),
+                        aggregate = bounds.GetProperty("a11yAggregateUnits").GetInt32(),
+                        echoEntries = bounds.GetProperty("a11yEchoEntries").GetInt32(),
+                        echoUnits = bounds.GetProperty("a11yEchoUnits").GetInt32(),
+                        echoMaxEntryUnits = bounds.GetProperty("a11yMaxEchoEntryUnits").GetInt32() }));
                 return;
             }
             if (kind == "ack" && root.GetProperty("sequence").GetInt64() == awaitingSequence) ack?.TrySetResult();
@@ -257,7 +269,7 @@ internal sealed partial class PrototypeView : Grid
             if (shuttingDown) return;
             await StopCoreAsync();
             generation = terminal.OpenContainerTerminal("controlled", [], 80, 24).SessionId;
-            deliveredBytes = 0;
+            deliveredBytes = 0; awaitingSequence = 0;
             await web.ExecuteScriptAsync($"surface.start({generation},{JsonSerializer.Serialize(RetentionChecks.Workload is null ? "" : "retention")})");
             pump = PumpAsync(generation, pumpLifetime.Token);
             producer = fixture.ProduceAsync(sustained, lineCount);
@@ -265,17 +277,21 @@ internal sealed partial class PrototypeView : Grid
         }
         finally { transition.Release(); }
     }
-    private async Task FailCombinedSurfaceAsync(long id)
+    private Task FailCombinedSurfaceAsync(long id) => FailSurfaceAsync(id, "combined-cell-limit");
+    private async Task FailSurfaceAsync(long id, string code)
     {
         await transition.WaitAsync();
         try
         {
             if (id != generation) return;
-            combinedFailures++; lastCombinedFailure = id;
+            if (code == "accessibility-limit") { accessibilityFailures++; lastAccessibilityFailure = id; }
+            else { combinedFailures++; lastCombinedFailure = id; }
             // StopCore revokes identity and cancels the outstanding acknowledgment
             // before joining both pump and bounded producer. No failure payload is logged.
             await StopCoreAsync();
-            status.Text = "Prototype failed: combined-cell allocation limit exceeded; session closed.";
+            status.Text = code == "accessibility-limit"
+                ? "Prototype failed: accessibility retention limit exceeded; session closed."
+                : "Prototype failed: combined-cell allocation limit exceeded; session closed.";
         }
         finally { transition.Release(); }
     }

@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { BufferLine, DEFAULT_ATTR_DATA, ExperimentalCombinedCellLimitError } from 'research-source/common/buffer/BufferLine';
 import { CellData } from 'research-source/common/buffer/CellData';
 import { WriteBuffer } from 'research-source/common/input/WriteBuffer';
+import { accessibilityChecks } from './accessibility-checks';
 async function main() {
 const blank = CellData.fromCharData([0, '', 1, 0]);
 function exact(line = new BufferLine(8), index = 0) {
@@ -44,6 +45,7 @@ assert.throws(()=>line.set(0,[0,'a'.repeat(257),1,97]),ExperimentalCombinedCellL
   assert.equal((writes as any)._pendingData,0); assert.equal((writes as any)._writeBuffer.length,0);
   writes.write(new Uint8Array([5]),((failure?:string)=>assert.equal(failure,'combined-cell-limit')) as any);
   assert.equal(applied,1); rejects(guarded,0);
+  await accessibilityChecks();
   console.log('XTERM_SOURCE_CHECK_PASS exact, supplementary, overwrite, insert/delete, resize, copy/clone, pre-growth rejection, queue revocation');
 }
 main().catch(()=>{console.error('XTERM_SOURCE_CHECK_FAIL');process.exitCode=1;});
