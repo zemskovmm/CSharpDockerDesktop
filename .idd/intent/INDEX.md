@@ -24,7 +24,7 @@ to its unique current document when opening it.
 | --- | --- | --- | --- | --- |
 | IDD-0001 | Spec | Product scope | Windows and macOS developer workflow; explicit non-goals | — |
 | IDD-0002 | Spec | Engine connection | Explicit installed-runtime startup, named pipe and macOS Unix socket, API negotiation, diagnostics; TCP/TLS and discovery decisions unresolved | — |
-| IDD-0003 | Spec | Shared UI / Inspect | Cross-cutting navigation, keyboard actions, confirmation and accessibility | — |
+| IDD-0003 | Spec | Shared UI / Inspect | Cross-cutting navigation, keyboard actions, confirmation, accessibility and automatic graphics fallback | — |
 | IDD-0004 | Spec | Containers | Search, lifecycle, safe deletion and optional bulk scope | — |
 | IDD-0005 | Spec | Images / Volumes / Networks | Metadata, dependencies, safe deletion; Pull/Push unresolved | — |
 | IDD-0006 | Spec | Shared state synchronization | Authoritative snapshots, external events, reconnect and uncertain mutations | — |

@@ -9,7 +9,12 @@ using Uno.UI.Hosting;
 internal static class Program
 {
     [STAThread]
-    public static void Main() => UnoPlatformHostBuilder.Create().App(() => new SmokeApp()).UseWin32().UseMacOS().Build().Run();
+    public static void Main() => UnoPlatformHostBuilder.Create()
+        .App(() => new SmokeApp())
+        .UseWin32(builder => builder.RenderingBackend(Win32RenderingBackend.Vulkan))
+        .UseMacOS()
+        .Build()
+        .Run();
 }
 
 internal sealed class SmokeApp : Microsoft.UI.Xaml.Application

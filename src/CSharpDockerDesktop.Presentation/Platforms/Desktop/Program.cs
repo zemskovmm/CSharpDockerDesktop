@@ -9,7 +9,9 @@ internal static class Program
     {
         var host = UnoPlatformHostBuilder.Create()
             .App(() => new App())
-            .UseWin32()
+            // Vulkan preference retains Uno's automatic OpenGL/software fallback.
+            .UseWin32(builder => builder.RenderingBackend(Win32RenderingBackend.Vulkan))
+            // AppKit selects Metal when available and otherwise uses software.
             .UseMacOS()
             .Build();
         host.Run();
