@@ -136,7 +136,7 @@ internal sealed class NamedPipeTransport(bool permitTestHost = false) : IDockerT
         if (endpoint.Transport != EngineTransport.WindowsNamedPipe || endpoint.Address is null
             || !endpoint.Address.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             throw new ConnectionProtocolException(new(EngineConnectionFailureKind.UnsupportedEndpoint,
-                "Only local Windows named-pipe endpoints in the form npipe://./pipe/<name> are supported. TCP, SSH, Unix sockets and WSL bridges are unavailable."));
+                "Use a local Windows named pipe (npipe://./pipe/<name>) or a macOS Unix socket (unix:///absolute/path). TCP, SSH and WSL bridges are unavailable."));
         var name = endpoint.Address[prefix.Length..];
         if (name.Length == 0 || name.Length > 200 || name.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.')))
             throw new ConnectionProtocolException(new(EngineConnectionFailureKind.UnsupportedEndpoint, "The local named-pipe name is invalid."));

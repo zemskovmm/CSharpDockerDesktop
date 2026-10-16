@@ -22,23 +22,36 @@
                   AutomationProperties.AutomationId="RetryConnection"
                   AutomationProperties.Name="Retry Docker Engine connection" />
         </Grid>
+        <StackPanel Spacing="8">
+          <ComboBox x:Name="RuntimeChoices" Header="Installed Docker runtime" DisplayMemberPath="Name"
+                    SelectionChanged="OnRuntimeSelectionChanged" HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="Installed Docker runtime to start" />
+          <TextBlock x:Name="RuntimeDestination" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button x:Name="StartRuntime" Content="Start Docker runtime" Click="OnStartRuntime"
+                    AutomationProperties.Name="Start selected installed Docker runtime" />
+            <Button x:Name="CancelRuntime" Content="Cancel startup" Click="OnCancelRuntime"
+                    AutomationProperties.Name="Cancel waiting for runtime startup" />
+          </StackPanel>
+          <TextBlock x:Name="RuntimeStatus" TextWrapping="Wrap" />
+        </StackPanel>
         <Expander x:Name="EndpointEditor" Header="Select Engine endpoint" HorizontalAlignment="Stretch"
                   AutomationProperties.Name="Select Docker Engine endpoint">
           <StackPanel Spacing="8">
             <TextBox x:Name="EndpointDraft" Header="Endpoint address (draft)" MaxLength="2048"
-                     PlaceholderText="npipe://./pipe/docker_engine" TextChanged="OnEndpointDraftChanged"
+                     PlaceholderText="npipe://./pipe/docker_engine or unix:///absolute/path/docker.sock" TextChanged="OnEndpointDraftChanged"
                      AutomationProperties.AutomationId="EndpointDraft"
                      AutomationProperties.Name="Docker Engine endpoint address draft" />
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Button x:Name="ApplyEndpoint" Content="Apply / Connect" Click="OnApplyEndpoint"
                       AutomationProperties.AutomationId="ApplyEndpoint"
                       AutomationProperties.Name="Apply endpoint and connect" />
-              <Button x:Name="UseDefaultEndpoint" Content="Use default local pipe" Click="OnUseDefaultEndpoint"
+              <Button x:Name="UseDefaultEndpoint" Content="Use default local endpoint" Click="OnUseDefaultEndpoint"
                       AutomationProperties.AutomationId="UseDefaultEndpoint"
-                      AutomationProperties.Name="Select default local Windows pipe and connect" />
+                      AutomationProperties.Name="Select default local endpoint and connect" />
             </StackPanel>
             <TextBlock x:Name="EndpointDraftStatus" TextWrapping="Wrap" />
-            <TextBlock Text="Selection is kept only for this app session. Only local Windows named pipes are supported."
+            <TextBlock Text="Selection is kept only for this app session. Windows uses local named pipes; macOS uses local Unix sockets."
                        TextWrapping="Wrap" />
           </StackPanel>
         </Expander>

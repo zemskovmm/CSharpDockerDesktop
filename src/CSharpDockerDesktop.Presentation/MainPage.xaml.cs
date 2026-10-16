@@ -9,16 +9,20 @@ public sealed partial class MainPage : Page
 {
     private readonly DesktopSession session;
     private readonly ConnectionEditorView connection;
+    private readonly RuntimeStartup? runtime;
     private bool attached;
     private int connectionUpdateQueued;
 
-    public MainPage(DesktopSession session)
+    public MainPage(DesktopSession session, RuntimeStartup? runtime = null)
     {
         this.session = session;
+        this.runtime = runtime;
         connection = new(session);
         InitializeComponent();
+        RuntimeChoices.ItemsSource = runtime?.Runtimes;
+        if (runtime?.Runtimes.Count > 0) RuntimeChoices.SelectedIndex = 0;
         EndpointDraft.Text = connection.Draft;
-        Loaded += (_, _) => { if (!attached) { session.Changed += OnSessionChanged; attached = true; } UpdateConnection(); };
+        Loaded += (_, _) => { if (!attached) { session.Changed += OnSessionChanged; if (runtime is not null) runtime.Changed += OnSessionChanged; attached = true; } UpdateConnection(); };
         Unloaded += (_, _) => Detach();
         UpdateConnection();
         ResourceNavigation.SelectedItem = ContainersItem;
@@ -27,6 +31,7 @@ public sealed partial class MainPage : Page
     public void Detach()
     {
         session.Changed -= OnSessionChanged;
+        if (runtime is not null) runtime.Changed -= OnSessionChanged;
         attached = false;
         connection.HideDaemonMessage();
         DaemonMessage.Text = "";
@@ -44,6 +49,33 @@ public sealed partial class MainPage : Page
             Interlocked.Exchange(ref connectionUpdateQueued, 0);
             if (attached) UpdateConnection();
         })) Interlocked.Exchange(ref connectionUpdateQueued, 0);
+    }
+    private void OnRuntimeSelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (RuntimeDestination is not null) UpdateRuntime();
+    }
+    private async void OnStartRuntime(object sender, RoutedEventArgs args)
+    {
+        if (runtime is null || RuntimeChoices.SelectedItem is not InstalledRuntime selected) return;
+        var pending = runtime.StartAsync(selected);
+        // The runtime request deliberately selects its own endpoint; keep the visible draft in sync.
+        connection.Draft = selected.Endpoint.Address;
+        EndpointDraft.Text = connection.Draft;
+        UpdateRuntime();
+        await pending;
+        if (attached) UpdateConnection();
+    }
+    private void OnCancelRuntime(object sender, RoutedEventArgs args) => runtime?.Cancel();
+    private void UpdateRuntime()
+    {
+        var choice = RuntimeChoices.SelectedItem as InstalledRuntime;
+        var busy = runtime?.IsBusy == true;
+        StartRuntime.IsEnabled = runtime is not null && choice is not null && !busy;
+        CancelRuntime.IsEnabled = busy;
+        RuntimeChoices.IsEnabled = !busy;
+        RuntimeDestination.Text = choice is null ? "No supported installed runtime found. Install Docker Desktop, or configure a default Colima Docker profile, then reopen the app."
+            : $"Start {choice.Name} and connect to {choice.Endpoint.Address}";
+        RuntimeStatus.Text = runtime?.Snapshot.Message ?? "Runtime startup is unavailable in this host.";
     }
     private void OnRetry(object sender, RoutedEventArgs args) { connection.Retry(); UpdateConnection(); }
     private void OnApplyEndpoint(object sender, RoutedEventArgs args)
@@ -72,6 +104,7 @@ public sealed partial class MainPage : Page
     private void UpdateConnection()
     {
         var s = session.Snapshot;
+        UpdateRuntime();
         EngineStatus.Text = s.State switch
         {
             EngineConnectionState.Connecting => "Docker Engine: Connecting…",

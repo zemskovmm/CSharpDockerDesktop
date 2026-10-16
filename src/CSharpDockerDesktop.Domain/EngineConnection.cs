@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace CSharpDockerDesktop.Domain;
 
-public enum EngineTransport { WindowsNamedPipe, Unsupported }
+public enum EngineTransport { WindowsNamedPipe, Unsupported, UnixSocket }
 
 /// <summary>An explicit endpoint identity; discovery policy is owned by a future coordinator.</summary>
 public sealed record EngineEndpoint(string Address, EngineTransport Transport)

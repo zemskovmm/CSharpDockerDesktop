@@ -48,12 +48,15 @@ public sealed partial class DesktopSession : IAsyncDisposable
     private bool started, disposed;
     private ConnectionSnapshot snapshot;
 
+    public EngineEndpoint DefaultEndpoint { get; }
+
     public DesktopSession(IEngineConnectionClient client, ConnectionRecoveryOptions? options = null,
         IConnectionDelay? delay = null, EngineEndpoint? endpoint = null,
         ContainerReconciliationOptions? reconciliation = null, ContainerOperationOptions? operationOptions = null,
         ContainerLogsOptions? logOptions = null, ImageOperationOptions? imageOperationOptions = null, VolumeOperationOptions? volumeOperationOptions = null, NetworkOperationOptions? networkOperationOptions = null,
         ContainerStatsOptions? statsOptions = null, TimeProvider? statsTimeProvider = null,
-        ContainerTerminalOptions? terminalOptions = null, TimeProvider? terminalTimeProvider = null)
+        ContainerTerminalOptions? terminalOptions = null, TimeProvider? terminalTimeProvider = null,
+        EngineEndpoint? defaultEndpoint = null)
     {
         this.client = client;
         this.options = options ?? new();
@@ -77,7 +80,8 @@ public sealed partial class DesktopSession : IAsyncDisposable
         this.terminalOptions = terminalOptions ?? new();
         this.terminalOptions.Validate();
         terminalTime = terminalTimeProvider ?? TimeProvider.System;
-        snapshot = new(EngineConnectionState.NotConnected, endpoint ?? EngineEndpoint.LocalWindows);
+        DefaultEndpoint = defaultEndpoint ?? EngineEndpoint.LocalWindows;
+        snapshot = new(EngineConnectionState.NotConnected, endpoint ?? DefaultEndpoint);
     }
 
     // Observers read the latest immutable snapshot. Notification may originate off the UI thread.

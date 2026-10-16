@@ -2,7 +2,7 @@ using CSharpDockerDesktop.Domain;
 
 namespace CSharpDockerDesktop.Application;
 
-/// <summary>Opens an explicitly selected endpoint. Null selects the local Windows pipe without CLI discovery.</summary>
+/// <summary>Opens an explicitly selected endpoint. Null selects the production platform default without CLI discovery.</summary>
 public interface IEngineConnectionClient
 {
     /// <remarks>Cancellation throws OperationCanceledException; it is not a connection failure.</remarks>

@@ -76,7 +76,7 @@ internal static partial class EndpointSelectionChecks
         var transport = new RejectTransport(); var client = new DockerEngineConnectionClient(transport);
         await using var s = new DesktopSession(client, new() { MaximumRecoveryAttempts = 0 });
         var editor = new ConnectionEditorView(s);
-        foreach (string address in new[] { "unix:///var/run/docker.sock", "npipe://remote/pipe/docker_engine", "tcp://localhost:2375", "ssh://host", "npipe://./pipe/", "   " })
+        foreach (string address in new[] { "unix://remote/docker.sock", "npipe://remote/pipe/docker_engine", "tcp://localhost:2375", "ssh://host", "npipe://./pipe/", "   " })
         {
             editor.Draft = address; editor.Apply();
             await Observe(s, () => s.Snapshot.State == EngineConnectionState.Unsupported);

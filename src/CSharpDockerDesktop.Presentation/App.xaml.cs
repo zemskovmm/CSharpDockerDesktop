@@ -8,17 +8,19 @@ public partial class App : Microsoft.UI.Xaml.Application
 {
     private Window? _window;
     private DesktopSession? _session;
+    private RuntimeStartup? _runtime;
 
     public App() => InitializeComponent();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Composition root: views see Application contracts, never Docker protocol operations.
-        _session = new DesktopSession(new DockerEngineConnectionClient());
+        _session = new DesktopSession(new DockerEngineConnectionClient(), defaultEndpoint: LocalDockerTransportDefault.Endpoint);
+        _runtime = new RuntimeStartup(_session, new InstalledRuntimeLauncher());
         _window = new Window
         {
             Title = "CSharpDockerDesktop",
-            Content = new MainPage(_session)
+            Content = new MainPage(_session, _runtime)
         };
         _window.Closed += OnClosed;
         _window.Activate();
@@ -28,6 +30,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private async void OnClosed(object sender, WindowEventArgs args)
     {
         if (_window?.Content is MainPage page) page.Detach();
+        if (_runtime is { } runtime) await runtime.DisposeAsync();
         if (_session is { } session) await session.DisposeAsync();
     }
 }

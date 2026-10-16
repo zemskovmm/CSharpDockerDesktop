@@ -1,4 +1,5 @@
 using System.Text;
+using System.Net.Sockets;
 using System.Text.Json;
 using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
@@ -15,7 +16,7 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     private readonly IDockerTransportFactory transport;
 
     public DockerEngineConnectionClient(DockerConnectionOptions? options = null)
-        : this(new NamedPipeTransport(), options) { }
+        : this(new LocalDockerTransport(), options) { }
 
     internal DockerEngineConnectionClient(IDockerTransportFactory transport, DockerConnectionOptions? options = null)
     {
@@ -27,17 +28,17 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
     public async Task<EngineConnectionAttempt> ConnectAsync(EngineEndpoint? endpoint = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        endpoint ??= EngineEndpoint.LocalWindows;
+        endpoint ??= LocalDockerTransport.DefaultEndpoint;
         HttpClient? http = null;
         try
         {
             // Validation is shared by all transports, including deterministic test transports.
-            NamedPipeTransport.GetLocalPipeName(endpoint);
+            LocalDockerTransport.Validate(endpoint);
             var handler = transport.Create(endpoint, options);
             var continuity = handler as ITransportContinuity;
             http = new HttpClient(handler, disposeHandler: true)
             {
-                BaseAddress = new Uri("http://docker/"), // Logical HTTP authority only; ConnectCallback opens the pipe.
+                BaseAddress = new Uri("http://docker/"), // Logical HTTP authority only; ConnectCallback opens the local transport.
                 Timeout = Timeout.InfiniteTimeSpan
             };
             var ping = await GetAsync(http, "_ping", cancellationToken).ConfigureAwait(false);
@@ -204,9 +205,16 @@ public sealed class DockerEngineConnectionClient : IEngineConnectionClient
         {
             if (current is ConnectionProtocolException protocol) { failure = protocol.Failure; return true; }
             if (current is UnauthorizedAccessException || (current is IOException && (current.HResult & 0xffff) == 5))
-            { failure = new(EngineConnectionFailureKind.AccessDenied, "Access to the Docker pipe was denied. Check the current user's Engine permissions; no elevation or permission changes were attempted."); return true; }
+            { failure = new(EngineConnectionFailureKind.AccessDenied, "Access to the Docker endpoint was denied. Check the current user's Engine permissions; no elevation or permission changes were attempted."); return true; }
+            if (current is SocketException socket)
+            {
+                if (socket.SocketErrorCode == SocketError.AccessDenied)
+                { failure = new(EngineConnectionFailureKind.AccessDenied, "Access to the Docker socket was denied. Check the current user's Engine permissions."); return true; }
+                if (socket.SocketErrorCode is SocketError.AddressNotAvailable or SocketError.ConnectionRefused || socket.NativeErrorCode == 2)
+                { failure = new(EngineConnectionFailureKind.MissingEndpoint, "The Docker socket is missing or the Engine is not listening. Start the Engine or check the selected socket."); return true; }
+            }
             if (current is FileNotFoundException or DirectoryNotFoundException)
-            { failure = new(EngineConnectionFailureKind.MissingEndpoint, "The selected Docker pipe does not exist."); return true; }
+            { failure = new(EngineConnectionFailureKind.MissingEndpoint, "The selected Docker endpoint does not exist."); return true; }
         }
         if (exception is HttpRequestException or IOException or OperationCanceledException or TimeoutException)
         { failure = new(EngineConnectionFailureKind.TransientTransportFailure, "The Engine connection was interrupted or unavailable."); return true; }

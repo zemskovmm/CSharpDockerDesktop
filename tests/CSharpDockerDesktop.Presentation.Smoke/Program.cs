@@ -111,6 +111,8 @@ internal sealed class SmokeApp : Microsoft.UI.Xaml.Application
         window = new Window { Title = "Container Browser Checks — synthetic data", Content = grid };
         frame.Navigate(typeof(NetworksPage), browser);
         window.Activate();
+        if (Environment.GetEnvironmentVariable("CSHARPDOCKER_RUNTIME_UI_CHECKS") == "1")
+            _ = RuntimeStartupUiSmokeChecks.Run(frame, evidence);
         if (Environment.GetEnvironmentVariable("CSHARPDOCKER_ENDPOINT_UI_CHECKS") == "1")
             _ = ShellEndpointUiSmokeChecks.Run(frame, evidence);
         if (Environment.GetEnvironmentVariable("CSHARPDOCKER_STATS_UI_CHECKS") == "1")

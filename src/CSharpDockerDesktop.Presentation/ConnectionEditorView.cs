@@ -31,8 +31,8 @@ public sealed class ConnectionEditorView(DesktopSession session)
     }
     public void UseDefault()
     {
-        Draft = EngineEndpoint.LocalWindows.Address;
-        session.SelectEndpoint(EngineEndpoint.LocalWindows);
+        Draft = session.DefaultEndpoint.Address;
+        session.SelectEndpoint(session.DefaultEndpoint);
         Refresh();
     }
     public void Retry() { session.Retry(); Refresh(); }
@@ -52,7 +52,9 @@ public sealed class ConnectionEditorView(DesktopSession session)
     }
     public string Selection => Snapshot.Endpoint == EngineEndpoint.LocalWindows
         ? "Default local Windows pipe (explicit in-memory selection; no Docker CLI context selected)"
-        : "Explicit in-memory endpoint (no Docker CLI context selected)";
+        : Snapshot.Endpoint == session.DefaultEndpoint && Snapshot.Endpoint.Transport == EngineTransport.UnixSocket
+            ? "Default local macOS socket (explicit in-memory selection; no Docker CLI context selected)"
+            : "Explicit in-memory endpoint (no Docker CLI context selected)";
     public string Diagnostic
     {
         get
@@ -82,7 +84,7 @@ public sealed class ConnectionEditorView(DesktopSession session)
         : value.Length <= maximum ? value : value[..maximum] + "… [display truncated]";
     private static string FailureLabel(EngineConnectionFailureKind kind) => kind switch
     {
-        EngineConnectionFailureKind.MissingEndpoint => "Pipe unavailable",
+        EngineConnectionFailureKind.MissingEndpoint => "Endpoint unavailable",
         EngineConnectionFailureKind.AccessDenied => "Access denied",
         EngineConnectionFailureKind.IncompatibleApi => "Incompatible Engine API",
         EngineConnectionFailureKind.UnsupportedEndpoint => "Unsupported endpoint or platform",

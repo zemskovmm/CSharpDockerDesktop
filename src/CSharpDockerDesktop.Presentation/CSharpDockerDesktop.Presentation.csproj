@@ -17,4 +17,16 @@
     <ProjectReference Include="../CSharpDockerDesktop.Application/CSharpDockerDesktop.Application.csproj" />
     <ProjectReference Include="../CSharpDockerDesktop.Infrastructure.Docker/CSharpDockerDesktop.Infrastructure.Docker.csproj" />
   </ItemGroup>
+  <Target Name="CreateMacOSAppBundle" AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64'">
+    <PropertyGroup>
+      <MacAppContents>$(PublishDir)CSharpDockerDesktop.app/Contents/</MacAppContents>
+    </PropertyGroup>
+    <ItemGroup>
+      <MacBundleFiles Include="$(PublishDir)**/*" Exclude="$(PublishDir)**/*.app/**/*;$(PublishDir)CSharpDockerDesktop.app/**/*" />
+    </ItemGroup>
+    <MakeDir Directories="$(MacAppContents)MacOS" />
+    <Copy SourceFiles="@(MacBundleFiles)" DestinationFiles="@(MacBundleFiles->'$(MacAppContents)MacOS/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Platforms/Desktop/Info.plist" DestinationFolder="$(MacAppContents)" />
+  </Target>
 </Project>

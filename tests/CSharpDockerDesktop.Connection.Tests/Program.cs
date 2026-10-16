@@ -5,13 +5,19 @@ using CSharpDockerDesktop.Application;
 using CSharpDockerDesktop.Domain;
 using CSharpDockerDesktop.Infrastructure.Docker;
 
+if (args.FirstOrDefault() == "--runtime-smoke")
+{
+    await RuntimeStartupChecks.Smoke(args.Length > 1 ? args[1] : "colima");
+    return 0;
+}
+
 const string Info = """{"ID":"engine-id","Name":"engine-name","OperatingSystem":"Alpine Linux v3.5","OSType":"linux","Architecture":"x86_64","ServerVersion":"19.03.12","MemoryLimit":true,"SwapLimit":false,"CpuCfsPeriod":true,"CpuCfsQuota":true,"CPUShares":true,"CPUSet":true,"PidsLimit":true,"IPv4Forwarding":true,"ExperimentalBuild":false,"Swarm":{"LocalNodeState":"inactive"}}""";
 
 // Dependency-free executable test suite: every failed assertion exits nonzero.
 // It intentionally builds without Uno or an installed/running Docker daemon.
 if (args.FirstOrDefault() == "--smoke")
 {
-    var endpoint = args.Length > 1 ? new EngineEndpoint(args[1], EngineTransport.WindowsNamedPipe) : null;
+    var endpoint = args.Length > 1 ? EngineEndpointInput.FromAddress(args[1]) : null;
     using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
     var result = await new DockerEngineConnectionClient().ConnectAsync(endpoint, stop.Token);
     if (result.Connection is { } connection)
@@ -30,6 +36,10 @@ if (args.FirstOrDefault() == "--smoke")
 
 var tests = new (string, Func<Task>)[]
 {
+    ("Runtime startup readiness and duplicate admission", RuntimeStartupChecks.ReadinessAndAdmission),
+    ("Runtime startup failures timeout cancel replacement and shutdown", RuntimeStartupChecks.FailuresCancellationAndSelection),
+    ("Runtime startup fixed platform commands and process lifetime", RuntimeStartupChecks.FixedLaunchContracts),
+    ("macOS Unix socket handshake resources duplex and diagnostics", UnixSocketChecks.LocalTransport),
     ("Terminal session lifecycle broadcasts and reentrant cancellation", TerminalSessionChecks.LifecycleBroadcastAndReentrantCancellation),
     ("Terminal session diagnostics cancellation and notification join", TerminalSessionChecks.DiagnosticsCallerCancellationAndNotificationJoin),
     ("Terminal session blocked output failure and admission close", TerminalSessionChecks.BlockedOutputFailureAndAdmissionClose),
@@ -493,7 +503,7 @@ static async Task SchemaAndPaths()
     Check(attempt.Failure is null);
     var c = attempt.Connection!;
     var m = c.Metadata;
-    Check(m.Endpoint == EngineEndpoint.LocalWindows);
+    Check(m.Endpoint == LocalDockerTransportDefault.Endpoint);
     Check(m.EngineVersion == "19.03.12" && m.RuntimeOS == "linux" && m.RuntimeArchitecture == "amd64");
     Check(m.HostArchitecture == "x86_64" && m.KernelVersion == "4.19.76-linuxkit" && m.OperatingSystem == "Alpine Linux v3.5");
     Check(m.EngineId == "engine-id" && m.EngineName == "engine-name" && m.InfoServerVersion == "19.03.12");
@@ -736,7 +746,7 @@ static async Task EndpointRejection()
     }
     if (!OperatingSystem.IsWindows())
     {
-        var result = await new DockerEngineConnectionClient().ConnectAsync();
+        var result = await new DockerEngineConnectionClient().ConnectAsync(EngineEndpoint.LocalWindows);
         Check(result.Failure?.Kind == EngineConnectionFailureKind.UnsupportedEndpoint);
     }
 }

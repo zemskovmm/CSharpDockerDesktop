@@ -10,7 +10,6 @@ internal static class Program
         var host = UnoPlatformHostBuilder.Create()
             .App(() => new App())
             .UseWin32()
-            // Allows local UI development checks; Windows x64 is the delivery baseline.
             .UseMacOS()
             .Build();
         host.Run();
